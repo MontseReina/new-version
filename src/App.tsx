@@ -1,4 +1,4 @@
-import { HashRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/AuthProvider'
 import { Login } from './auth/Login'
 import { Layout } from './components/Layout'
@@ -23,6 +23,7 @@ export function App() {
           {modules.map(m => <Route key={m.id} path={m.path} element={<m.Page />} />)}
           <Route path="datos" element={<Datos />} />
           <Route path="ajustes" element={<Ajustes />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </HashRouter>

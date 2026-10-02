@@ -6,7 +6,7 @@ App personal de salud y hábitos. Web instalable en el móvil (PWA), con los dat
 
 Sin módulos todavía. Incluye:
 
-- Entrada sin contraseña: correo y código de 6 cifras.
+- Entrada sin contraseña: enlace por correo (o pegando el enlace, con la app instalada).
 - Conexión a la base de datos (Supabase, servidor en Irlanda).
 - Navegación base: Inicio, Datos, Ajustes.
 - Descarga de una copia completa de los datos (JSON).
