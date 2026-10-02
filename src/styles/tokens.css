@@ -1,0 +1,16 @@
+/* Tokens provisionales. Se sustituyen por el sistema de diseño cuando esté aprobado:
+   los componentes solo usan estas variables, así que cambiar aquí cambia toda la app. */
+:root {
+  --bg: #EDF3F1; --surface: #FFFFFF; --sunk: #E2EBE8; --ink: #14302B; --muted: #56706A; --line: #C9D8D3;
+  --accent: #0C7A69; --on-accent: #FFFFFF;
+  --ok: #1F7A4D; --bad: #B8362F;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 10px; --gap: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0E1A18; --surface: #162522; --sunk: #1E302C; --ink: #E2EEEA; --muted: #93AAA4; --line: #2C423D;
+    --accent: #4CC2AC; --on-accent: #06211C; --ok: #62C894; --bad: #EE8079;
+    color-scheme: dark;
+  }
+}
