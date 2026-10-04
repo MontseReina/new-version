@@ -8,8 +8,8 @@ export function ResumenSuplementos({ day }: { day: string }) {
   const [cfg] = useSettings<SuplCfg>('suplementos')
   const lista = cfg?.lista ?? []
   if (state === 'cargando' || !cfg) return <><span className="estado">Cargando…</span><div className="barra" /></>
-  if (!lista.length) return <span className="estado">Sin lista todavía</span>
-  const c = cumplimiento(lista, d)
+  const c = cumplimiento(lista, d, day)
+  if (!c.total) return <span className="estado">Sin tomas hoy</span>
   const lv = nivel(c.pct)
   return (
     <>

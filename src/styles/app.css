@@ -177,3 +177,11 @@ code { background: #eef0f3; padding: 0 .3rem; border-radius: 4px; font-size: .85
 .lista-edit input, .lista-edit select { padding: .4rem .45rem; font-size: .88rem; }
 @media (max-width: 520px) { .lista-edit { grid-template-columns: 1fr 1fr; } }
 .vaso-botones .ancho { grid-column: 1 / -1; }
+.table.tomas td:first-child { min-width: 170px; }
+.table.tomas .meta { font-size: .8rem; color: var(--muted); }
+.table.tomas td { vertical-align: middle; }
+@media (max-width: 520px) {
+  .table.tomas td:first-child { min-width: 112px; }
+  .table.tomas th, .table.tomas td { padding: .3rem .1rem; }
+  .table.tomas .tri { min-width: 2rem; height: 2rem; padding: 0 .3rem; font-size: .85rem; }
+}

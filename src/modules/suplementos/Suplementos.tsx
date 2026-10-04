@@ -1,40 +1,54 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
-import { Empty, Section, TriButton, type TriState } from '../../components/ui'
-import { addDays, diffDays, fmtDate, todayStr } from '../../lib/dates'
+import { Empty, Field, Section, TriButton, type TriState } from '../../components/ui'
+import { addDays, fmtDate, todayStr } from '../../lib/dates'
 import { listDaily, type Daily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { MOMENTOS, cumplimiento, nivel, periodicos, type SuplCfg, type SuplDia, type Suplemento, type Toma } from './logica'
+import { DIAS, MOMENTOS, VIAS, clave, cumplimiento, delDia, diasDesde, momentosDe, nivel, periodicos, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
 
 const nuevoId = () => Math.random().toString(36).slice(2, 10)
 
-/** Suplementos: un toque hecho, dos no hecho, tres no precisa. Agrupados por momento del día. */
+/** Suplementos, como la Medicación de Huma: una fila por producto y una columna por momento.
+ *  Un toque ✓ tomado · dos ✗ no tomado · tres NP no precisa. */
 export default function Suplementos() {
   const date = useParams().date ?? todayStr()
   const { value: d, set, state, rev, retry } = useDaily<SuplDia>('suplementos', date)
   const [cfg, saveCfg] = useSettings<SuplCfg>('suplementos')
   const lista = cfg?.lista ?? []
   const tomas = d.tomas ?? {}
-  const c = cumplimiento(lista, d)
+  const hoy = delDia(lista, date)
+  const per = periodicos(lista, date)
+  const c = cumplimiento(lista, d, date)
   const lv = nivel(c.pct)
+  const [editando, setEditando] = useState<Producto | 'nuevo' | null>(null)
+  const [retirando, setRetirando] = useState<string | null>(null)
 
-  const marcar = (id: string, v: TriState) => {
+  const marcar = (k: string, v: TriState) => {
     const t = { ...tomas }
-    if (v) t[id] = v as Toma
-    else delete t[id]
+    if (v) t[k] = v as Toma
+    else delete t[k]
     set({ tomas: t })
   }
-  const marcarBloque = (items: Suplemento[]) => {
+  const columnas = [...MOMENTOS.filter(([k]) => hoy.some((p) => p.momentos?.includes(k))), ...(hoy.some((p) => !p.momentos?.length) ? ([['demanda', 'A demanda']] as const) : [])]
+  const marcarColumna = (m: string) => {
     const t = { ...tomas }
-    items.forEach((s) => { if (!t[s.id]) t[s.id] = 'si' })
+    hoy.filter((p) => momentosDe(p).includes(m)).forEach((p) => { if (!t[clave(p, m)]) t[clave(p, m)] = 'si' })
     set({ tomas: t })
+  }
+
+  const guardarProducto = (p: Producto) => {
+    void saveCfg({ lista: lista.some((x) => x.id === p.id) ? lista.map((x) => (x.id === p.id ? p : x)) : [...lista, p] })
+    setEditando(null)
+  }
+  const retirar = (p: Producto) => {
+    void saveCfg({ lista: lista.map((x) => (x.id === p.id ? { ...x, retirado: date } : x)) })
+    setRetirando(null)
   }
 
   // Últimas veces de lo que no es diario (se mira hasta 90 días atrás).
   const [historia, setHistoria] = useState<Daily<SuplDia>[]>([])
-  const per = periodicos(lista)
   const hayPeriodicos = per.length > 0
   useEffect(() => {
     if (!hayPeriodicos) return
@@ -42,95 +56,169 @@ export default function Suplementos() {
     listDaily<SuplDia>('suplementos', addDays(date, -90), date).then((r) => alive && setHistoria(r), () => {})
     return () => { alive = false }
   }, [date, rev, hayPeriodicos])
-  const ultima = (id: string) => {
-    if (tomas[id] === 'si') return date
-    const hechos = historia.filter((r) => r.day < date && r.value.tomas?.[id] === 'si')
-    return hechos.length ? hechos[hechos.length - 1].day : null
+  const estadoPeriodico = (p: Producto) => {
+    const previos = historia.filter((r) => r.day < date && r.value.tomas?.[p.id] === 'si')
+    const u = tomas[p.id] === 'si' ? date : previos.length ? previos[previos.length - 1].day : null
+    const dias = diasDesde(date, u)
+    return { u, dias, toca: dias == null || dias >= (p.cada_dias ?? 0) }
   }
-  const estadoPeriodico = (s: Suplemento) => {
-    const u = ultima(s.id)
-    const dias = u ? diffDays(date, u) : null
-    const toca = !!s.cada_dias && (dias == null || dias >= s.cada_dias)
-    return { u, dias, toca }
-  }
-  const pendientes = per.filter((s) => estadoPeriodico(s).toca && !tomas[s.id])
+  const pendientes = per.filter((p) => estadoPeriodico(p).toca && !tomas[p.id])
 
+  const esHoy = date === todayStr()
   const estado = state === 'cargando' ? 'Cargando…' : state === 'guardando' ? 'Guardando…' : state === 'error' ? 'Sin guardar' : 'Guardado'
+  const retirarLink = (p: Producto) =>
+    retirando === p.id ? (
+      <span className="small">¿Retirar de la pauta? <button type="button" className="linkbtn" onClick={() => retirar(p)}>Sí, retirar</button> · <button type="button" className="linkbtn" onClick={() => setRetirando(null)}>No</button></span>
+    ) : (
+      <button type="button" className="linkbtn" onClick={() => setRetirando(p.id)}>Retirar</button>
+    )
+  const detalle = (p: Producto) => [p.dosis, p.marca, p.via].filter(Boolean).join(' · ')
 
   return (
     <div>
-      <h1>Suplementos</h1>
+      <div className="row between">
+        <h1>Suplementos</h1>
+        <button type="button" className="btn" onClick={() => setEditando('nuevo')}>+ Producto</button>
+      </div>
       <DateNav date={date} base="/suplementos" sub={estado} />
       {state === 'error' && (
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
-      {pendientes.map((s) => (
-        <div className="notice" key={s.id}><strong>Toca: {s.nombre}.</strong> {estadoPeriodico(s).u ? `La última fue hace ${estadoPeriodico(s).dias} días.` : 'Aún no hay ninguna registrada.'} {s.nota}</div>
-      ))}
+      {editando && <Formulario producto={editando === 'nuevo' ? null : editando} guardar={guardarProducto} cancelar={() => setEditando(null)} />}
+      {pendientes.map((p) => {
+        const e = estadoPeriodico(p)
+        return <div className="notice" key={p.id}><strong>Toca: {p.nombre}.</strong> {e.u ? `La última fue hace ${e.dias} días.` : 'Aún no hay ninguna registrada.'} {p.nota}</div>
+      })}
 
-      {cfg && lista.length === 0 ? (
-        <div className="card"><Empty>Aún no hay suplementos. Añádelos abajo, en «Editar mi lista».</Empty></div>
+      {cfg && hoy.length + per.length === 0 ? (
+        <div className="card"><Empty>Aún no hay suplementos. Añade el primero con «+ Producto».</Empty></div>
       ) : (
         <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>
           <div>
             <div className="vaso-total"><strong>{c.hechas}</strong> de {c.pautadas} tomas hechas</div>
             <div className="muted small">{c.marcadas < c.total ? `${c.total - c.marcadas} sin marcar` : 'Todo marcado'}{c.total - c.pautadas > 0 ? ` · ${c.total - c.pautadas} no precisan hoy` : ''}</div>
             <div className="barra" style={{ marginTop: '.5rem' }}><i className={lv} style={{ width: Math.round(c.pct * 100) + '%' }} /></div>
-            <div className="muted small" style={{ marginTop: '.4rem' }}>Un toque: ✓ hecho · dos: ✗ no hecho · tres: NP no precisa.</div>
           </div>
         </div>
       )}
 
-      {MOMENTOS.map(([key, label]) => {
-        const items = lista.filter((s) => s.momento === key)
-        if (!items.length) return null
-        const esPeriodico = key === 'periodico'
-        const faltan = items.some((s) => !tomas[s.id])
-        return (
-          <Section key={key} title={label} open right={!esPeriodico && faltan ? <button type="button" className="btn sm secondary" onClick={(e) => { e.preventDefault(); marcarBloque(items) }}>Todo hecho</button> : undefined}>
-            {items.map((s) => {
-              const ep = esPeriodico ? estadoPeriodico(s) : null
-              return (
-                <div className={'tri-row ' + (tomas[s.id] ?? '')} key={s.id}>
-                  <TriButton value={tomas[s.id] ?? null} onChange={(v) => marcar(s.id, v)} label={s.nombre} />
-                  <div>
-                    <strong>{s.nombre}</strong>{s.dosis ? <span className="lbl"> · {s.dosis}</span> : null}
-                    {s.nota && <div className="muted small">{s.nota}</div>}
-                    {ep && <div className="muted small">{s.cada_dias ? `Cada ${s.cada_dias} días · ` : ''}{ep.u ? `última: ${fmtDate(ep.u)}${ep.dias ? ` (hace ${ep.dias} días)` : ' (hoy)'}` : 'sin registrar todavía'}</div>}
-                  </div>
-                </div>
-              )
-            })}
-          </Section>
-        )
-      })}
+      {hoy.length > 0 && (
+        <Section title={esHoy ? 'Tomas de hoy' : `Tomas del ${fmtDate(date)}`} open>
+          <p className="muted small">Un toque: ✓ tomado · dos: ✗ no tomado · tres: NP no precisa. Toca el nombre de un momento para marcar toda su columna.</p>
+          <div className="table-wrap">
+            <table className="table tomas">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  {columnas.map(([k, l]) => (
+                    <th key={k} style={{ textAlign: 'center' }}>
+                      <button type="button" className="btn sm ghost" style={{ padding: '.2rem .4rem', fontSize: '.75rem' }} onClick={() => marcarColumna(k)} title="Marcar todo lo de este momento">{l}</button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {hoy.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      <div onClick={() => setEditando(p)} style={{ cursor: 'pointer' }}>
+                        {p.nombre}
+                        {detalle(p) && <div className="meta">{detalle(p)}</div>}
+                        {p.nota && <div className="meta">{p.nota}</div>}
+                      </div>
+                      {retirarLink(p)}
+                    </td>
+                    {columnas.map(([k, l]) => (
+                      <td key={k} style={{ textAlign: 'center' }}>
+                        {momentosDe(p).includes(k) && <TriButton value={tomas[clave(p, k)] ?? null} onChange={(v) => marcar(clave(p, k), v)} label={`${p.nombre} · ${l}`} />}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
 
-      {cfg && <Editor lista={lista} guardar={(l) => void saveCfg({ lista: l })} />}
+      {per.length > 0 && (
+        <Section title="Cada cierto tiempo" open>
+          {per.map((p) => {
+            const e = estadoPeriodico(p)
+            return (
+              <div className={'tri-row ' + (tomas[p.id] ?? '')} key={p.id}>
+                <TriButton value={tomas[p.id] ?? null} onChange={(v) => marcar(p.id, v)} label={p.nombre} />
+                <div>
+                  <div onClick={() => setEditando(p)} style={{ cursor: 'pointer' }}><strong>{p.nombre}</strong>{detalle(p) ? <span className="lbl"> · {detalle(p)}</span> : null}</div>
+                  {p.nota && <div className="muted small">{p.nota}</div>}
+                  <div className="muted small">Cada {p.cada_dias} días · {e.u ? `última: ${fmtDate(e.u)}${e.dias ? ` (hace ${e.dias} días)` : ' (hoy)'}` : 'sin registrar todavía'}</div>
+                  {retirarLink(p)}
+                </div>
+              </div>
+            )
+          })}
+        </Section>
+      )}
     </div>
   )
 }
 
-/** Editor de la lista: los cambios se guardan al salir de cada casilla. */
-function Editor({ lista, guardar }: { lista: Suplemento[]; guardar: (l: Suplemento[]) => void }) {
-  const cambiar = (id: string, patch: Partial<Suplemento>) => guardar(lista.map((s) => (s.id === id ? { ...s, ...patch } : s)))
+/** Alta y edición de un producto. */
+function Formulario({ producto, guardar, cancelar }: { producto: Producto | null; guardar: (p: Producto) => void; cancelar: () => void }) {
+  const [p, setP] = useState<Producto>(producto ?? { id: nuevoId(), nombre: '', momentos: [] })
+  const cambia = (patch: Partial<Producto>) => setP((x) => ({ ...x, ...patch }))
+  const alternar = <T,>(arr: T[] | undefined, v: T) => ((arr ?? []).includes(v) ? (arr ?? []).filter((x) => x !== v) : [...(arr ?? []), v])
+  const texto = (k: 'nombre' | 'marca' | 'dosis' | 'pautado_por' | 'nota') => ({ value: p[k] ?? '', onChange: (e: { target: { value: string } }) => cambia({ [k]: e.target.value }) })
+  const ok = p.nombre.trim().length > 0
+  const limpiar = (): Producto => {
+    const out: Producto = { id: p.id, nombre: p.nombre.trim() }
+    for (const k of ['marca', 'composicion', 'dosis', 'pautado_por', 'nota', 'via', 'inicio', 'retirado'] as const) { const v = p[k]?.trim(); if (v) out[k] = v }
+    if (p.momentos?.length) out.momentos = MOMENTOS.map(([k]) => k as string).filter((k) => p.momentos!.includes(k))
+    if (p.dias?.length) out.dias = [...p.dias].sort()
+    if (p.cada_dias) out.cada_dias = p.cada_dias
+    return out
+  }
   return (
-    <Section title="Editar mi lista">
-      <p className="muted small">Una línea por toma: si un suplemento se toma en dos momentos, añádelo dos veces. Los cambios se guardan al salir de cada casilla.</p>
-      {lista.map((s) => (
-        <div className="lista-edit" key={s.id}>
-          <input type="text" aria-label="Nombre" defaultValue={s.nombre} onBlur={(e) => e.target.value.trim() && e.target.value !== s.nombre && cambiar(s.id, { nombre: e.target.value.trim() })} />
-          <input type="text" aria-label="Dosis" placeholder="Dosis" defaultValue={s.dosis ?? ''} onBlur={(e) => e.target.value !== (s.dosis ?? '') && cambiar(s.id, { dosis: e.target.value.trim() })} />
-          <select aria-label="Momento" value={s.momento} onChange={(e) => cambiar(s.id, { momento: e.target.value })}>
-            {MOMENTOS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-          </select>
-          <button type="button" className="btn sm ghost" onClick={() => guardar(lista.filter((x) => x.id !== s.id))}>Quitar</button>
-          <input type="text" aria-label="Nota" placeholder="Nota (opcional)" style={{ gridColumn: s.momento === 'periodico' ? '1 / 3' : '1 / -1' }} defaultValue={s.nota ?? ''} onBlur={(e) => e.target.value !== (s.nota ?? '') && cambiar(s.id, { nota: e.target.value.trim() })} />
-          {s.momento === 'periodico' && (
-            <input type="number" aria-label="Cada cuántos días" placeholder="Cada cuántos días" min={1} style={{ gridColumn: '3 / -1' }} defaultValue={s.cada_dias ?? ''} onBlur={(e) => cambiar(s.id, { cada_dias: Number(e.target.value) || undefined })} />
-          )}
+    <form className="card" onSubmit={(e) => { e.preventDefault(); if (ok) guardar(limpiar()) }}>
+      <h2 style={{ marginTop: 0 }}>{producto ? 'Editar producto' : 'Nuevo producto'}</h2>
+      <Field label="Nombre comercial"><input type="text" required autoFocus {...texto('nombre')} /></Field>
+      <Field label="Laboratorio / marca"><input type="text" {...texto('marca')} /></Field>
+      <Field label="Composición (copiar de la etiqueta)"><textarea value={p.composicion ?? ''} onChange={(e) => cambia({ composicion: e.target.value })} /></Field>
+      <div className="grid2">
+        <Field label="Dosis por toma"><input type="text" placeholder="1 cápsula, 5 ml…" {...texto('dosis')} /></Field>
+        <Field label="Pautado por"><input type="text" {...texto('pautado_por')} /></Field>
+      </div>
+      <div className="field">
+        <span>Momentos del día</span>
+        <div className="chips">
+          {MOMENTOS.map(([k, l]) => <button type="button" key={k} className={'chip ' + (p.momentos?.includes(k) ? 'on' : '')} aria-pressed={!!p.momentos?.includes(k)} onClick={() => cambia({ momentos: alternar(p.momentos, k) })}>{l}</button>)}
         </div>
-      ))}
-      <button type="button" className="btn sm secondary" style={{ marginTop: '.6rem' }} onClick={() => guardar([...lista, { id: nuevoId(), nombre: 'Nuevo suplemento', momento: 'desayuno' }])}>+ Añadir toma</button>
-    </Section>
+        <div className="muted small">Si no se marca ninguno, aparece como «a demanda».</div>
+      </div>
+      <div className="field">
+        <span>Días de la semana</span>
+        <div className="chips">
+          {DIAS.map((l, i) => <button type="button" key={l} className={'chip ' + (p.dias?.includes(i) ? 'on' : '')} aria-pressed={!!p.dias?.includes(i)} onClick={() => cambia({ dias: alternar(p.dias, i) })}>{l}</button>)}
+        </div>
+        <div className="muted small">Si no se marca ninguno, todos los días.</div>
+      </div>
+      <div className="grid2">
+        <Field label="Vía">
+          <select value={p.via ?? ''} onChange={(e) => cambia({ via: e.target.value })}>
+            <option value="">—</option>
+            {VIAS.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </Field>
+        <Field label="Inicio"><input type="date" value={p.inicio ?? ''} onChange={(e) => cambia({ inicio: e.target.value })} /></Field>
+      </div>
+      <Field label="Si no es diario: cada cuántos días" hint="Por ejemplo 15. Avisa cuando toca y no cuenta en las tomas diarias.">
+        <input type="number" inputMode="numeric" min={1} value={p.cada_dias ?? ''} onChange={(e) => cambia({ cada_dias: Number(e.target.value) || undefined })} />
+      </Field>
+      <Field label="Nota"><input type="text" placeholder="Pauta, subida de dosis, condición…" {...texto('nota')} /></Field>
+      <div className="row">
+        <button className="btn" disabled={!ok}>Guardar</button>
+        <button type="button" className="btn ghost" onClick={cancelar}>Cancelar</button>
+      </div>
+    </form>
   )
 }
