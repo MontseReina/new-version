@@ -193,3 +193,18 @@ code { background: #eef0f3; padding: 0 .3rem; border-radius: 4px; font-size: .85
 .pendiente .meta { font-size: .8rem; color: var(--muted); }
 .pendiente.hecho { opacity: .75; }
 .pendiente.hecho .cuerpo > span:first-child { text-decoration: line-through; color: var(--muted); }
+
+/* Calendario */
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
+.cal-mes { display: flex; flex-direction: column; align-items: center; font-size: 1.05rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.cal-dow { text-align: center; font-size: .75rem; color: var(--muted); font-weight: 700; }
+.cal-dia { display: flex; flex-direction: column; align-items: stretch; gap: 1px; min-height: 58px; min-width: 0; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: #fff; text-align: left; font: inherit; cursor: pointer; overflow: hidden; }
+.cal-dia.hoy { background: var(--primary-soft); }
+.cal-dia.sel { outline: 2px solid var(--primary); outline-offset: -1px; }
+.cal-num { font-size: .8rem; font-weight: 700; color: var(--text); }
+.cal-ev { font-size: .62rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-deep); background: var(--primary-soft); border-radius: 3px; padding: 0 2px; }
+.cal-dia.hoy .cal-ev { background: #fff; }
+.cal-detalle { margin-top: .7rem; border-top: 1px solid var(--line); padding-top: .6rem; }
+.evento { display: flex; flex-direction: column; gap: .15rem; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; margin: .4rem 0 0; overflow-wrap: anywhere; }
+.evento .meta { font-size: .8rem; color: var(--muted); }

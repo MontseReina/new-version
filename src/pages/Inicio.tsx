@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { fmtDate, todayStr } from '../lib/dates'
 import { modules } from '../modules'
+import { CalendarioHoy } from '../modules/calendario/Hoy'
 import { PendientesHoy } from '../modules/pendientes/Hoy'
 import { pilares } from '../pilares'
 
@@ -23,6 +24,7 @@ export function Inicio() {
       </div>
 
       <PendientesHoy />
+      <CalendarioHoy />
 
       <h2>Pilares</h2>
       <div className="grid3">

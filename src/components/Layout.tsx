@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { todayStr } from '../lib/dates'
+import { addDays, todayStr } from '../lib/dates'
 import { modules } from '../modules'
+import { useEventos } from '../modules/calendario/store'
 import { atrasado, porHacer, usePendientes } from '../modules/pendientes/store'
 import { DEMO } from '../store/repo'
 
@@ -18,6 +19,9 @@ export function Layout() {
   const { lista } = usePendientes()
   const hoy = todayStr()
   const pend = porHacer(lista ?? [])
+  const { lista: eventos } = useEventos()
+  // Eventos de hoy y de mañana.
+  const cerca = (eventos ?? []).filter((e) => e.dia >= hoy && e.dia <= addDays(hoy, 1)).length
   const alerta = pend.some((p) => p.prioridad === 'urgente' || atrasado(p, hoy))
   return (
     <div className="app">
@@ -25,6 +29,7 @@ export function Layout() {
         <Link to="/" className="title" style={{ color: 'inherit', textDecoration: 'none' }}>New Version</Link>
         {DEMO && <span className="badge">Demostración</span>}
         <Link to="/pendientes" className={'badge ' + (alerta ? 'alert' : pend.length ? 'warn' : '')} title="Pendientes" aria-label={`Pendientes: ${pend.length}`}>☑ {pend.length}</Link>
+        <Link to="/calendario" className={'badge ' + (cerca ? 'warn' : '')} title="Calendario: hoy y mañana" aria-label={`Eventos de hoy y de mañana: ${cerca}`}>📅 {cerca}</Link>
       </header>
       <nav className="tabbar" aria-label="Secciones">
         <Tab to="/" ico="🏠" label="Inicio" />
