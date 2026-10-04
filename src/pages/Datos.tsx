@@ -25,7 +25,7 @@ export function Datos() {
   }
 
   return (
-    <section className="stack">
+    <div className="stack">
       <h1>Mis datos</h1>
       <p className="muted">Tus datos están en tu base de datos en la nube (Irlanda) y solo tu cuenta puede leerlos.</p>
       <dl className="facts">
@@ -34,6 +34,6 @@ export function Datos() {
       </dl>
       <button className="btn" onClick={download} disabled={busy}>{busy ? 'Preparando…' : 'Descargar copia completa'}</button>
       {msg && <p role="status">{msg}</p>}
-    </section>
+    </div>
   )
 }

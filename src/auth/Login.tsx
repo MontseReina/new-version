@@ -57,7 +57,7 @@ export function Login() {
           <p className="muted">Escribe tu correo y te enviamos un enlace para entrar.</p>
           <label htmlFor="email">Correo</label>
           <input id="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
-          <button className="btn" disabled={busy}>{busy ? 'Enviando…' : 'Enviar enlace'}</button>
+          <button className="btn block" disabled={busy}>{busy ? 'Enviando…' : 'Enviar enlace'}</button>
         </form>
       ) : (
         <form onSubmit={useLink} className="stack">
@@ -65,8 +65,8 @@ export function Login() {
           <p className="muted">Si usas la app instalada en el móvil, copia el enlace del correo y pégalo aquí.</p>
           <label htmlFor="link">Enlace del correo</label>
           <input id="link" type="url" inputMode="url" value={link} onChange={e => setLink(e.target.value)} />
-          <button className="btn" disabled={busy || !link.trim()}>{busy ? 'Comprobando…' : 'Entrar con el enlace'}</button>
-          <button type="button" className="link" onClick={() => { setStep('email'); setLink(''); setError('') }}>Usar otro correo</button>
+          <button className="btn block" disabled={busy || !link.trim()}>{busy ? 'Comprobando…' : 'Entrar con el enlace'}</button>
+          <button type="button" className="linkbtn" onClick={() => { setStep('email'); setLink(''); setError('') }}>Usar otro correo</button>
         </form>
       )}
       {error && <p className="error" role="alert">{error}</p>}

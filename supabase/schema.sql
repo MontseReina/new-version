@@ -68,6 +68,7 @@ create table if not exists entries (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   module text not null,
   definition_id uuid references definitions(id) on delete set null,
+  kind text not null default 'registro',  -- 'dia' = documento diario del módulo (uno por día)
   day date not null,                    -- día al que pertenece el registro
   at timestamptz,                       -- momento exacto, si importa
   value jsonb not null default '{}'::jsonb,
@@ -78,6 +79,8 @@ create table if not exists entries (
 );
 create index if not exists entries_user_day on entries(user_id, day);
 create index if not exists entries_user_module_day on entries(user_id, module, day);
+create unique index if not exists entries_un_dia_por_modulo
+  on entries(user_id, module, day) where kind = 'dia' and deleted_at is null;
 
 -- ---------- updated_at automático ------------------------------------
 do $$ declare t text; begin

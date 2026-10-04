@@ -23,6 +23,8 @@ export interface Entry {
   user_id: string
   module: string
   definition_id: string | null
+  /** 'dia' = el documento diario de un módulo (uno por día); 'registro' = anotación suelta. */
+  kind: string
   day: string // AAAA-MM-DD
   at: string | null
   value: { [k: string]: Json }

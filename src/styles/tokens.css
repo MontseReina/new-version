@@ -1,16 +1,16 @@
-/* Tokens provisionales. Se sustituyen por el sistema de diseño cuando esté aprobado:
-   los componentes solo usan estas variables, así que cambiar aquí cambia toda la app. */
+/* Identidad de marca SADHAKA (CtrlDigital): colores del manual y tipografías Nunito (texto)
+   + Cormorant Garamond en titulares como equivalente libre de Aire Bold Pro. */
 :root {
-  --bg: #EDF3F1; --surface: #FFFFFF; --sunk: #E2EBE8; --ink: #14302B; --muted: #56706A; --line: #C9D8D3;
-  --accent: #0C7A69; --on-accent: #FFFFFF;
-  --ok: #1F7A4D; --bad: #B8362F;
-  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius: 10px; --gap: 16px;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0E1A18; --surface: #162522; --sunk: #1E302C; --ink: #E2EEEA; --muted: #93AAA4; --line: #2C423D;
-    --accent: #4CC2AC; --on-accent: #06211C; --ok: #62C894; --bad: #EE8079;
-    color-scheme: dark;
-  }
-}
+  --bg: #FFFAF2;          /* blanco cálido del manual */
+  --card: #ffffff;
+  --text: #181818;        /* negro del manual */
+  --muted: #6d7266;
+  --line: #e7e1d6;
+  --primary: #3D4126;     /* verde oliva del manual */
+  --primary-soft: #CCDEDF;/* azul grisáceo del manual */
+  --ink-deep: #242A1C;    /* verde casi negro del manual */
+  --green: #3F6E78;   /* «verde» del semáforo, en el azul profundo de la marca */
+  --amber: #c08a1e;
+  --red: #b23a2f;
+  --radius: 12px;
+  --font-title: 'Cormorant Garamond', 'Aire Bold Pro', Georgia, serif;

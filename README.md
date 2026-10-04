@@ -2,9 +2,10 @@
 
 App personal de salud y hábitos. Web instalable en el móvil (PWA), con los datos en la nube.
 
-## Estado: v0.1.0 — cimientos
+## Estado: v0.2.0 — diseño e Hidratación
 
-Sin módulos todavía. Incluye:
+Diseño según el manual de marca SADHAKA (el mismo de Huma). Navegación por áreas, Inicio con los
+objetivos de hoy y primer módulo: Hidratación. Incluye además:
 
 - Entrada sin contraseña: enlace por correo (o pegando el enlace, con la app instalada).
 - Conexión a la base de datos (Supabase, servidor en Irlanda).
@@ -47,4 +48,5 @@ seguridad por fila: cada usuaria solo ve lo suyo.
 npm install
 cp .env.example .env   # rellenar con la dirección y la clave pública de Supabase
 npm run dev
+npm run build:demo   # demostración en un solo fichero, sin cuenta ni base de datos
 ```

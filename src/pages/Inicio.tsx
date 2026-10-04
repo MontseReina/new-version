@@ -1,23 +1,24 @@
-import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { fmtDate, todayStr } from '../lib/dates'
 import { modules } from '../modules'
-import { counts } from '../store/repo'
 
+/** Inicio: los objetivos de hoy, un renglón por área, con su estado. */
 export function Inicio() {
-  const [state, setState] = useState<'cargando' | 'ok' | 'error'>('cargando')
-  useEffect(() => { counts().then(() => setState('ok'), () => setState('error')) }, [])
+  const hoy = todayStr()
   return (
-    <section className="stack">
-      <h1>Inicio</h1>
-      <p className={'status ' + state} role="status">
-        {state === 'cargando' && 'Comprobando la conexión con tu base de datos…'}
-        {state === 'ok' && 'Conectada a tu base de datos.'}
-        {state === 'error' && 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.'}
-      </p>
-      {modules.length === 0 && (
-        <div className="empty">
-          Aquí aparecerá tu día cuando se añadan los módulos: registro diario, ciclo, suplementos, desvíos y prevención.
-        </div>
-      )}
-    </section>
+    <div>
+      <h1>Hoy</h1>
+      <p className="muted" style={{ textTransform: 'capitalize' }}>{fmtDate(hoy)}</p>
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Objetivos de hoy</h2>
+        {modules.map((m) => (
+          <Link key={m.id} to={'/' + m.path} className="objetivo">
+            <span className="ico">{m.ico}</span>
+            <strong>{m.name}</strong>
+            {m.Resumen ? <m.Resumen day={hoy} /> : <span className="estado">En preparación</span>}
+          </Link>
+        ))}
+      </div>
+    </div>
   )
 }
