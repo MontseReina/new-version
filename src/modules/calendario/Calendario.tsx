@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Empty, Field } from '../../components/ui'
 import { fmtDate, todayStr } from '../../lib/dates'
+import { TarjetaGoogle } from './Google'
 import { borrarEvento, cuando, guardarEvento, ordenar, useEventos, type Evento } from './store'
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
@@ -58,6 +59,7 @@ export default function Calendario() {
         <button className="btn sm" onClick={() => nuevo(diaSel ?? hoy)}>+ Evento</button>
       </div>
       {error && <p className="error">No se ha podido cargar: {error}</p>}
+      <TarjetaGoogle />
 
       <div className="card cal">
         <div className="cal-head">

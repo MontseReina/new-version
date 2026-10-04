@@ -121,6 +121,20 @@ export async function removeEntry(id: string): Promise<void> {
   check(await db().from('entries').update({ deleted_at: new Date().toISOString() }).eq('id', id).select('id'))
 }
 
+// ---------- Pieza de servidor (Edge Functions) ----------
+/** Llama a una función del servidor con la sesión de la usuaria. En la demostración no hay servidor. */
+export async function invocar<T>(funcion: string, cuerpo: Obj): Promise<T> {
+  if (DEMO) throw new Error('La demostración no tiene conexión con el servidor.')
+  const { data, error } = await db().functions.invoke(funcion, { body: cuerpo })
+  if (error) {
+    // El servidor explica el fallo en el cuerpo de la respuesta.
+    let detalle = ''
+    try { detalle = ((await (error as { context?: Response }).context?.json()) as { error?: string } | undefined)?.error ?? '' } catch { /* sin detalle */ }
+    throw new Error(detalle || error.message)
+  }
+  return data as T
+}
+
 // ---------- Ajustes ----------
 export async function getSettings(): Promise<Obj> {
   if (DEMO) return demo().settings
