@@ -22,11 +22,11 @@ export interface ModuleDef {
 }
 
 export const modules: ModuleDef[] = [
+  { id: 'sintomas', name: 'Signos y síntomas', ico: '📝', path: 'sintomas' },
   { id: 'suplementos', name: 'Suplementos', ico: '💊', path: 'suplementos', Page: Suplementos, Resumen: ResumenSuplementos },
   { id: 'nutricion', name: 'Nutrición', ico: '🥣', path: 'nutricion' },
   { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion },
   { id: 'ejercicio', name: 'Ejercicio', ico: '🏃', path: 'ejercicio' },
   { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking' },
-  { id: 'sintomas', name: 'Signos y síntomas', ico: '📝', path: 'sintomas' },
   { id: 'emociones', name: 'Emociones', ico: '💛', path: 'emociones' },
 ]

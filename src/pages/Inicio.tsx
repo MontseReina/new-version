@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { fmtDate, todayStr } from '../lib/dates'
 import { modules } from '../modules'
+import { pilares } from '../pilares'
 
 /** Inicio: los objetivos de hoy, un renglón por área, con su estado. */
 export function Inicio() {
@@ -18,6 +19,11 @@ export function Inicio() {
             {m.Resumen ? <m.Resumen day={hoy} /> : <span className="estado">En preparación</span>}
           </Link>
         ))}
+      </div>
+
+      <h2>Pilares</h2>
+      <div className="grid3">
+        {pilares.map((p) => <Link key={p.id} className="btn secondary" to={'/' + p.path}>{p.ico} {p.name}</Link>)}
       </div>
     </div>
   )

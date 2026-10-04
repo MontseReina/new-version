@@ -22,7 +22,7 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 // ---------- Modo demostración: memoria + almacenamiento del navegador ----------
 interface DemoState { settings: Obj; daily: { [key: string]: Obj } }
 // La clave cambia con cada demostración para no arrastrar datos de una anterior.
-const DEMO_KEY = 'new-version-demo-0.3.0-tabla2'
+const DEMO_KEY = 'new-version-demo-0.3.0-tabla3'
 let demoState: DemoState | null = null
 function demo(): DemoState {
   if (demoState) return demoState
