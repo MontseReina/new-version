@@ -6,6 +6,8 @@ export type HidraDia = {
   mar_ml?: number | null
   caldo_tazas?: number | null
   infusion_tazas?: number | null
+  /** Infusión de manzanilla con cardo mariano, aparte de las demás infusiones. */
+  cardo_tazas?: number | null
   /** Total tecleado a mano; si es null se usa la suma automática. */
   total_ml?: number | null
   /** Filas de la pauta ya anotadas hoy (por posición). */
@@ -31,6 +33,6 @@ export type Nivel = 'verde' | 'amarillo' | 'rojo'
 
 export const objetivo = (c: HidraCfg | null) => c?.objetivo_ml || OBJETIVO_POR_DEFECTO
 export const suma = (d: HidraDia) =>
-  (d.agua_ml ?? 0) + (d.mar_ml ?? 0) + ((d.caldo_tazas ?? 0) + (d.infusion_tazas ?? 0)) * TAZA_ML
+  (d.agua_ml ?? 0) + (d.mar_ml ?? 0) + ((d.caldo_tazas ?? 0) + (d.infusion_tazas ?? 0) + (d.cardo_tazas ?? 0)) * TAZA_ML
 export const total = (d: HidraDia) => d.total_ml ?? suma(d)
 export const nivel = (t: number, obj: number): Nivel => (t >= obj ? 'verde' : t >= obj * 0.7 ? 'amarillo' : 'rojo')

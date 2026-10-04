@@ -161,3 +161,19 @@ code { background: #eef0f3; padding: 0 .3rem; border-radius: 4px; font-size: .85
 .pauta:last-child { border-bottom: none; }
 .pauta .momento { font-weight: 600; }
 .btn.hecho { background: var(--primary-soft); border-color: var(--primary); color: var(--ink-deep); }
+
+/* Tres toques (como la Medicación de Huma) */
+.tri { min-width: 2.4rem; height: 2.4rem; padding: 0 .5rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--muted); font-weight: 800; font-size: .95rem; cursor: pointer; }
+.tri.sm { min-width: 2rem; height: 2rem; font-size: .85rem; }
+.tri.si { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+.tri.no { background: #fbe4e4; border-color: var(--red); color: var(--red); }
+.tri.np { background: #eef0f3; border-color: #c9ccd2; color: var(--muted); }
+.tri:disabled { opacity: .5; cursor: default; }
+.tri-row { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: start; padding: .5rem .2rem; border-bottom: 1px solid var(--line); }
+.tri-row:last-child { border-bottom: none; }
+.tri-row.si > div { color: var(--muted); }
+.tri-row.si > div > strong, .tri-row.si > div > span.lbl { text-decoration: line-through; }
+.lista-edit { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: .35rem; align-items: center; padding: .35rem 0; border-bottom: 1px solid var(--line); }
+.lista-edit input, .lista-edit select { padding: .4rem .45rem; font-size: .88rem; }
+@media (max-width: 520px) { .lista-edit { grid-template-columns: 1fr 1fr; } }
+.vaso-botones .ancho { grid-column: 1 / -1; }

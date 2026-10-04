@@ -31,16 +31,17 @@ export default function Hidratacion() {
     setUltimo({ previo: d, txt })
     set({ ...patch, ...(d.total_ml != null ? { total_ml: Math.max(0, d.total_ml + ml) } : {}) })
   }
-  const sumar = (k: 'agua' | 'mar' | 'caldo' | 'infusion', txt: string) => {
+  const sumar = (k: 'agua' | 'mar' | 'caldo' | 'infusion' | 'cardo', txt: string) => {
     if (k === 'agua') aplicar({ agua_ml: (d.agua_ml ?? 0) + TAZA_ML }, TAZA_ML, txt)
     if (k === 'mar') aplicar({ mar_ml: mar + CHUPITO_ML }, CHUPITO_ML, txt)
     if (k === 'caldo') aplicar({ caldo_tazas: (d.caldo_tazas ?? 0) + 1 }, TAZA_ML, txt)
     if (k === 'infusion') aplicar({ infusion_tazas: (d.infusion_tazas ?? 0) + 1 }, TAZA_ML, txt)
+    if (k === 'cardo') aplicar({ cardo_tazas: (d.cardo_tazas ?? 0) + 1 }, TAZA_ML, txt)
   }
   const deshacer = () => {
     if (!ultimo) return
     const p = ultimo.previo
-    set({ agua_ml: p.agua_ml ?? null, mar_ml: p.mar_ml ?? null, caldo_tazas: p.caldo_tazas ?? null, infusion_tazas: p.infusion_tazas ?? null, total_ml: p.total_ml ?? null, pauta: p.pauta ?? {} })
+    set({ agua_ml: p.agua_ml ?? null, mar_ml: p.mar_ml ?? null, caldo_tazas: p.caldo_tazas ?? null, infusion_tazas: p.infusion_tazas ?? null, cardo_tazas: p.cardo_tazas ?? null, total_ml: p.total_ml ?? null, pauta: p.pauta ?? {} })
     setUltimo(null)
   }
   // Pauta: un toque anota las cantidades de esa fila; otro toque las quita.
@@ -92,6 +93,7 @@ export default function Hidratacion() {
             <button type="button" className="btn sm secondary" onClick={() => sumar('mar', 'chupito de agua de mar')}>🌊 + chupito de mar</button>
             <button type="button" className="btn sm secondary" onClick={() => sumar('caldo', 'taza de caldo')}>🍲 + taza de caldo</button>
             <button type="button" className="btn sm secondary" onClick={() => sumar('infusion', 'taza de infusión')}>🌼 + taza de infusión</button>
+            <button type="button" className="btn sm secondary ancho" onClick={() => sumar('cardo', 'manzanilla con cardo mariano')}>🌿 + manzanilla con cardo mariano</button>
           </div>
           {ultimo && <button type="button" className="linkbtn small" onClick={deshacer}>↩︎ Deshacer «{ultimo.txt}»</button>}
         </div>
@@ -133,6 +135,7 @@ export default function Hidratacion() {
           <Field label={marMin ? `Agua de mar (ml) · mínimo ${marMin} ml` : 'Agua de mar (ml)'}><input type="number" inputMode="numeric" step={10} min={0} value={d.mar_ml ?? ''} onChange={(e) => set({ mar_ml: num(e.target.value) })} /></Field>
           <Field label="Caldo (tazas)"><Stepper value={d.caldo_tazas} onChange={(v) => set({ caldo_tazas: v })} /></Field>
           <Field label="Infusión (tazas)"><Stepper value={d.infusion_tazas} onChange={(v) => set({ infusion_tazas: v })} /></Field>
+          <Field label="Manzanilla con cardo mariano (tazas)"><Stepper value={d.cardo_tazas} onChange={(v) => set({ cardo_tazas: v })} /></Field>
         </div>
         <Field label="Total del día (ml)" hint={d.total_ml == null ? `Suma automática: ${suma(d)} ml` : 'Tecleado a mano (borra para volver a la suma automática)'}>
           <input type="number" inputMode="numeric" step={TAZA_ML} min={0} value={d.total_ml ?? ''} placeholder={String(suma(d))} onChange={(e) => set({ total_ml: num(e.target.value) })} />
@@ -142,7 +145,7 @@ export default function Hidratacion() {
       <Section title="Última semana">
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Día</th><th>Total</th><th>Agua</th><th>Mar</th><th>Caldo</th><th>Infus.</th></tr></thead>
+            <thead><tr><th>Día</th><th>Total</th><th>Agua</th><th>Mar</th><th>Caldo</th><th>Infus.</th><th>Cardo</th></tr></thead>
             <tbody>
               {dias.map((dia) => {
                 const l = dia === date ? d : porDia.get(dia)
@@ -155,6 +158,7 @@ export default function Hidratacion() {
                     <td className="small">{l?.mar_ml ?? '—'}</td>
                     <td className="small">{l?.caldo_tazas ?? '—'}</td>
                     <td className="small">{l?.infusion_tazas ?? '—'}</td>
+                    <td className="small">{l?.cardo_tazas ?? '—'}</td>
                   </tr>
                 )
               })}

@@ -17,7 +17,7 @@ export function Layout() {
     <div className="app">
       <header className="topbar">
         <span className="title">New Version</span>
-        {DEMO && <span className="badge">Demostración · no se guarda en tu cuenta</span>}
+        {DEMO && <span className="badge">Demostración</span>}
       </header>
       <nav className="tabbar" aria-label="Secciones">
         <Tab to="/" ico="🏠" label="Inicio" />

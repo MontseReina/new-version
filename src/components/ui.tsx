@@ -49,3 +49,16 @@ export function Toast({ msg }: { msg: string }) {
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty">{children}</div>
 }
+
+export type TriState = 'si' | 'no' | 'np' | null
+/** Un toque: ✓ hecho · dos: ✗ no hecho · tres: NP no precisa · cuatro: vuelve a vacío. */
+export const nextTri = (v: TriState): TriState => (v === null || v === undefined ? 'si' : v === 'si' ? 'no' : v === 'no' ? 'np' : null)
+export function TriButton({ value, onChange, label }: { value: TriState; onChange: (v: TriState) => void; label?: string }) {
+  const txt = value === 'si' ? '✓' : value === 'no' ? '✗' : value === 'np' ? 'NP' : '○'
+  const title = value === 'si' ? 'Hecho' : value === 'no' ? 'No hecho' : value === 'np' ? 'No precisa' : 'Sin marcar'
+  return (
+    <button type="button" className={'tri ' + (value ?? 'vacio')} title={`${label ? label + ': ' : ''}${title} · toca para cambiar`} aria-label={`${label ?? ''} ${title}`} onClick={() => onChange(nextTri(value))}>
+      {txt}
+    </button>
+  )
+}
