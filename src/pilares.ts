@@ -17,8 +17,8 @@ export const pilares: PilarDef[] = [
   { id: 'diagnosticos', name: 'Diagnósticos', ico: '🩺', path: 'diagnosticos' },
   { id: 'analiticas', name: 'Analíticas', ico: '🧪', path: 'analiticas' },
   { id: 'microbiota', name: 'Microbiota', ico: '🦠', path: 'microbiota' },
+  { id: 'oura', name: 'Oura Ring', ico: '💍', path: 'oura' },
   { id: 'pendientes', name: 'Pendientes', ico: '☑️', path: 'pendientes' },
   { id: 'preguntas', name: 'Preguntas', ico: '💬', path: 'preguntas' },
   { id: 'evaluaciones', name: 'Evaluaciones', ico: '📊', path: 'evaluaciones' },
-  { id: 'oura', name: 'Oura Ring', ico: '💍', path: 'oura' },
 ]

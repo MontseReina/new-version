@@ -28,5 +28,5 @@ export const modules: ModuleDef[] = [
   { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion },
   { id: 'ejercicio', name: 'Ejercicio', ico: '🏃', path: 'ejercicio' },
   { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking' },
-  { id: 'emociones', name: 'Emociones', ico: '💛', path: 'emociones' },
+  { id: 'emociones', name: 'Trabajo introspectivo', ico: '💛', path: 'emociones' },
 ]
