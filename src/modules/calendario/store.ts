@@ -42,20 +42,34 @@ function cargar() {
   return cargando
 }
 
+/** Vuelve a leer la lista (tras sincronizar con Google). */
+export async function recargarEventos(): Promise<void> {
+  const rows = await listAllEntries(MODULO)
+  cache = rows.map(deFila); fallo = null; avisar()
+}
+
+/** Se llama cada vez que cambia un evento; lo usa la unión con Google para sincronizar. */
+let alCambiar: (() => void) | null = null
+export const escucharCambios = (f: (() => void) | null) => { alCambiar = f }
+
 export async function guardarEvento(ev: Evento): Promise<void> {
   const hora = ev.hora || null
+  // El enlace con Google se toma de la copia más reciente, no del formulario, que puede ser anterior a la última sincronización.
+  const enlace = (ev.id ? cache?.find((x) => x.id === ev.id)?.google : null) ?? ev.google ?? null
   const fila = await saveEntry({
     ...(ev.id ? { id: ev.id } : {}), module: MODULO, day: ev.dia, note: ev.notas?.trim() || null,
-    value: { titulo: ev.titulo.trim(), hora, hora_fin: hora ? ev.hora_fin || null : null, lugar: ev.lugar?.trim() || null, google: ev.google ?? null },
+    value: { titulo: ev.titulo.trim(), hora, hora_fin: hora ? ev.hora_fin || null : null, lugar: ev.lugar?.trim() || null, google: enlace },
   })
   const nuevo = deFila(fila)
   cache = [...(cache ?? []).filter((x) => x.id !== nuevo.id), nuevo]
   avisar()
+  alCambiar?.()
 }
 export async function borrarEvento(id: string): Promise<void> {
   await removeEntry(id)
   cache = (cache ?? []).filter((x) => x.id !== id)
   avisar()
+  alCambiar?.()
 }
 
 /** Orden por día y hora; los de todo el día van primero. */
