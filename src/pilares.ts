@@ -3,6 +3,7 @@
  * Un pilar sin `Page` se muestra como «en preparación».
  */
 import type { ComponentType } from 'react'
+import Pendientes from './modules/pendientes/Pendientes'
 
 export interface PilarDef {
   id: string
@@ -18,7 +19,7 @@ export const pilares: PilarDef[] = [
   { id: 'analiticas', name: 'Analíticas', ico: '🧪', path: 'analiticas' },
   { id: 'microbiota', name: 'Microbiota', ico: '🦠', path: 'microbiota' },
   { id: 'oura', name: 'Oura Ring', ico: '💍', path: 'oura' },
-  { id: 'pendientes', name: 'Pendientes', ico: '☑️', path: 'pendientes' },
+  { id: 'pendientes', name: 'Pendientes', ico: '☑️', path: 'pendientes', Page: Pendientes },
   { id: 'preguntas', name: 'Preguntas', ico: '💬', path: 'preguntas' },
   { id: 'evaluaciones', name: 'Evaluaciones', ico: '📊', path: 'evaluaciones' },
 ]

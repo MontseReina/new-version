@@ -20,9 +20,9 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 }
 
 // ---------- Modo demostración: memoria + almacenamiento del navegador ----------
-interface DemoState { settings: Obj; daily: { [key: string]: Obj } }
+interface DemoState { settings: Obj; daily: { [key: string]: Obj }; entries?: Entry[] }
 // La clave cambia con cada demostración para no arrastrar datos de una anterior.
-const DEMO_KEY = 'new-version-demo-0.3.0-tabla3'
+const DEMO_KEY = 'new-version-demo-0.3.1'
 let demoState: DemoState | null = null
 function demo(): DemoState {
   if (demoState) return demoState
@@ -88,16 +88,36 @@ export async function listDaily<T extends Obj>(module: string, fromDay: string, 
 
 // ---------- Registros sueltos ----------
 export async function listEntries(module: string, fromDay: string, toDay: string): Promise<Entry[]> {
-  if (DEMO) return []
+  if (DEMO) {
+    return (demo().entries ?? []).filter((e) => e.module === module && !e.deleted_at && e.day >= fromDay && e.day <= toDay)
+      .sort((a, b) => a.day.localeCompare(b.day))
+  }
   return check(
     await db().from('entries').select('*').eq('module', module).eq('kind', 'registro').gte('day', fromDay).lte('day', toDay)
       .is('deleted_at', null).order('day'),
   )
 }
+/** Todos los registros sueltos de un módulo, sin límite de fechas (listas cortas: pendientes, preguntas…). */
+export function listAllEntries(module: string): Promise<Entry[]> {
+  return listEntries(module, '0001-01-01', '9999-12-31')
+}
 export async function saveEntry(e: Partial<Entry> & Pick<Entry, 'module' | 'day'>): Promise<Entry> {
-  return check(await db().from('entries').upsert(e).select().single())
+  if (DEMO) {
+    const st = demo()
+    const now = new Date().toISOString()
+    const prev = (st.entries ?? []).find((x) => x.id === e.id)
+    const row = {
+      id: e.id ?? 'demo-' + now + '-' + Math.random().toString(36).slice(2, 8), user_id: 'demo', definition_id: null, kind: 'registro',
+      at: null, value: {}, note: null, created_at: now, deleted_at: null, ...prev, ...e, updated_at: now,
+    } as Entry
+    st.entries = [...(st.entries ?? []).filter((x) => x.id !== row.id), row]
+    demoSave()
+    return row
+  }
+  return check(await db().from('entries').upsert({ kind: 'registro', ...e }).select().single())
 }
 export async function removeEntry(id: string): Promise<void> {
+  if (DEMO) { const st = demo(); st.entries = (st.entries ?? []).filter((x) => x.id !== id); demoSave(); return }
   check(await db().from('entries').update({ deleted_at: new Date().toISOString() }).eq('id', id).select('id'))
 }
 
@@ -128,7 +148,7 @@ export async function exportAll(): Promise<Backup> {
   return { ...base, profile, settings: await getSettings(), definitions: await all<Definition>('definitions'), entries: await all<Entry>('entries') }
 }
 export async function counts(): Promise<{ definitions: number; entries: number }> {
-  if (DEMO) return { definitions: 0, entries: Object.keys(demo().daily).length }
+  if (DEMO) return { definitions: 0, entries: Object.keys(demo().daily).length + (demo().entries ?? []).length }
   const d = await db().from('definitions').select('id', { count: 'exact', head: true }).is('deleted_at', null)
   const e = await db().from('entries').select('id', { count: 'exact', head: true }).is('deleted_at', null)
   if (d.error) throw new Error(d.error.message)

@@ -185,3 +185,11 @@ code { background: #eef0f3; padding: 0 .3rem; border-radius: 4px; font-size: .85
   .table.tomas th, .table.tomas td { padding: .3rem .1rem; }
   .table.tomas .tri { min-width: 2rem; height: 2rem; padding: 0 .3rem; font-size: .85rem; }
 }
+
+/* Pendientes */
+.pendiente { display: flex; gap: .7rem; align-items: flex-start; margin-bottom: .4rem; }
+.pendiente input[type=checkbox] { margin-top: .2rem; flex: none; }
+.pendiente .cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; text-align: left; background: none; border: none; padding: 0; cursor: pointer; overflow-wrap: anywhere; }
+.pendiente .meta { font-size: .8rem; color: var(--muted); }
+.pendiente.hecho { opacity: .75; }
+.pendiente.hecho .cuerpo > span:first-child { text-decoration: line-through; color: var(--muted); }

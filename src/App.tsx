@@ -34,7 +34,7 @@ function Rutas() {
 export function App() {
   const { session } = useAuth()
   // Demostración: sin cuenta ni base de datos; los datos se quedan en este navegador.
-  if (DEMO) return <MemoryRouter initialEntries={['/']}><Rutas /></MemoryRouter>
+  if (DEMO) return <MemoryRouter initialEntries={['/pendientes']}><Rutas /></MemoryRouter>
   if (!supabase) {
     return <main className="login"><h1>New Version</h1><p className="error">Esta copia de la app no está conectada a la base de datos.</p></main>
   }

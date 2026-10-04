@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { fmtDate, todayStr } from '../lib/dates'
 import { modules } from '../modules'
+import { PendientesHoy } from '../modules/pendientes/Hoy'
 import { pilares } from '../pilares'
 
 /** Inicio: los objetivos de hoy, un renglón por área, con su estado. */
@@ -20,6 +21,8 @@ export function Inicio() {
           </Link>
         ))}
       </div>
+
+      <PendientesHoy />
 
       <h2>Pilares</h2>
       <div className="grid3">
