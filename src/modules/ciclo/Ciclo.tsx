@@ -79,7 +79,7 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
       {cargando ? (
         <div className="card"><Empty>Cargando…</Empty></div>
       ) : !actual ? (
-        <div className="card"><Empty>Aún no hay ninguna regla registrada. Marca la cantidad en «Registro de la menstruación» o añade una regla pasada por fechas en «Calendario del ciclo».</Empty></div>
+        <div className="card"><Empty>Aún no hay ninguna regla registrada. Marca la cantidad en «Registro de la menstruación» o añade una regla pasada por fechas en «Añadir una regla pasada».</Empty></div>
       ) : (
         <div className="card accent">
           {info
@@ -131,7 +131,9 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
         </p>
         <p className="muted small">Toca un día pasado para abrir su registro; uno futuro, para ver la previsión.</p>
 
-        <h3>Añadir una regla pasada</h3>
+      </Plegable>
+
+      <Plegable id="regla-pasada" title="Añadir una regla pasada">
         <p className="muted small">Para cargar reglas anteriores sin ir día por día. Se anotan como regla sin detallar la cantidad.</p>
         <div className="grid2">
           <Field label="Primer día"><input type="date" max={hoy} value={desde} onChange={(e) => setDesde(e.target.value)} /></Field>
