@@ -16,7 +16,7 @@ export const MANCHADOS = [
 /** 'si' = hubo regla, sin detallar la cantidad (reglas pasadas añadidas por fechas). */
 export type Flujo = (typeof FLUJOS)[number][0] | 'si'
 export type Manchado = (typeof MANCHADOS)[number][0]
-export type CicloDia = { regla?: Flujo | null; manchado?: Manchado | null }
+export type CicloDia = { regla?: Flujo | null; manchado?: Manchado | null; coagulos?: boolean | null }
 export type Mapa = { [day: string]: CicloDia }
 
 export type CicloCfg = {

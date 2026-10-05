@@ -95,6 +95,9 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
           <div className="seg">
             {FLUJOS.map(([k, l]) => <button type="button" key={k} disabled={cargandoDia} className={d.regla === k ? 'on' : ''} aria-pressed={d.regla === k} onClick={() => poner({ regla: d.regla === k ? null : k })}>{l}</button>)}
           </div>
+          <div className="chips" style={{ marginTop: '.4rem' }}>
+            <button type="button" disabled={cargandoDia} className={'chip ' + (d.coagulos ? 'on' : '')} aria-pressed={!!d.coagulos} onClick={() => poner({ coagulos: !d.coagulos })}>Con coágulos</button>
+          </div>
           {d.regla === 'si' && <div className="muted small">Regla anotada por fechas, sin detallar. Elige la cantidad si la recuerdas. <button type="button" className="linkbtn" onClick={() => poner({ regla: null })}>Quitar la regla de este día</button></div>}
         </div>
         <div className="field">
