@@ -147,6 +147,10 @@ export default function Sintomas() {
     <div>
       <h1>Signos y síntomas</h1>
       <DateNav date={date} base="/sintomas" sub={estado} />
+      <label className="row small ir-a-dia">
+        <span className="muted">Ir a otro día</span>
+        <input type="date" aria-label="Ir a otro día" max={todayStr()} value={date} onChange={(e) => { const v = e.target.value; if (v && v <= todayStr()) nav('/sintomas/' + v) }} />
+      </label>
       {state === 'error' && (
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}

@@ -21,7 +21,7 @@ export type Grupo = {
 export type SintCfg = { grupos?: Grupo[] }
 
 export type Detalle = { hora?: string | null; gravedad?: number | null; urgencias?: boolean | null }
-export type Deposicion = { bristol?: number | null; color?: string | null; restos?: boolean | null; flotan?: boolean | null; sangre?: boolean | null }
+export type Deposicion = { bristol?: number | null; color?: string | null; restos?: boolean | null; flotan?: boolean | null; brillo?: boolean | null; sangre?: boolean | null }
 export const COMIDAS = [['de', 'Desayuno'], ['co', 'Comida'], ['ce', 'Cena']] as const
 export type Comida = (typeof COMIDAS)[number][0]
 
@@ -82,7 +82,7 @@ export function alternar(g: Grupo, actuales: string[], id: string): string[] {
 
 export const BRISTOL = ['', 'Bolas duras separadas (estreñimiento)', 'Salchicha grumosa', 'Salchicha con grietas', 'Salchicha lisa y blanda (ideal)', 'Trozos blandos con bordes definidos', 'Pastosa, bordes irregulares', 'Líquida, sin trozos (diarrea)']
 export const HECES_COLORES = [['marron', 'Marrón'], ['amarillento', 'Amarillento'], ['verdoso', 'Verdoso'], ['palido', 'Pálido'], ['negro', 'Muy oscuro o negro']] as const
-export const HECES_MARCAS = [['restos', 'Restos de comida'], ['flotan', 'Flotantes'], ['sangre', 'Con sangre']] as const
+export const HECES_MARCAS = [['flotan', 'Flotantes'], ['brillo', 'Brillantes'], ['restos', 'Restos de comida'], ['sangre', 'Con presencia de sangre']] as const
 export const ORINA_COLORES = ['#f7f6ee', '#f6efb8', '#f1df6e', '#e6c53a', '#c9962a', '#9c4a24']
 export const ORINA_NOMBRES = ['Transparente', 'Muy claro', 'Amarillo', 'Amarillo oscuro', 'Ámbar', 'Marrón / rojizo']
 
