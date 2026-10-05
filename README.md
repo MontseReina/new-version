@@ -2,7 +2,7 @@
 
 App personal de salud y hábitos. Web instalable en el móvil (PWA), con los datos en la nube.
 
-## Estado: v0.3.0 — diseño, Hidratación y Suplementos
+## Estado: v0.4.0 — Ciclo dentro de Signos y síntomas
 
 Diseño según el manual de marca SADHAKA (el mismo de Huma). Navegación por áreas, Inicio con los
 objetivos de hoy y primer módulo: Hidratación. Incluye además:

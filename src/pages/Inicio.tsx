@@ -1,17 +1,19 @@
 import { Link } from 'react-router-dom'
 import { fmtDate, todayStr } from '../lib/dates'
 import { modules } from '../modules'
+import { TarjetaCiclo } from '../modules/ciclo/TarjetaCiclo'
 import { CalendarioHoy } from '../modules/calendario/Hoy'
 import { PendientesHoy } from '../modules/pendientes/Hoy'
 import { pilares } from '../pilares'
 
-/** Inicio: los objetivos de hoy, un renglón por área, con su estado. */
+/** Inicio: el ciclo arriba, los objetivos de hoy (un renglón por área) y los pilares. */
 export function Inicio() {
   const hoy = todayStr()
   return (
     <div>
       <h1>Hoy</h1>
       <p className="muted" style={{ textTransform: 'capitalize' }}>{fmtDate(hoy)}</p>
+      <TarjetaCiclo />
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Objetivos de hoy</h2>
         {modules.map((m) => (

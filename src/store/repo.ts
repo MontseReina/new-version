@@ -22,7 +22,7 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 // ---------- Modo demostración: memoria + almacenamiento del navegador ----------
 interface DemoState { settings: Obj; daily: { [key: string]: Obj }; entries?: Entry[] }
 // La clave cambia con cada demostración para no arrastrar datos de una anterior.
-const DEMO_KEY = 'new-version-demo-0.3.2'
+const DEMO_KEY = 'new-version-demo-0.4.0'
 let demoState: DemoState | null = null
 function demo(): DemoState {
   if (demoState) return demoState
@@ -30,7 +30,9 @@ function demo(): DemoState {
   try { saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? 'null') } catch { /* sin almacenamiento */ }
   let seed: Obj = {}
   try { seed = JSON.parse((import.meta.env.VITE_DEMO_SETTINGS as string | undefined) || '{}') } catch { /* sin ajustes de demo */ }
-  demoState = saved ?? { settings: seed, daily: {} }
+  let dias: { [key: string]: Obj } = {}
+  try { dias = JSON.parse((import.meta.env.VITE_DEMO_DAILY as string | undefined) || '{}') } catch { /* sin días de demo */ }
+  demoState = saved ?? { settings: seed, daily: dias }
   return demoState
 }
 function demoSave() {
