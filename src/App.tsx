@@ -4,6 +4,7 @@ import { Login } from './auth/Login'
 import { Layout } from './components/Layout'
 import { supabase } from './lib/supabase'
 import { modules } from './modules'
+import Cargar from './modules/sintomas/Cargar'
 import { pilares } from './pilares'
 import { Ajustes } from './pages/Ajustes'
 import { Datos } from './pages/Datos'
@@ -22,6 +23,7 @@ function Rutas() {
           return [<Route key={m.id} path={m.path} element={el} />, <Route key={m.id + 'd'} path={m.path + '/:date'} element={el} />]
         })}
         {pilares.map((p) => <Route key={p.id} path={p.path} element={p.Page ? <p.Page /> : <EnPreparacion name={p.name} />} />)}
+        <Route path="cargar/:datos" element={<Cargar />} />
         <Route path="mas" element={<Mas />} />
         <Route path="datos" element={<Datos />} />
         <Route path="ajustes" element={<Ajustes />} />
@@ -34,7 +36,7 @@ function Rutas() {
 export function App() {
   const { session } = useAuth()
   // Demostración: sin cuenta ni base de datos; los datos se quedan en este navegador.
-  if (DEMO) return <MemoryRouter initialEntries={['/']}><Rutas /></MemoryRouter>
+  if (DEMO) return <MemoryRouter initialEntries={[window.location.hash.slice(1) || '/']}><Rutas /></MemoryRouter>
   if (!supabase) {
     return <main className="login"><h1>New Version</h1><p className="error">Esta copia de la app no está conectada a la base de datos.</p></main>
   }

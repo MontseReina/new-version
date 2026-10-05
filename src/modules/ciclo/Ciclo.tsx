@@ -54,6 +54,13 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
     } catch { setAviso('No se ha podido guardar. Revisa la conexión.') }
   }
 
+  // Lo anotado del día, para verlo con el registro plegado.
+  const anotado = [
+    d.regla ? (FLUJOS.find(([k]) => k === d.regla)?.[1] ?? 'Regla') : '',
+    d.coagulos ? 'coágulos' : '',
+    d.manchado ? 'manchado ' + (MANCHADOS.find(([k]) => k === d.manchado)?.[1] ?? '').toLowerCase() : '',
+  ].filter(Boolean).join(', ')
+
   const reglas = modelo.reglas
   const durs = modelo.duraciones
   const diasRegla = reglas.map((r) => diffDays(r.fin, r.inicio) + 1)
@@ -88,7 +95,7 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
         </div>
       )}
 
-      <Plegable id="menstruacion" title="Registro de la menstruación" abierto>
+      <Plegable id="registro-menstruacion" title={'Registro de la menstruación' + (anotado ? ' · ' + anotado : '')}>
         {dia.state === 'error' && <div className="notice small">No se ha podido guardar. <button type="button" className="btn sm secondary" onClick={() => void dia.retry()}>Reintentar</button></div>}
         <div className="field" style={{ marginTop: 0 }}>
           <span>Regla</span>
@@ -109,7 +116,7 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
         <p className="muted small">Toca otra vez una opción para quitarla. El manchado no cuenta como inicio de ciclo.</p>
       </Plegable>
 
-      <Plegable id="calendario-ciclo" title="Calendario del ciclo">
+      <Plegable id="calendario-del-ciclo" title="Calendario del ciclo" abierto>
         <div className="row between" style={{ marginBottom: '.4rem' }}>
           <button type="button" className="btn sm ghost" aria-label="Mes anterior" onClick={() => setMes(sumaMeses(m, -1))}>‹</button>
           <strong>{mayus(nombreMes(m))}</strong>
