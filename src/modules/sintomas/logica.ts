@@ -2,8 +2,14 @@
  *  partida; los grupos y opciones propios de cada usuaria viven en sus ajustes. */
 
 export type Opcion = { id: string; nombre: string }
-/** 'una': se elige una opción · 'varias': las que hagan falta · 'episodio': sí/no, intensidad e ingreso. */
-export type TipoGrupo = 'una' | 'varias' | 'episodio'
+/**
+ * 'una': se elige una opción · 'varias': las que hagan falta · 'detalle': varias, y cada una
+ * marcada pide hora, gravedad y si hubo ingreso en urgencias · 'hambre', 'heces', 'micciones':
+ * bloques fijos · 'texto': texto libre.
+ */
+export type TipoGrupo = 'una' | 'varias' | 'detalle' | 'hambre' | 'heces' | 'micciones' | 'texto'
+export const CON_OPCIONES: TipoGrupo[] = ['una', 'varias', 'detalle']
+export const conOpciones = (t: TipoGrupo) => CON_OPCIONES.includes(t)
 export type Grupo = {
   id: string
   nombre: string
@@ -14,23 +20,28 @@ export type Grupo = {
 }
 export type SintCfg = { grupos?: Grupo[] }
 
-export type Episodio = { hubo?: boolean | null; intensidad?: number | null; ingreso?: boolean | null }
+export type Detalle = { hora?: string | null; gravedad?: number | null; urgencias?: boolean | null }
+export type Deposicion = { bristol?: number | null; color?: string | null; restos?: boolean | null; flotan?: boolean | null; sangre?: boolean | null }
+export const COMIDAS = [['de', 'Desayuno'], ['co', 'Comida'], ['ce', 'Cena']] as const
+export type Comida = (typeof COMIDAS)[number][0]
+
 export type SintDia = {
   /** Opciones marcadas de cada grupo, por id. */
   sel?: { [grupo: string]: string[] }
-  epi?: { [grupo: string]: Episodio }
-  /** Hambre de 0 a 10. */
-  hambre?: number | null
+  /** Hora, gravedad y urgencias de cada opción marcada en los grupos 'detalle'. */
+  det?: { [grupo: string]: { [opcion: string]: Detalle } }
+  /** Hambre de 0 a 10 antes de desayuno, comida y cena. */
+  hambre?: { [k in Comida]?: number | null }
   sin_hambre?: boolean | null
-  /** Número de deposiciones (0 = ninguna) y tipo de Bristol de cada una. */
-  heces_n?: number | null
-  heces?: (number | null)[]
+  /** Una entrada por deposición. `sin_heces` = hoy no ha habido. */
+  heces?: Deposicion[]
+  sin_heces?: boolean | null
   micciones?: number | null
   /** Color de la orina, de 1 (transparente) a 6 (marrón o rojizo). */
   orina_color?: number | null
   orina_olor?: boolean | null
-  /** Temperatura basal en °C. */
-  temperatura?: number | null
+  /** Texto libre de los grupos 'texto'. */
+  texto?: { [grupo: string]: string }
 }
 
 const op = (...nombres: string[]): Opcion[] => nombres.map((n) => ({ id: slug(n), nombre: n }))
@@ -47,12 +58,16 @@ export function idLibre(nombre: string, usados: string[]) {
 
 /** Grupos de partida, mientras la usuaria no guarde los suyos. */
 export const GRUPOS_BASE: Grupo[] = [
+  { id: 'digestion', nombre: 'Digestión', tipo: 'varias', neutra: true, opciones: op('Ok', 'Dolor de estómago', 'Náuseas', 'Hinchazón', 'Gases') },
+  { id: 'hambre', nombre: 'Hambre', tipo: 'hambre' },
+  { id: 'heces', nombre: 'Heces', tipo: 'heces' },
+  { id: 'micciones', nombre: 'Micciones', tipo: 'micciones' },
   { id: 'dolor', nombre: 'Dolor', tipo: 'varias', neutra: true, opciones: op('Sin dolor', 'Cólicos', 'Ovulación', 'Sensibilidad en los senos', 'Cabeza', 'Lumbares') },
   { id: 'energia', nombre: 'Energía', tipo: 'una', opciones: op('Agotamiento', 'Cansancio', 'Ni fu ni fa', 'Ok', 'Enérgica', 'Alto rendimiento') },
   { id: 'secrecion', nombre: 'Secreción', tipo: 'una', opciones: op('Ninguna', 'Pegajosa', 'Cremosa', 'Clara de huevo', 'Atípica') },
   { id: 'piel', nombre: 'Piel', tipo: 'varias', neutra: true, opciones: op('Buena', 'Acné', 'Seca', 'Grasa', 'Con comezón') },
   { id: 'cabello', nombre: 'Cabello', tipo: 'varias', neutra: true, opciones: op('Normal', 'Bonito', 'Seco', 'Encrespado', 'Con caída', 'Cuero cabelludo graso', 'Cuero cabelludo seco') },
-  { id: 'digestion', nombre: 'Digestión', tipo: 'varias', neutra: true, opciones: op('Ok', 'Dolor de estómago', 'Náuseas', 'Hinchazón', 'Gases') },
+  { id: 'otros', nombre: 'Otros signos y síntomas', tipo: 'texto' },
 ]
 export const gruposDe = (c: SintCfg | null) => c?.grupos ?? GRUPOS_BASE
 
@@ -60,31 +75,38 @@ export const gruposDe = (c: SintCfg | null) => c?.grupos ?? GRUPOS_BASE
 export function alternar(g: Grupo, actuales: string[], id: string): string[] {
   if (actuales.includes(id)) return actuales.filter((x) => x !== id)
   if (g.tipo === 'una') return [id]
-  const neutra = g.neutra ? g.opciones?.[0]?.id : undefined
+  const neutra = g.tipo === 'varias' && g.neutra ? g.opciones?.[0]?.id : undefined
   if (id === neutra) return [id]
   return [...actuales.filter((x) => x !== neutra), id]
 }
 
 export const BRISTOL = ['', 'Bolas duras separadas (estreñimiento)', 'Salchicha grumosa', 'Salchicha con grietas', 'Salchicha lisa y blanda (ideal)', 'Trozos blandos con bordes definidos', 'Pastosa, bordes irregulares', 'Líquida, sin trozos (diarrea)']
+export const HECES_COLORES = [['marron', 'Marrón'], ['amarillento', 'Amarillento'], ['verdoso', 'Verdoso'], ['palido', 'Pálido'], ['negro', 'Muy oscuro o negro']] as const
+export const HECES_MARCAS = [['restos', 'Restos de comida'], ['flotan', 'Flotantes'], ['sangre', 'Con sangre']] as const
 export const ORINA_COLORES = ['#f7f6ee', '#f6efb8', '#f1df6e', '#e6c53a', '#c9962a', '#9c4a24']
 export const ORINA_NOMBRES = ['Transparente', 'Muy claro', 'Amarillo', 'Amarillo oscuro', 'Ámbar', 'Marrón / rojizo']
 
-/** Un grupo cuenta para el registro del día si pide respuesta siempre: se elige una opción,
- *  tiene opción «nada» o es un episodio (sí o no). Los demás solo se marcan si pasa algo. */
-export const pideRespuesta = (g: Grupo) => g.tipo !== 'varias' || !!g.neutra
+/** ¿Está respondido el grupo? `null` = no pide respuesta diaria (solo se marca si pasa algo). */
+export function respondido(g: Grupo, d: SintDia): boolean | null {
+  switch (g.tipo) {
+    case 'una': return (d.sel?.[g.id]?.length ?? 0) > 0
+    case 'varias': return g.neutra ? (d.sel?.[g.id]?.length ?? 0) > 0 : null
+    case 'hambre': return !!d.sin_hambre || COMIDAS.every(([k]) => d.hambre?.[k] != null)
+    case 'heces': return !!d.sin_heces || (d.heces?.length ?? 0) > 0
+    case 'micciones': return d.micciones != null || d.orina_color != null
+    default: return null
+  }
+}
 
 /** Apartados respondidos sobre los que piden respuesta cada día. */
 export function cumplimiento(grupos: Grupo[], d: SintDia) {
-  const partes: [string, boolean][] = grupos.filter(pideRespuesta).map((g) => [
-    g.nombre,
-    g.tipo === 'episodio' ? d.epi?.[g.id]?.hubo != null : (d.sel?.[g.id]?.length ?? 0) > 0,
-  ])
-  partes.push(['Hambre', d.hambre != null || !!d.sin_hambre], ['Heces', d.heces_n != null], ['Micciones', d.micciones != null || d.orina_color != null])
+  const partes = grupos.map((g) => [g.nombre, respondido(g, d)] as const).filter((p): p is readonly [string, boolean] => p[1] !== null)
   const hechos = partes.filter(([, ok]) => ok).length
   return { hechos, total: partes.length, faltan: partes.filter(([, ok]) => !ok).map(([n]) => n), pct: partes.length ? hechos / partes.length : 0 }
 }
 export const nivel = (pct: number) => (pct >= 0.9 ? 'verde' : pct >= 0.5 ? 'amarillo' : 'rojo') as 'verde' | 'amarillo' | 'rojo'
 
+const TIPOS: TipoGrupo[] = ['una', 'varias', 'detalle', 'hambre', 'heces', 'micciones', 'texto']
 /** Comprueba una configuración pegada a mano y la deja limpia. `null` si no vale. */
 export function leerGrupos(texto: string): Grupo[] | null {
   let x: unknown
@@ -94,7 +116,7 @@ export function leerGrupos(texto: string): Grupo[] | null {
   const out: Grupo[] = []
   for (const g of lista as { id?: unknown; nombre?: unknown; tipo?: unknown; neutra?: unknown; opciones?: unknown }[]) {
     if (!g || typeof g.nombre !== 'string' || !g.nombre.trim()) return null
-    const tipo: TipoGrupo = g.tipo === 'una' || g.tipo === 'episodio' ? g.tipo : 'varias'
+    const tipo: TipoGrupo = TIPOS.includes(g.tipo as TipoGrupo) ? (g.tipo as TipoGrupo) : 'varias'
     const id = typeof g.id === 'string' && g.id ? g.id : idLibre(g.nombre, out.map((o) => o.id))
     if (out.some((o) => o.id === id)) return null
     const opciones: Opcion[] = []
@@ -104,8 +126,8 @@ export function leerGrupos(texto: string): Grupo[] | null {
       const oid = typeof o === 'object' && o && typeof (o as { id?: unknown }).id === 'string' ? (o as { id: string }).id : idLibre(nombre, opciones.map((p) => p.id))
       opciones.push({ id: oid, nombre: nombre.trim() })
     }
-    if (tipo !== 'episodio' && !opciones.length) return null
-    out.push({ id, nombre: g.nombre.trim(), tipo, ...(tipo !== 'episodio' ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}) })
+    if (conOpciones(tipo) && !opciones.length) return null
+    out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}) })
   }
   return out
 }

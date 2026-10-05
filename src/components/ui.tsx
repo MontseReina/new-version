@@ -35,6 +35,24 @@ export function Section({ title, children, open, right }: { title: string; child
   )
 }
 
+/** Sección plegable que recuerda en este dispositivo si se dejó abierta o cerrada. */
+export function Plegable({ id, title, children, abierto = false }: { id: string; title: string; children: ReactNode; abierto?: boolean }) {
+  const k = 'nv-plegable-' + id
+  const [open, setOpen] = useState(() => {
+    try { const v = localStorage.getItem(k); return v == null ? abierto : v === '1' } catch { return abierto }
+  })
+  return (
+    <details className="section" open={open} onToggle={(e) => {
+      const o = e.currentTarget.open
+      setOpen(o)
+      try { localStorage.setItem(k, o ? '1' : '0') } catch { /* sin almacenamiento */ }
+    }}>
+      <summary><span>{title}</span></summary>
+      <div className="body">{children}</div>
+    </details>
+  )
+}
+
 export function Toast({ msg }: { msg: string }) {
   const [show, setShow] = useState(true)
   useEffect(() => {

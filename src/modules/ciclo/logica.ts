@@ -22,7 +22,7 @@ export type Mapa = { [day: string]: CicloDia }
 export type CicloCfg = {
   /** Días entre la ovulación y la regla siguiente. */
   lutea_dias?: number
-  /** Ventana crítica premenstrual: cuántos días antes de la regla empieza. 0 = no se marca. */
+  /** Ventana crítica premenstrual: cuántos días antes de la regla empieza. 0 = no se marca; sin valor, 7. */
   critica_dias?: number
   /** Duración del ciclo mientras no haya dos reglas registradas. */
   duracion_defecto?: number
@@ -31,6 +31,8 @@ export type CicloCfg = {
 export const LUTEA_POR_DEFECTO = 14
 export const CICLO_POR_DEFECTO = 28
 export const REGLA_POR_DEFECTO = 5
+/** Ventana crítica premenstrual: días antes de la regla, salvo que los ajustes digan otra cosa. */
+export const CRITICA_POR_DEFECTO = 7
 /** Días fértiles antes de la ovulación (la ventana incluye el día de la ovulación). */
 const FERTIL_ANTES = 5
 /** Más de estos días sin regla entre dos días con regla = empieza un ciclo nuevo. */
@@ -81,7 +83,7 @@ export function crearModelo(m: Mapa, cfg: CicloCfg, hoy: string): Modelo {
     nMedia: validas.length,
     mediaRegla: cerradas.length ? mediaDe(cerradas.map((r) => diffDays(r.fin, r.inicio) + 1)) : REGLA_POR_DEFECTO,
     lutea: cfg.lutea_dias || LUTEA_POR_DEFECTO,
-    critica: cfg.critica_dias ?? 0,
+    critica: cfg.critica_dias ?? CRITICA_POR_DEFECTO,
   }
 }
 

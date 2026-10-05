@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Field } from '../../components/ui'
-import { GRUPOS_BASE, idLibre, leerGrupos, type Grupo, type TipoGrupo } from './logica'
+import { GRUPOS_BASE, conOpciones, idLibre, leerGrupos, type Grupo, type TipoGrupo } from './logica'
 
-const TIPOS: [TipoGrupo, string][] = [['varias', 'Varias opciones'], ['una', 'Una sola opción'], ['episodio', 'Episodio (sí/no, intensidad, ingreso)']]
+const TIPOS: [TipoGrupo, string][] = [['varias', 'Varias opciones'], ['una', 'Una sola opción'], ['detalle', 'Varias, con hora, gravedad y urgencias']]
+const FIJOS: { [t in TipoGrupo]?: string } = { hambre: 'Bloque de hambre', heces: 'Bloque de heces', micciones: 'Bloque de micciones', texto: 'Texto libre' }
 
 /** Edición de los grupos y sus opciones. La lista se guarda en los ajustes de la usuaria. */
 export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grupo[]) => void }) {
@@ -48,12 +49,15 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
             <button type="button" className="btn sm ghost" aria-label="Subir" disabled={i === 0} onClick={() => mover(i, -1)}>↑</button>
             <button type="button" className="btn sm ghost" aria-label="Bajar" disabled={i === grupos.length - 1} onClick={() => mover(i, 1)}>↓</button>
           </div>
-          <div className="row" style={{ marginTop: '.4rem' }}>
-            <select aria-label="Tipo de grupo" value={g.tipo} style={{ flex: 1, minWidth: '10rem' }} onChange={(e) => cambia(g.id, { tipo: e.target.value as TipoGrupo })}>
-              {TIPOS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-            </select>
-          </div>
-          {g.tipo !== 'episodio' && (
+          {!conOpciones(g.tipo) && <div className="muted small" style={{ marginTop: '.3rem' }}>{FIJOS[g.tipo]}: se puede mover, renombrar o quitar.</div>}
+          {conOpciones(g.tipo) && (
+            <div className="row" style={{ marginTop: '.4rem' }}>
+              <select aria-label="Tipo de grupo" value={g.tipo} style={{ flex: 1, minWidth: '10rem' }} onChange={(e) => cambia(g.id, { tipo: e.target.value as TipoGrupo })}>
+                {TIPOS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+            </div>
+          )}
+          {conOpciones(g.tipo) && (
             <>
               <div className="chips" style={{ marginTop: '.5rem' }}>
                 {(g.opciones ?? []).map((o) => (

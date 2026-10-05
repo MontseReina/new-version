@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Empty, Field, Section } from '../../components/ui'
+import { Empty, Field, Plegable } from '../../components/ui'
 import { addDays, diffDays, fmtDate } from '../../lib/dates'
 import { saveDaily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { Calendario, Leyenda } from './Calendario'
-import { CICLO_POR_DEFECTO, FASES, FLUJOS, LUTEA_POR_DEFECTO, MANCHADOS, cicloDe, infoDia, nombreMes, rango, retraso, sumaMeses, type CicloDia, type Mapa } from './logica'
+import { FASES, FLUJOS, MANCHADOS, cicloDe, infoDia, nombreMes, rango, retraso, sumaMeses, type CicloDia, type Mapa } from './logica'
 import { useCiclo } from './useCiclo'
 
 const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
@@ -16,16 +16,15 @@ export function cuando(hoy: string, d: string) {
 }
 
 /**
- * Ciclo, dentro de Signos y síntomas: resumen, registro de regla y manchado del día `date`
- * y, plegado, el calendario del mes con el historial y los ajustes.
- * De aquí leen Inicio y las demás áreas.
+ * Ciclo, dentro de Signos y síntomas: resumen del día `date`, registro de la menstruación,
+ * calendario del mes y evaluación de los ciclos. De aquí leen Inicio y las demás áreas.
  */
 export default function Ciclo({ date, onDate }: { date: string; onDate: (d: string) => void }) {
   const [recarga, setRecarga] = useState(0)
   const dia = useDaily<CicloDia>('ciclo', date)
   // Lo editado aquí se pinta al momento, sin esperar a que se guarde y se vuelva a leer.
   const [locales, setLocales] = useState<Mapa>({})
-  const { hoy, mapa, modelo, cfg, saveCfg, cargando, error } = useCiclo(dia.rev + recarga, locales)
+  const { hoy, mapa, modelo, cargando, error } = useCiclo(dia.rev + recarga, locales)
   const poner = (patch: CicloDia) => { dia.set(patch); setLocales((l) => ({ ...l, [date]: { ...dia.value, ...patch } })) }
 
   // Día marcado en el calendario: el del registro o, para ver la previsión, uno futuro.
@@ -56,6 +55,8 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
   }
 
   const reglas = modelo.reglas
+  const durs = modelo.duraciones
+  const diasRegla = reglas.map((r) => diffDays(r.fin, r.inicio) + 1)
   const etiquetas = (i: NonNullable<typeof info>) => (
     <>
       {i.ovulacion ? <span className="tag verde">Ovulación aprox.</span> : i.fertil ? <span className="tag">Ventana fértil</span> : null}
@@ -71,7 +72,7 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
       {cargando ? (
         <div className="card"><Empty>Cargando…</Empty></div>
       ) : !actual ? (
-        <div className="card"><Empty>Aún no hay ninguna regla registrada. Marca la cantidad en «Regla» o añade una regla pasada por fechas en «Calendario del ciclo».</Empty></div>
+        <div className="card"><Empty>Aún no hay ninguna regla registrada. Marca la cantidad en «Registro de la menstruación» o añade una regla pasada por fechas en «Calendario del ciclo».</Empty></div>
       ) : (
         <div className="card accent">
           {info
@@ -87,8 +88,8 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
         </div>
       )}
 
-      <div className="card">
-        {dia.state === 'error' && <div className="notice small">No se ha podido guardar el ciclo. <button type="button" className="btn sm secondary" onClick={() => void dia.retry()}>Reintentar</button></div>}
+      <Plegable id="menstruacion" title="Registro de la menstruación" abierto>
+        {dia.state === 'error' && <div className="notice small">No se ha podido guardar. <button type="button" className="btn sm secondary" onClick={() => void dia.retry()}>Reintentar</button></div>}
         <div className="field" style={{ marginTop: 0 }}>
           <span>Regla</span>
           <div className="seg">
@@ -96,15 +97,16 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
           </div>
           {d.regla === 'si' && <div className="muted small">Regla anotada por fechas, sin detallar. Elige la cantidad si la recuerdas. <button type="button" className="linkbtn" onClick={() => poner({ regla: null })}>Quitar la regla de este día</button></div>}
         </div>
-        <div className="field" style={{ marginBottom: 0 }}>
+        <div className="field">
           <span>Manchado</span>
           <div className="seg">
             {MANCHADOS.map(([k, l]) => <button type="button" key={k} disabled={cargandoDia} className={d.manchado === k ? 'on' : ''} aria-pressed={d.manchado === k} onClick={() => poner({ manchado: d.manchado === k ? null : k })}>{l}</button>)}
           </div>
         </div>
-      </div>
+        <p className="muted small">Toca otra vez una opción para quitarla. El manchado no cuenta como inicio de ciclo.</p>
+      </Plegable>
 
-      <Section title="Calendario del ciclo">
+      <Plegable id="calendario-ciclo" title="Calendario del ciclo">
         <div className="row between" style={{ marginBottom: '.4rem' }}>
           <button type="button" className="btn sm ghost" aria-label="Mes anterior" onClick={() => setMes(sumaMeses(m, -1))}>‹</button>
           <strong>{mayus(nombreMes(m))}</strong>
@@ -117,28 +119,7 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
           {infoVista ? <> · Día {infoVista.dia} · {FASES[infoVista.fase]} {etiquetas(infoVista)}</> : null}
           {vista > hoy && <span className="muted"> · previsión</span>}
         </p>
-        <p className="muted small">Toca un día pasado para abrir su registro; uno futuro, para ver la previsión.{modelo.nMedia ? ` Fechas aproximadas, con la media de tus últimos ${modelo.nMedia === 1 ? 'ciclo' : modelo.nMedia + ' ciclos'}: ${modelo.media} días.` : ''}</p>
-
-        <h3>Tus ciclos</h3>
-        {reglas.length === 0 ? <p className="muted small">Sin reglas registradas.</p> : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Regla</th><th>Días de regla</th><th>Duración del ciclo</th></tr></thead>
-              <tbody>
-                {[...reglas].reverse().map((r, i) => {
-                  const dur = modelo.duraciones[reglas.length - 1 - i]
-                  return (
-                    <tr key={r.inicio}>
-                      <td><button type="button" className="linkbtn" style={{ fontSize: 'inherit', color: 'var(--primary)' }} onClick={() => elegir(r.inicio)}>{fmtDate(r.inicio)}</button></td>
-                      <td>{diffDays(r.fin, r.inicio) + 1}</td>
-                      <td>{dur ? `${dur} días` : 'En curso'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <p className="muted small">Toca un día pasado para abrir su registro; uno futuro, para ver la previsión.</p>
 
         <h3>Añadir una regla pasada</h3>
         <p className="muted small">Para cargar reglas anteriores sin ir día por día. Se anotan como regla sin detallar la cantidad.</p>
@@ -150,18 +131,38 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
           <button type="button" className="btn" disabled={!valido} onClick={() => void anadir()}>Añadir</button>
           {aviso && <span className="muted small">{aviso}</span>}
         </div>
+      </Plegable>
 
-        <h3>Ajustes del ciclo</h3>
-        <Field label="Días entre la ovulación y la regla (fase lútea)" hint={`Si se deja vacío, ${LUTEA_POR_DEFECTO}. Mueve el día aproximado de ovulación.`}>
-          <input type="number" inputMode="numeric" min={8} max={18} value={cfg?.lutea_dias ?? ''} placeholder={String(LUTEA_POR_DEFECTO)} onChange={(e) => void saveCfg({ lutea_dias: Number(e.target.value) || undefined })} />
-        </Field>
-        <Field label="Ventana crítica: cuántos días antes de la regla empieza" hint="Si se deja vacío, no se marca en el calendario.">
-          <input type="number" inputMode="numeric" min={0} max={20} value={cfg?.critica_dias ?? ''} onChange={(e) => void saveCfg({ critica_dias: Number(e.target.value) || undefined })} />
-        </Field>
-        <Field label="Duración del ciclo mientras no haya dos reglas registradas" hint={`Si se deja vacío, ${CICLO_POR_DEFECTO}. Después se usa la media de tus ciclos.`}>
-          <input type="number" inputMode="numeric" min={15} max={60} value={cfg?.duracion_defecto ?? ''} placeholder={String(CICLO_POR_DEFECTO)} onChange={(e) => void saveCfg({ duracion_defecto: Number(e.target.value) || undefined })} />
-        </Field>
-      </Section>
+      <Plegable id="evaluacion-ciclos" title="Evaluación de mis ciclos">
+        {reglas.length === 0 ? <p className="muted small">Sin reglas registradas.</p> : (
+          <>
+            <dl className="ciclo-datos" style={{ marginBottom: '.6rem' }}>
+              <div><dt>Duración media del ciclo</dt><dd>{modelo.nMedia ? `${modelo.media} días` : 'Faltan ciclos completos'}</dd></div>
+              {durs.length > 1 && <div><dt>Ciclo más corto y más largo</dt><dd>{Math.min(...durs)} y {Math.max(...durs)} días</dd></div>}
+              <div><dt>Días de regla, de media</dt><dd>{modelo.mediaRegla}</dd></div>
+              <div><dt>Ciclos completos registrados</dt><dd>{durs.length}</dd></div>
+            </dl>
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Regla</th><th>Días de regla</th><th>Duración del ciclo</th></tr></thead>
+                <tbody>
+                  {[...reglas].reverse().map((r, i) => {
+                    const idx = reglas.length - 1 - i
+                    return (
+                      <tr key={r.inicio}>
+                        <td><button type="button" className="linkbtn" style={{ fontSize: 'inherit', color: 'var(--primary)' }} onClick={() => elegir(r.inicio)}>{fmtDate(r.inicio)}</button></td>
+                        <td>{diasRegla[idx]}</td>
+                        <td>{durs[idx] ? `${durs[idx]} días` : 'En curso'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="muted small">Las fechas previstas salen de la media de tus últimos ciclos; son aproximadas.</p>
+          </>
+        )}
+      </Plegable>
     </div>
   )
 }
