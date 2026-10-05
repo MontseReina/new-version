@@ -38,7 +38,7 @@ const FERTIL_ANTES = 5
 /** Más de estos días sin regla entre dos días con regla = empieza un ciclo nuevo. */
 const SALTO = 9
 /** Ciclos fuera de este intervalo no entran en la media (suele ser una regla sin registrar). */
-const MIN_CICLO = 15, MAX_CICLO = 60
+const MIN_CICLO = 15, MAX_CICLO = 45
 /** Cuántos ciclos recientes cuentan para la media. */
 const ULTIMOS = 6
 
@@ -73,8 +73,9 @@ export function crearModelo(m: Mapa, cfg: CicloCfg, hoy: string): Modelo {
   const reglas = reglasDe(m)
   const duraciones = reglas.slice(1).map((r, i) => diffDays(r.inicio, reglas[i].inicio))
   const validas = duraciones.filter((n) => n >= MIN_CICLO && n <= MAX_CICLO).slice(-ULTIMOS)
-  // La regla en curso (aún sin terminar) no cuenta para la duración media de la regla.
-  const cerradas = reglas.filter((r) => diffDays(hoy, r.fin) > 1).slice(-ULTIMOS)
+  // No cuentan para la duración media de la regla ni la que está en curso ni las que solo tienen
+  // anotado un día (suele ser solo el inicio).
+  const cerradas = reglas.filter((r) => diffDays(hoy, r.fin) > 1 && r.fin > r.inicio).slice(-ULTIMOS)
   return {
     hoy,
     reglas,

@@ -63,6 +63,8 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
 
   const reglas = modelo.reglas
   const durs = modelo.duraciones
+  // Un ciclo de más de 45 días suele esconder una regla sin anotar: no entra en la evaluación.
+  const validos = durs.filter((n) => n >= 15 && n <= 45)
   const diasRegla = reglas.map((r) => diffDays(r.fin, r.inicio) + 1)
   const etiquetas = (i: NonNullable<typeof info>) => (
     <>
@@ -150,9 +152,9 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
           <>
             <dl className="ciclo-datos" style={{ marginBottom: '.6rem' }}>
               <div><dt>Duración media del ciclo</dt><dd>{modelo.nMedia ? `${modelo.media} días` : 'Faltan ciclos completos'}</dd></div>
-              {durs.length > 1 && <div><dt>Ciclo más corto y más largo</dt><dd>{Math.min(...durs)} y {Math.max(...durs)} días</dd></div>}
+              {validos.length > 1 && <div><dt>Ciclo más corto y más largo</dt><dd>{Math.min(...validos)} y {Math.max(...validos)} días</dd></div>}
               <div><dt>Días de regla, de media</dt><dd>{modelo.mediaRegla}</dd></div>
-              <div><dt>Ciclos completos registrados</dt><dd>{durs.length}</dd></div>
+              <div><dt>Ciclos completos registrados</dt><dd>{validos.length}</dd></div>
             </dl>
             <div className="table-wrap">
               <table className="table">
@@ -163,8 +165,8 @@ export default function Ciclo({ date, onDate }: { date: string; onDate: (d: stri
                     return (
                       <tr key={r.inicio}>
                         <td><button type="button" className="linkbtn" style={{ fontSize: 'inherit', color: 'var(--primary)' }} onClick={() => elegir(r.inicio)}>{fmtDate(r.inicio)}</button></td>
-                        <td>{diasRegla[idx]}</td>
-                        <td>{durs[idx] ? `${durs[idx]} días` : 'En curso'}</td>
+                        <td>{diasRegla[idx] > 1 ? diasRegla[idx] : 'Solo el inicio'}</td>
+                        <td>{!durs[idx] ? 'En curso' : durs[idx] > 45 ? `${durs[idx]} días (falta alguna regla)` : `${durs[idx]} días`}</td>
                       </tr>
                     )
                   })}
