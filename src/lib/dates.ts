@@ -5,6 +5,11 @@ export function toDateStr(d: Date) {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+/** Hora local de ahora, HH:MM. */
+export function nowHM() {
+  const d = new Date()
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+}
 export function addDays(dateStr: string, n: number) {
   const d = new Date(dateStr + 'T12:00:00')
   d.setDate(d.getDate() + n)
