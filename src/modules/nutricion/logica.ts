@@ -48,11 +48,6 @@ export type Estado = 'entera' | 'tres_cuartos' | 'media' | 'no'
 export const ESTADOS: [Estado, string][] = [['entera', 'Entera'], ['tres_cuartos', '¾'], ['media', 'Media'], ['no', 'No']]
 /** Plato dibujado: cuánto había de cada parte. 0 nada · 1 poca · 2 la parte que toca · 3 (solo hidratos) más de la que toca. */
 export type PlatoDia = { veg?: number | null; prot?: number | null; hid?: number | null }
-/** Composición corporal de la báscula de bioimpedancia, junto al peso. */
-export type Composicion = { grasa_pct?: number | null; musculo_kg?: number | null; hueso_kg?: number | null; agua_pct?: number | null }
-export const COMPOSICION: [keyof Composicion, string, string][] = [
-  ['grasa_pct', 'Masa grasa', '%'], ['musculo_kg', 'Masa muscular', 'kg'], ['hueso_kg', 'Hueso', 'kg'], ['agua_pct', 'Agua', '%'],
-]
 
 export type TomaDia = {
   estado?: Estado | null
@@ -67,8 +62,6 @@ export type TomaDia = {
 export type NutriDia = {
   menu?: MenuId | null
   tomas?: { [id: string]: TomaDia }
-  peso_kg?: number | null
-  comp?: Composicion
 }
 
 export const CENA_MAX_POR_DEFECTO = '21:00'

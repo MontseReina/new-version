@@ -312,3 +312,12 @@ fieldset.sint { border: 0; padding: 0; margin: 0; min-width: 0; }
 .plato-chip { display: flex; align-items: center; gap: .5rem; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .3rem .5rem; font-size: .8rem; line-height: 1.2; cursor: pointer; }
 .plato-chip.on { border-color: var(--primary); }
 .plato-chip .sw { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
+
+/* Peso y composición corporal: un gráfico pequeño por medida (como en Huma) */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .6rem; margin: .6rem 0; }
+.minichart { border: 1px solid var(--line); border-radius: 10px; padding: .45rem .6rem .2rem; background: var(--card); }
+.minichart svg { width: 100%; height: auto; display: block; }
+details.pesadas { margin-top: .8rem; border-top: 1px solid var(--line); }
+details.pesadas > summary { cursor: pointer; padding: .6rem 0; font-weight: 700; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+details.pesadas > summary::-webkit-details-marker { display: none; }
+details.pesadas > summary::after { content: '▸'; color: var(--muted); }

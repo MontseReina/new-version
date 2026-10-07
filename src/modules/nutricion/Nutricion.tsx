@@ -11,10 +11,11 @@ import { infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
-  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, COMPOSICION, ESTADOS, GRACIA_MIN, MENUS,
+  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, ESTADOS, GRACIA_MIN, MENUS,
   aMin, aguaDe, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, primeraAntesDe, semana, textoResumen, tomasDe,
-  type Composicion, type Estado, type MenuId, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
+  type Estado, type MenuId, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
+import { Peso } from './Peso'
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
@@ -79,7 +80,6 @@ export default function Nutricion() {
 
   const porDia = new Map(filas.map((r) => [r.day, r.value]))
   porDia.set(date, d)
-  const pesos = [...porDia.entries()].filter(([, v]) => v.peso_kg != null || Object.values(v.comp ?? {}).some((x) => x != null)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5)
 
   return (
     <div>
@@ -149,27 +149,7 @@ export default function Nutricion() {
       </Plegable>
 
       <Plegable id="nutri-peso" title="Peso y composición corporal">
-        <p className="muted small">Una vez por semana, el mismo día y en las mismas condiciones.</p>
-        <div className="grid2">
-          <Field label="Peso (kg)">
-            <input type="number" inputMode="decimal" step={0.1} min={0} value={d.peso_kg ?? ''} onChange={(e) => set({ peso_kg: e.target.value === '' ? null : Number(e.target.value) })} />
-          </Field>
-          {COMPOSICION.map(([k, l, u]) => (
-            <Field key={k} label={`${l} (${u})`}>
-              <input type="number" inputMode="decimal" step={0.1} min={0} value={d.comp?.[k] ?? ''} onChange={(e) => set({ comp: { ...(d.comp ?? {}), [k]: e.target.value === '' ? null : Number(e.target.value) } as Composicion })} />
-            </Field>
-          ))}
-        </div>
-        {pesos.length > 0 && (
-          <div className="table-wrap">
-            <table className="table nutri-sem">
-              <thead><tr><th>Día</th><th>Peso</th>{COMPOSICION.map(([k, l]) => <th key={k}>{l.replace('Masa g', 'G').replace('Masa m', 'M')}</th>)}</tr></thead>
-              <tbody>{pesos.map(([dia, v]) => (
-                <tr key={dia}><td>{fmtDate(dia)}</td><td>{v.peso_kg != null ? `${v.peso_kg} kg` : '—'}</td>{COMPOSICION.map(([k, , u]) => <td key={k} className="small">{v.comp?.[k] != null ? `${v.comp[k]} ${u}` : '—'}</td>)}</tr>
-              ))}</tbody>
-            </table>
-          </div>
-        )}
+        <Peso />
       </Plegable>
 
       {(['folicular', 'luteo'] as MenuId[]).map((id) => c.menus?.[id] && (
