@@ -59,6 +59,8 @@ export type TomaDia = {
   /** Lo que tocaba al registrarla, para que un cambio de menú no reescriba los días pasados. */
   platos?: string[]
   nombres?: string[]
+  /** Lo que ha tomado si no era lo del menú, con sus palabras. */
+  otro?: string | null
   plato?: PlatoDia
   /** Postres de la toma, por id de plato: `si` tomado, `no` no tomado. */
   postre?: { [id: string]: 'si' | 'no' | null }

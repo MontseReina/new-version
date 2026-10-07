@@ -204,7 +204,7 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
       </div>
       {tocaba.length > 0
         ? (
-          <ul className="nutri-platos">
+          <ul className={'nutri-platos' + (x?.otro?.trim() ? ' sustituido' : '')}>
             {tocaba.map((p, i) => {
               const esPostre = !!t.postre && i > 0 && e !== 'no'
               const v = x?.postre?.[p.id] ?? null
@@ -224,6 +224,12 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
           </ul>
         )
         : <p className="muted small">Sin plato en el menú de hoy.</p>}
+      {e !== 'no' && (
+        <label className="nutri-otro">
+          <span className="muted small">Otro</span>
+          <input type="text" aria-label={`Otra cosa en ${t.nombre}`} placeholder="Si has tomado otra cosa, escríbela aquí" value={x?.otro ?? ''} onChange={(ev) => poner({ otro: ev.target.value || null })} />
+        </label>
+      )}
       <div className="seg" role="group" aria-label={`Cómo ha ido: ${t.nombre}`}>
         {ESTADOS.map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
       </div>
