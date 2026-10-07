@@ -234,7 +234,7 @@ code { background: #eef0f3; padding: 0 .3rem; border-radius: 4px; font-size: .85
 .ciclo-card { display: block; text-decoration: none; color: inherit; }
 .ciclo-dia { font-size: 1.15rem; }
 .ciclo-dia strong { font-family: var(--font-title); font-size: 1.7rem; font-weight: 700; }
-.ciclo-tira { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: .6rem 0 .5rem; }
+.ciclo-tira { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin: .6rem 0 .5rem; }
 .ciclo-tira .ciclo-celda { min-width: 0; min-height: 0; height: 1.7rem; padding: 0; border-width: 1.5px; border-radius: 6px; background: var(--line); font-size: .78rem; cursor: default; }
 .ciclo-tira .ciclo-celda.fertil { background: var(--primary-soft); }
 .ciclo-tira .ciclo-celda.critica, .ciclo-leyenda .ciclo-celda.critica { background: color-mix(in srgb, var(--amber) 45%, var(--card)); }

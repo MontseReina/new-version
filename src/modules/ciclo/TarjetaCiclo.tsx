@@ -5,8 +5,10 @@ import { cuando } from './Ciclo'
 import { FASES, cicloDe, infoDia, rango, retraso } from './logica'
 import { useCiclo } from './useCiclo'
 
-/** Ciclo en Inicio: día y fase, la tira del ciclo entero (un recuadro por día, con el día del mes),
- *  ovulación aproximada y próxima regla. */
+const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+/** Ciclo en Inicio: día y fase, la tira del ciclo entero (un recuadro por día, con el día del mes,
+ *  en semanas de lunes a domingo), ovulación aproximada y próxima regla. */
 export function TarjetaCiclo() {
   const { hoy, mapa, modelo, cargando } = useCiclo()
   const c = cicloDe(modelo, hoy)
@@ -18,6 +20,8 @@ export function TarjetaCiclo() {
   const tarde = retraso(modelo)
   const total = diffDays(c.siguiente, c.inicio)
   const critica = modelo.critica > 0 ? addDays(c.siguiente, -modelo.critica) : null
+  // Huecos hasta el día de la semana en que empieza el ciclo (lunes = 0).
+  const huecos = (new Date(c.inicio + 'T12:00:00').getDay() + 6) % 7
   return (
     <Link to="/sintomas" className="card ciclo-card">
       <div className="row between">
@@ -25,6 +29,8 @@ export function TarjetaCiclo() {
         <span className="tag">{FASES[info.fase]}</span>
       </div>
       <div className="ciclo-tira" aria-label={`Día ${info.dia} de un ciclo de unos ${total} días`}>
+        {DOW.map((l) => <span key={l} className="ciclo-dow" aria-hidden="true">{l}</span>)}
+        {Array.from({ length: huecos }, (_, i) => <span key={'h' + i} />)}
         {rango(c.inicio, addDays(c.siguiente, -1)).map((d) => {
           const p = pintaDia(modelo, mapa, d)
           return <span key={d} className={'ciclo-celda ' + p.cls}>{Number(d.slice(8))}</span>
