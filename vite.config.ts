@@ -19,7 +19,7 @@ function versionJson() {
 
 // Demostración en un solo fichero (npm run build:demo): sin cuenta ni base de datos.
 // Los ajustes y los días de ejemplo se pasan en DEMO_SETTINGS y DEMO_DAILY (JSON) al construir;
-// no se guardan en el código.
+// no se guardan en el código. DEMO_START es la página en la que arranca (por ejemplo, /preguntas).
 const demo = !!process.env.DEMO_SINGLEFILE
 const base = demo ? './' : (process.env.VITE_BASE || '/')
 
@@ -53,6 +53,7 @@ export default defineConfig({
     'import.meta.env.VITE_DEMO': JSON.stringify(demo ? '1' : ''),
     'import.meta.env.VITE_DEMO_SETTINGS': JSON.stringify(demo ? (process.env.DEMO_SETTINGS || '') : ''),
     'import.meta.env.VITE_DEMO_DAILY': JSON.stringify(demo ? (process.env.DEMO_DAILY || '') : ''),
+    'import.meta.env.VITE_DEMO_START': JSON.stringify(demo ? (process.env.DEMO_START || '') : ''),
     ...(demo ? { 'import.meta.env.VITE_SUPABASE_URL': '""', 'import.meta.env.VITE_SUPABASE_ANON_KEY': '""' } : {}),
   },
   resolve: demo ? { alias: { 'virtual:pwa-register': fileURLToPath(new URL('./src/pwa/register-stub.ts', import.meta.url)) } } : undefined,
