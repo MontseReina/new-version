@@ -1,6 +1,8 @@
 import type { ComponentType } from 'react'
 import Hidratacion from './hidratacion/Hidratacion'
 import { ResumenHidratacion } from './hidratacion/Resumen'
+import Nutricion from './nutricion/Nutricion'
+import { ResumenNutricion } from './nutricion/Resumen'
 import Sintomas from './sintomas/Sintomas'
 import { ResumenSintomas } from './sintomas/Resumen'
 import Suplementos from './suplementos/Suplementos'
@@ -26,7 +28,7 @@ export interface ModuleDef {
 export const modules: ModuleDef[] = [
   { id: 'sintomas', name: 'Signos y síntomas', ico: '📝', path: 'sintomas', Page: Sintomas, Resumen: ResumenSintomas },
   { id: 'suplementos', name: 'Suplementos', ico: '💊', path: 'suplementos', Page: Suplementos, Resumen: ResumenSuplementos },
-  { id: 'nutricion', name: 'Nutrición', ico: '🥣', path: 'nutricion' },
+  { id: 'nutricion', name: 'Nutrición', ico: '🥣', path: 'nutricion', Page: Nutricion, Resumen: ResumenNutricion },
   { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion },
   { id: 'ejercicio', name: 'Ejercicio', ico: '🏃', path: 'ejercicio' },
   { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking' },

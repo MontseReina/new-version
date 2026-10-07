@@ -12,5 +12,8 @@
   --green: #3F6E78;   /* «verde» del semáforo, en el azul profundo de la marca */
   --amber: #c08a1e;
   --red: #b23a2f;
+  --plato-verdura: #6f8f3a;  /* partes del plato dibujado, como en Huma */
+  --plato-proteina: #b8683f;
+  --plato-hidrato: #c99a2e;
   --radius: 12px;
   --font-title: 'Cormorant Garamond', 'Aire Bold Pro', Georgia, serif;

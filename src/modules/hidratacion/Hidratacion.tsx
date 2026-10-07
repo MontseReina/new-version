@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
 import { Vaso } from '../../components/Vaso'
 import { Field, Section, Stepper } from '../../components/ui'
-import { addDays, fmtDate, todayStr } from '../../lib/dates'
+import { addDays, fmtDate, nowHM, todayStr } from '../../lib/dates'
 import { listDaily, type Daily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
@@ -27,21 +27,23 @@ export default function Hidratacion() {
   // Botones rápidos: cada toque suma a su casilla (y al total si está tecleado a mano). Se deshace el último.
   const [ultimo, setUltimo] = useState<{ previo: HidraDia; txt: string } | null>(null)
   useEffect(() => setUltimo(null), [date])
-  const aplicar = (patch: HidraDia, ml: number, txt: string) => {
+  // Cada toque de hoy guarda su hora, para poder cruzarla con las comidas. `k` dice qué se bebió.
+  const aplicar = (patch: HidraDia, ml: number, txt: string, k?: string) => {
     setUltimo({ previo: d, txt })
-    set({ ...patch, ...(d.total_ml != null ? { total_ml: Math.max(0, d.total_ml + ml) } : {}) })
+    const horas = k && date === todayStr() ? { horas: [...(d.horas ?? []), { h: nowHM(), k, ml }] } : {}
+    set({ ...patch, ...horas, ...(d.total_ml != null ? { total_ml: Math.max(0, d.total_ml + ml) } : {}) })
   }
   const sumar = (k: 'agua' | 'mar' | 'caldo' | 'infusion' | 'cardo', txt: string) => {
-    if (k === 'agua') aplicar({ agua_ml: (d.agua_ml ?? 0) + TAZA_ML }, TAZA_ML, txt)
-    if (k === 'mar') aplicar({ mar_ml: mar + CHUPITO_ML }, CHUPITO_ML, txt)
-    if (k === 'caldo') aplicar({ caldo_tazas: (d.caldo_tazas ?? 0) + 1 }, TAZA_ML, txt)
-    if (k === 'infusion') aplicar({ infusion_tazas: (d.infusion_tazas ?? 0) + 1 }, TAZA_ML, txt)
-    if (k === 'cardo') aplicar({ cardo_tazas: (d.cardo_tazas ?? 0) + 1 }, TAZA_ML, txt)
+    if (k === 'agua') aplicar({ agua_ml: (d.agua_ml ?? 0) + TAZA_ML }, TAZA_ML, txt, k)
+    if (k === 'mar') aplicar({ mar_ml: mar + CHUPITO_ML }, CHUPITO_ML, txt, k)
+    if (k === 'caldo') aplicar({ caldo_tazas: (d.caldo_tazas ?? 0) + 1 }, TAZA_ML, txt, k)
+    if (k === 'infusion') aplicar({ infusion_tazas: (d.infusion_tazas ?? 0) + 1 }, TAZA_ML, txt, k)
+    if (k === 'cardo') aplicar({ cardo_tazas: (d.cardo_tazas ?? 0) + 1 }, TAZA_ML, txt, k)
   }
   const deshacer = () => {
     if (!ultimo) return
     const p = ultimo.previo
-    set({ agua_ml: p.agua_ml ?? null, mar_ml: p.mar_ml ?? null, caldo_tazas: p.caldo_tazas ?? null, infusion_tazas: p.infusion_tazas ?? null, cardo_tazas: p.cardo_tazas ?? null, total_ml: p.total_ml ?? null, pauta: p.pauta ?? {} })
+    set({ agua_ml: p.agua_ml ?? null, mar_ml: p.mar_ml ?? null, caldo_tazas: p.caldo_tazas ?? null, infusion_tazas: p.infusion_tazas ?? null, cardo_tazas: p.cardo_tazas ?? null, total_ml: p.total_ml ?? null, pauta: p.pauta ?? {}, horas: p.horas ?? [] })
     setUltimo(null)
   }
   // Pauta: un toque anota las cantidades de esa fila; otro toque las quita.
@@ -50,10 +52,13 @@ export default function Hidratacion() {
     const hecho = !!d.pauta?.[i]
     const s = hecho ? -1 : 1
     const agua = (f.agua_ml ?? 0) * s, m = (f.mar_ml ?? 0) * s
+    // Al quitar una fila de la pauta se quita también su hora.
+    const sinHora = hecho ? { horas: (d.horas ?? []).filter((x) => x.k !== 'pauta:' + i) } : {}
     aplicar(
-      { agua_ml: Math.max(0, (d.agua_ml ?? 0) + agua), mar_ml: Math.max(0, mar + m), pauta: { ...(d.pauta ?? {}), [i]: !hecho } },
+      { agua_ml: Math.max(0, (d.agua_ml ?? 0) + agua), mar_ml: Math.max(0, mar + m), pauta: { ...(d.pauta ?? {}), [i]: !hecho }, ...sinHora },
       agua + m,
       hecho ? `quitar «${f.momento}»` : f.momento,
+      hecho ? undefined : 'pauta:' + i,
     )
   }
 

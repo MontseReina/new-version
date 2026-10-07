@@ -12,7 +12,13 @@ export type HidraDia = {
   total_ml?: number | null
   /** Filas de la pauta ya anotadas hoy (por posición). */
   pauta?: { [i: string]: boolean }
+  /** Hora de cada toque de los botones rápidos y de la pauta (solo el día en curso). Los días
+   *  anteriores a esta lista, y lo tecleado a mano, no tienen hora. */
+  horas?: Toque[]
 }
+
+/** Un toque con su hora (HH:MM): qué se bebió (`agua`, `mar`, `caldo`, `infusion`, `cardo` o `pauta:<fila>`) y cuánto. */
+export type Toque = { h: string; k: string; ml: number }
 
 export type PautaFila = { momento: string; que: string; agua_ml?: number; mar_ml?: number }
 
