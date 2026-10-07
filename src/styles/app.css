@@ -280,7 +280,7 @@ fieldset.sint { border: 0; padding: 0; margin: 0; min-width: 0; }
 .nutri-reglas .dot:not(.verde):not(.amarillo):not(.rojo) { background: var(--line); }
 .nutri-toma h3 { margin: 0; color: var(--text); }
 .nutri-toma.pendiente-hora, .nutri-toma.no { border-color: var(--red); }
-.nutri-toma.entera, .nutri-toma.otra { border-color: var(--green); }
+.nutri-toma.entera, .nutri-toma.tres_cuartos { border-color: var(--green); }
 .nutri-toma.media { border-color: var(--amber); }
 .nutri-platos { margin: .4rem 0 .6rem; padding-left: 1.1rem; }
 .nutri-platos li { margin: .15rem 0; }
@@ -299,3 +299,16 @@ fieldset.sint { border: 0; padding: 0; margin: 0; min-width: 0; }
 .table.nutri-menu td div + div { margin-top: .3rem; padding-top: .3rem; border-top: 1px dashed var(--line); }
 .table.nutri-menu .hoy { background: color-mix(in srgb, var(--primary-soft) 45%, var(--card)); }
 .table.nutri-sem td:first-child { min-width: 0; white-space: nowrap; }
+
+/* Plato dibujado de comida y cena (como en Huma) */
+.plato { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .9rem; margin: .7rem 0 .2rem; }
+.plato svg { width: 148px; height: 148px; flex: 0 0 auto; }
+.plato-borde { fill: var(--card); stroke: var(--line); stroke-width: 2; }
+.plato-part { cursor: pointer; outline: none; }
+.plato-part .fondo { fill-opacity: .07; stroke: var(--line); stroke-width: 1.5; }
+.plato-part:focus-visible .fondo { stroke: var(--primary); stroke-width: 2.5; }
+.plato-part text { fill: var(--text); }
+.plato-legend { display: flex; flex-direction: column; gap: .3rem; flex: 1 1 120px; min-width: 120px; }
+.plato-chip { display: flex; align-items: center; gap: .5rem; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .3rem .5rem; font-size: .8rem; line-height: 1.2; cursor: pointer; }
+.plato-chip.on { border-color: var(--primary); }
+.plato-chip .sw { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }

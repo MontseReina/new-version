@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
+import { Plato } from '../../components/Plato'
 import { Field, Plegable } from '../../components/ui'
 import { addDays, fmtDate, nowHM, todayStr } from '../../lib/dates'
 import { getDaily, listDaily, type Daily } from '../../store/repo'
@@ -10,9 +11,9 @@ import { infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
-  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, ESTADOS, GRACIA_MIN, MENUS, TAMS,
+  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, COMPOSICION, ESTADOS, GRACIA_MIN, MENUS,
   aMin, aguaDe, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, primeraAntesDe, semana, textoResumen, tomasDe,
-  type Estado, type MenuId, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
+  type Composicion, type Estado, type MenuId, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -78,7 +79,7 @@ export default function Nutricion() {
 
   const porDia = new Map(filas.map((r) => [r.day, r.value]))
   porDia.set(date, d)
-  const pesos = [...porDia.entries()].filter(([, v]) => v.peso_kg != null).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5)
+  const pesos = [...porDia.entries()].filter(([, v]) => v.peso_kg != null || Object.values(v.comp ?? {}).some((x) => x != null)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5)
 
   return (
     <div>
@@ -136,7 +137,7 @@ export default function Nutricion() {
                     <td><Link to={`/nutricion/${dia}`}>{fmtDate(dia)}</Link></td>
                     <td><span className={'dot ' + nivelDia(hh, aa)} />{hh.hechas} de {hh.total}</td>
                     <td className="small">{hh.saltadas.length || '—'}</td>
-                    <td className="small">{hh.cenaFin ? <>{hh.cenaOk ? '' : <span className="dot amarillo" />}{hh.cenaFin}</> : '—'}</td>
+                    <td className="small">{hh.cenaFin || hh.cenaIni ? <>{hh.cenaOk === false && <span className="dot amarillo" />}{hh.cenaIni ?? '—'}–{hh.cenaFin ?? '—'}</> : '—'}</td>
                     <td className="small">{aa.min != null ? <>{aa.ok ? '' : <span className="dot amarillo" />}{duracion(aa.min)}</> : '—'}</td>
                   </tr>
                 )
@@ -144,17 +145,30 @@ export default function Nutricion() {
             </tbody>
           </table>
         </div>
-        <p className="muted small">Cena: hora a la que terminaste (máximo {cenaMax}). Ayuno: del final de la cena a la primera toma del día (máximo {ayunoMax} h).</p>
+        <p className="muted small">Cena: hora a la que empezaste y a la que terminaste (máximo {cenaMax}). Ayuno: del final de la cena a la primera toma del día (máximo {ayunoMax} h).</p>
       </Plegable>
 
-      <Plegable id="nutri-peso" title="Peso semanal">
-        <Field label="Peso de hoy (kg)" hint="Una vez por semana, el mismo día y en las mismas condiciones.">
-          <input type="number" inputMode="decimal" step={0.1} min={0} value={d.peso_kg ?? ''} onChange={(e) => set({ peso_kg: e.target.value === '' ? null : Number(e.target.value) })} />
-        </Field>
+      <Plegable id="nutri-peso" title="Peso y composición corporal">
+        <p className="muted small">Una vez por semana, el mismo día y en las mismas condiciones.</p>
+        <div className="grid2">
+          <Field label="Peso (kg)">
+            <input type="number" inputMode="decimal" step={0.1} min={0} value={d.peso_kg ?? ''} onChange={(e) => set({ peso_kg: e.target.value === '' ? null : Number(e.target.value) })} />
+          </Field>
+          {COMPOSICION.map(([k, l, u]) => (
+            <Field key={k} label={`${l} (${u})`}>
+              <input type="number" inputMode="decimal" step={0.1} min={0} value={d.comp?.[k] ?? ''} onChange={(e) => set({ comp: { ...(d.comp ?? {}), [k]: e.target.value === '' ? null : Number(e.target.value) } as Composicion })} />
+            </Field>
+          ))}
+        </div>
         {pesos.length > 0 && (
-          <table className="table">
-            <tbody>{pesos.map(([dia, v]) => <tr key={dia}><td>{fmtDate(dia)}</td><td>{v.peso_kg} kg</td></tr>)}</tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="table nutri-sem">
+              <thead><tr><th>Día</th><th>Peso</th>{COMPOSICION.map(([k, l]) => <th key={k}>{l.replace('Masa g', 'G').replace('Masa m', 'M')}</th>)}</tr></thead>
+              <tbody>{pesos.map(([dia, v]) => (
+                <tr key={dia}><td>{fmtDate(dia)}</td><td>{v.peso_kg != null ? `${v.peso_kg} kg` : '—'}</td>{COMPOSICION.map(([k, , u]) => <td key={k} className="small">{v.comp?.[k] != null ? `${v.comp[k]} ${u}` : '—'}</td>)}</tr>
+              ))}</tbody>
+            </table>
+          </div>
         )}
       </Plegable>
 
@@ -205,24 +219,17 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
         {pendiente && <span className="tag rojo">Pendiente</span>}
         {e === 'no' && <span className="tag rojo">No hecha</span>}
         {e === 'media' && <span className="tag ambar">Media</span>}
-        {(e === 'entera' || e === 'otra') && <span className="tag verde">Hecha</span>}
+        {e === 'tres_cuartos' && <span className="tag verde">¾</span>}
+        {e === 'entera' && <span className="tag verde">Hecha</span>}
       </div>
       {tocaba.length > 0
         ? <ul className="nutri-platos">{tocaba.map((p) => <li key={p}>{p}</li>)}</ul>
         : <p className="muted small">Sin plato en el menú de hoy.</p>}
       <div className="seg" role="group" aria-label={`Cómo ha ido: ${t.nombre}`}>
-        {ESTADOS.map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} onClick={() => marcar(k)}>{l}</button>)}
+        {ESTADOS.map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
       </div>
-      {e === 'otra' && (
-        <div className="depo">
-          <textarea aria-label={`Qué has tomado en ${t.nombre}`} placeholder="Qué has tomado" value={x?.otra?.texto ?? ''} onChange={(ev) => poner({ otra: { ...(x?.otra ?? {}), texto: ev.target.value } })} />
-          <div className="escala-fila">
-            <span>Tamaño aproximado</span>
-            <div className="seg">
-              {TAMS.map(([k, l]) => <button type="button" key={k} className={x?.otra?.tam === k ? 'on' : ''} aria-pressed={x?.otra?.tam === k} onClick={() => poner({ otra: { ...(x?.otra ?? {}), tam: x?.otra?.tam === k ? null : k } })}>{l}</button>)}
-            </div>
-          </div>
-        </div>
+      {t.plato && e !== 'no' && (
+        <Plato veg={x?.plato?.veg} prot={x?.plato?.prot} hid={x?.plato?.hid} onChange={(p) => poner({ plato: { ...(x?.plato ?? {}), ...p } })} />
       )}
       {e !== 'no' && (
         <div className="nutri-horas">

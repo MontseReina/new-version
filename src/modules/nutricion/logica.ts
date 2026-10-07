@@ -16,6 +16,8 @@ export type TomaDef = {
   hasta?: string
   /** Comida principal: guarda también la hora de fin y cuenta para la regla del agua. */
   principal?: boolean
+  /** Lleva el plato dibujado (verdura, proteína e hidratos). */
+  plato?: boolean
 }
 export type Plato = { nombre: string; kcal?: number; calcio_mg?: number; etiquetas?: string[] }
 /** Un plato del menú: su id o, si alterna por semanas del ciclo, el id y la semana (1 o 2). */
@@ -42,10 +44,15 @@ export type NutriCfg = {
   avisos?: Aviso[]
 }
 
-export type Estado = 'entera' | 'media' | 'no' | 'otra'
-export const ESTADOS: [Estado, string][] = [['entera', 'Entera'], ['media', 'Media'], ['no', 'No'], ['otra', 'Otra cosa']]
-export type Tam = 'pequena' | 'normal' | 'grande'
-export const TAMS: [Tam, string][] = [['pequena', 'Pequeña'], ['normal', 'Normal'], ['grande', 'Grande']]
+export type Estado = 'entera' | 'tres_cuartos' | 'media' | 'no'
+export const ESTADOS: [Estado, string][] = [['entera', 'Entera'], ['tres_cuartos', '¾'], ['media', 'Media'], ['no', 'No']]
+/** Plato dibujado: cuánto había de cada parte. 0 nada · 1 poca · 2 la parte que toca · 3 (solo hidratos) más de la que toca. */
+export type PlatoDia = { veg?: number | null; prot?: number | null; hid?: number | null }
+/** Composición corporal de la báscula de bioimpedancia, junto al peso. */
+export type Composicion = { grasa_pct?: number | null; musculo_kg?: number | null; hueso_kg?: number | null; agua_pct?: number | null }
+export const COMPOSICION: [keyof Composicion, string, string][] = [
+  ['grasa_pct', 'Masa grasa', '%'], ['musculo_kg', 'Masa muscular', 'kg'], ['hueso_kg', 'Hueso', 'kg'], ['agua_pct', 'Agua', '%'],
+]
 
 export type TomaDia = {
   estado?: Estado | null
@@ -55,12 +62,13 @@ export type TomaDia = {
   /** Lo que tocaba al registrarla, para que un cambio de menú no reescriba los días pasados. */
   platos?: string[]
   nombres?: string[]
-  otra?: { texto?: string; tam?: Tam | null }
+  plato?: PlatoDia
 }
 export type NutriDia = {
   menu?: MenuId | null
   tomas?: { [id: string]: TomaDia }
   peso_kg?: number | null
+  comp?: Composicion
 }
 
 export const CENA_MAX_POR_DEFECTO = '21:00'
@@ -129,7 +137,7 @@ export function avisosDe(cfg: NutriCfg, date: string): string[] {
 
 // ---------- Registro y horarios ----------
 export const tomasDe = (cfg: NutriCfg | null) => cfg?.tomas ?? []
-export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'media' || t?.estado === 'otra'
+export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'tres_cuartos' || t?.estado === 'media'
 /** Hora límite prevista de una toma, en minutos. */
 export const limite = (t: TomaDef) => aMin(t.hasta) ?? aMin(t.hora)
 /** Hora en la que acaba una toma: el fin si lo guarda, o su inicio. */
@@ -142,7 +150,8 @@ export interface Horarios {
   saltadas: string[]
   /** Hoy: sin registrar y ya pasada su hora. */
   pendientes: string[]
-  /** Fin de la cena y si cumple la hora máxima. `null` = cena sin hora. */
+  /** Inicio y fin de la cena, y si el fin cumple la hora máxima. `null` = sin esa hora. */
+  cenaIni: string | null
   cenaFin: string | null
   cenaOk: boolean | null
 }
@@ -161,7 +170,7 @@ export function horarios(cfg: NutriCfg, d: NutriDia, date: string, hoy: string, 
   const x = cena ? d.tomas?.[cena.id] : undefined
   const fin = hecha(x) ? finDe(x) : null
   const max = aMin(cfg.cena_fin_max ?? CENA_MAX_POR_DEFECTO)!
-  return { hechas, total: defs.length, saltadas, pendientes, cenaFin: fin != null ? aHora(fin) : null, cenaOk: fin != null ? fin <= max : null }
+  return { hechas, total: defs.length, saltadas, pendientes, cenaIni: hecha(x) && aMin(x?.ini) != null ? aHora(aMin(x?.ini)!) : null, cenaFin: fin != null ? aHora(fin) : null, cenaOk: fin != null ? fin <= max : null }
 }
 
 export interface Ayuno {
