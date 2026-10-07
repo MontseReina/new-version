@@ -13,7 +13,7 @@ import type { HidraDia } from '../hidratacion/logica'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, ESTADOS, GRACIA_MIN, MENUS,
   aMin, aguaDe, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, primeraAntesDe, semana, textoResumen, tomasDe,
-  type Estado, type MenuId, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
+  type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
 import { Peso } from './Peso'
 
@@ -117,7 +117,7 @@ export default function Nutricion() {
 
       <fieldset className="sint" disabled={state === 'cargando'}>
         {defs.map((t) => <Ficha key={t.id} t={t} x={d.tomas?.[t.id]} cfg={c} hidra={hidra}
-          tocaba={d.tomas?.[t.id]?.nombres ?? platosDe(c, menu, t.id).map((p) => p.nombre)}
+          tocaba={d.tomas?.[t.id]?.nombres?.map((nombre, i) => ({ id: d.tomas![t.id].platos?.[i] ?? nombre, nombre })) ?? platosDe(c, menu, t.id)}
           pendiente={date === hoy && !d.tomas?.[t.id]?.estado && limite(t) != null && ahoraMin > limite(t)! + GRACIA_MIN}
           esHoy={date === hoy} marcar={(e) => marcar(t, e)} poner={(p) => poner(t, p)} />)}
       </fieldset>
@@ -186,7 +186,7 @@ export default function Nutricion() {
 
 /** Ficha de una toma: lo que tocaba, los cuatro toques y el bloque de horas. */
 function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
-  t: TomaDef; x?: TomaDia; cfg: NutriCfg; hidra: HidraDia | null; tocaba: string[]; pendiente: boolean; esHoy: boolean
+  t: TomaDef; x?: TomaDia; cfg: NutriCfg; hidra: HidraDia | null; tocaba: PlatoHoy[]; pendiente: boolean; esHoy: boolean
   marcar: (e: Estado) => void; poner: (p: TomaDia) => void
 }) {
   const e = x?.estado ?? null
@@ -203,7 +203,26 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
         {e === 'entera' && <span className="tag verde">Hecha</span>}
       </div>
       {tocaba.length > 0
-        ? <ul className="nutri-platos">{tocaba.map((p) => <li key={p}>{p}</li>)}</ul>
+        ? (
+          <ul className="nutri-platos">
+            {tocaba.map((p, i) => {
+              const esPostre = !!t.postre && i > 0 && e !== 'no'
+              const v = x?.postre?.[p.id] ?? null
+              const txt = v === 'si' ? 'tomado' : v === 'no' ? 'no tomado' : 'sin marcar'
+              return (
+                <li key={p.id} className={esPostre ? 'postre' : ''}>
+                  <span>{p.nombre}</span>
+                  {esPostre && (
+                    <button type="button" className={'tri sm ' + (v ?? 'vacio')} title={`Postre ${txt} · toca para cambiar`} aria-label={`${p.nombre}: ${txt}`}
+                      onClick={() => poner({ postre: { ...(x?.postre ?? {}), [p.id]: v === null ? 'si' : v === 'si' ? 'no' : null } })}>
+                      {v === 'si' ? '✓' : v === 'no' ? '✗' : '○'}
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )
         : <p className="muted small">Sin plato en el menú de hoy.</p>}
       <div className="seg" role="group" aria-label={`Cómo ha ido: ${t.nombre}`}>
         {ESTADOS.map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}

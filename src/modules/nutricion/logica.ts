@@ -18,6 +18,8 @@ export type TomaDef = {
   principal?: boolean
   /** Lleva el plato dibujado (verdura, proteína e hidratos). */
   plato?: boolean
+  /** Lo que va después del primer plato es postre y se marca aparte: tomado o no tomado. */
+  postre?: boolean
 }
 export type Plato = { nombre: string; kcal?: number; calcio_mg?: number; etiquetas?: string[] }
 /** Un plato del menú: su id o, si alterna por semanas del ciclo, el id y la semana (1 o 2). */
@@ -58,6 +60,8 @@ export type TomaDia = {
   platos?: string[]
   nombres?: string[]
   plato?: PlatoDia
+  /** Postres de la toma, por id de plato: `si` tomado, `no` no tomado. */
+  postre?: { [id: string]: 'si' | 'no' | null }
 }
 export type NutriDia = {
   menu?: MenuId | null
