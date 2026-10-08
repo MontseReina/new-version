@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Field } from '../../components/ui'
-import { GRUPOS_BASE, conOpciones, idLibre, leerGrupos, type Grupo, type TipoGrupo } from './logica'
+import { GRUPOS_BASE, conOpciones, idLibre, leerGrupos, tieneEscala, type Grupo, type TipoGrupo } from './logica'
 
 const TIPOS: [TipoGrupo, string][] = [['varias', 'Varias opciones'], ['una', 'Una sola opción'], ['detalle', 'Varias, con hora, gravedad y urgencias'], ['escala', 'Escala de 0 a 10']]
 const FIJOS: { [t in TipoGrupo]?: string } = { hambre: 'Bloque de hambre', heces: 'Bloque de heces', micciones: 'Bloque de micciones', texto: 'Texto libre' }
@@ -64,7 +64,13 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
               </select>
             </div>
           )}
-          {g.tipo === 'escala' && (
+          {(g.tipo === 'una' || g.tipo === 'varias') && (
+            <label className="check small" style={{ borderBottom: 'none' }}>
+              <input type="checkbox" checked={!!g.con_escala} onChange={(e) => cambia(g.id, { con_escala: e.target.checked || undefined })} />
+              <span>Añadir debajo una escala de 0 a 10</span>
+            </label>
+          )}
+          {tieneEscala(g) && (
             <div className="grid2" style={{ marginTop: '.4rem' }}>
               <Field label="Qué significa el 0"><input type="text" defaultValue={g.min_txt ?? ''} key={'min' + (g.min_txt ?? '')} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (g.min_txt ?? '')) cambia(g.id, { min_txt: v || undefined }) }} /></Field>
               <Field label="Qué significa el 10"><input type="text" defaultValue={g.max_txt ?? ''} key={'max' + (g.max_txt ?? '')} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (g.max_txt ?? '')) cambia(g.id, { max_txt: v || undefined }) }} /></Field>

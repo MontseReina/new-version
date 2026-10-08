@@ -6,7 +6,7 @@ import { addDays, fmtDate, todayStr } from '../../lib/dates'
 import { listDaily, type Daily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { DIAS, MOMENTOS, VIAS, agendados, clave, conCambio, cumplimiento, delDia, diasDesde, esAgendado, mismaPauta, momentosDe, nivel, periodicos, proxima, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
+import { DIAS, MOMENTOS, VIAS, agendados, avisosDe, clave, conCambio, cumplimiento, delDia, diasDesde, enDias, esAgendado, mismaPauta, momentosDe, nivel, periodicos, proxima, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
 
 const nuevoId = () => Math.random().toString(36).slice(2, 10)
 
@@ -78,8 +78,8 @@ export default function Suplementos() {
     const sinMarcar = (p.fechas ?? []).filter((f) => f < date && f >= addDays(date, -90) && !marcado(f))
     return { prox: proxima(p, date), ultima, sinMarcar }
   }
-  const cuando = (f: string) => { const n = diasDesde(f, date) ?? 0; return n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días` }
-  const avisos = age.filter((p) => !tomas[p.id] && (p.fechas ?? []).some((f) => f === date || f === addDays(date, 1)))
+  const cuando = (f: string) => enDias(diasDesde(f, date) ?? 0)
+  const avisos = avisosDe(lista, d, date)
 
   const esHoy = date === todayStr()
   const estado = state === 'cargando' ? 'Cargando…' : state === 'guardando' ? 'Guardando…' : state === 'error' ? 'Sin guardar' : 'Guardado'
@@ -87,7 +87,7 @@ export default function Suplementos() {
     retirando === p.id ? (
       <span className="small">¿Retirar de la pauta? <button type="button" className="linkbtn" onClick={() => retirar(p)}>Sí, retirar</button> · <button type="button" className="linkbtn" onClick={() => setRetirando(null)}>No</button></span>
     ) : (
-      <span className="small"><button type="button" className="linkbtn" onClick={() => setEditando(original(p))}>Cambiar</button> · <button type="button" className="linkbtn" onClick={() => setRetirando(p.id)}>Retirar</button></span>
+      <span className="small"><button type="button" className="linkbtn" onClick={() => setEditando(original(p))}>Modificar</button> · <button type="button" className="linkbtn" onClick={() => setRetirando(p.id)}>Retirar</button></span>
     )
   /** El producto tal como está hoy en la lista (la tabla puede enseñar la pauta de un día pasado). */
   const original = (p: Producto) => lista.find((x) => x.id === p.id) ?? p
@@ -104,8 +104,8 @@ export default function Suplementos() {
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
       {editando && <Formulario key={editando === 'nuevo' ? 'nuevo' : editando.id} producto={editando === 'nuevo' ? null : editando} guardar={guardarProducto} cancelar={() => setEditando(null)} />}
-      {avisos.map((p) => (
-        <div className="notice" key={p.id}><strong>{p.fechas!.includes(date) ? (esHoy ? 'Hoy toca' : 'Este día tocaba') : 'Mañana toca'}: {p.nombre}.</strong> {p.nota}</div>
+      {avisos.map(({ p, faltan }) => (
+        <div className="notice" key={p.id}><strong>{faltan === 0 ? (esHoy ? 'Hoy toca' : 'Este día tocaba') : faltan === 1 ? 'Mañana toca' : `En ${faltan} días toca`}: {p.nombre}.</strong> {faltan > 0 && `Es el ${fmtDate(proxima(p, date))}. `}{p.nota}</div>
       ))}
       {pendientes.map((p) => {
         const e = estadoPeriodico(p)
@@ -124,9 +124,45 @@ export default function Suplementos() {
         </div>
       )}
 
+      {age.length > 0 && (
+        <Section title="Con fecha" open>
+          <p className="muted small">Lo que se administra en días concretos. Pon aquí las fechas que te den; la app avisa desde dos días antes.</p>
+          {age.map((p) => {
+            const e = estadoAgendado(p)
+            const futuras = (p.fechas ?? []).filter((f) => f >= date)
+            const nueva = fechaNueva[p.id] ?? ''
+            return (
+              <div className={'tri-row ' + (tomas[p.id] ?? '')} key={p.id}>
+                <TriButton value={tomas[p.id] ?? null} onChange={(v) => marcar(p.id, v)} label={p.nombre} />
+                <div>
+                  <div onClick={() => setEditando(p)} style={{ cursor: 'pointer' }}><strong>{p.nombre}</strong>{detalle(p) ? <span className="lbl"> · {detalle(p)}</span> : null}</div>
+                  {p.nota && <div className="muted small">{p.nota}</div>}
+                  <div className="small">{e.prox ? <>Próxima: <strong>{fmtDate(e.prox)}</strong> ({cuando(e.prox)})</> : <span className="muted">Sin próxima fecha puesta</span>}</div>
+                  <div className="muted small">{e.ultima ? `Última hecha: ${fmtDate(e.ultima)}` : 'Ninguna hecha todavía'}{e.sinMarcar.length > 0 ? ` · sin marcar: ${e.sinMarcar.map((f) => fmtDate(f)).join(', ')}` : ''}</div>
+                  {futuras.length > 0 && (
+                    <div className="chips" style={{ margin: '.4rem 0' }}>
+                      {futuras.map((f) => (
+                        <span className="chip" key={f} style={{ cursor: 'default' }}>
+                          {fmtDate(f)} <button type="button" className="quitar" aria-label={`Quitar el ${fmtDate(f)}`} onClick={() => ponerFechas(p, (p.fechas ?? []).filter((x) => x !== f))}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <form className="row" style={{ margin: '.4rem 0' }} onSubmit={(ev) => { ev.preventDefault(); if (nueva) { ponerFechas(p, [...(p.fechas ?? []), nueva]); setFechaNueva((x) => ({ ...x, [p.id]: '' })) } }}>
+                    <input type="date" aria-label={`Fecha nueva de ${p.nombre}`} style={{ width: '10.5rem' }} value={nueva} onChange={(ev) => setFechaNueva((x) => ({ ...x, [p.id]: ev.target.value }))} />
+                    <button className="btn sm secondary" disabled={!nueva}>Añadir fecha</button>
+                  </form>
+                  {retirarLink(p)}
+                </div>
+              </div>
+            )
+          })}
+        </Section>
+      )}
+
       {hoy.length > 0 && (
         <Section title={esHoy ? 'Tomas de hoy' : `Tomas del ${fmtDate(date)}`} open>
-          <p className="muted small">Un toque: ✓ tomado · dos: ✗ no tomado · tres: NP no precisa. Toca el nombre de un momento para marcar toda su columna. Para pasar un producto a otro momento, toca «Cambiar».</p>
+          <p className="muted small">Un toque: ✓ tomado · dos: ✗ no tomado · tres: NP no precisa. Toca el nombre de un momento para marcar toda su columna. Para pasar un producto a otro momento, toca «Modificar».</p>
           <div className="table-wrap">
             <table className="table tomas">
               <thead>
@@ -160,42 +196,6 @@ export default function Suplementos() {
               </tbody>
             </table>
           </div>
-        </Section>
-      )}
-
-      {age.length > 0 && (
-        <Section title="Con fecha" open>
-          <p className="muted small">Lo que se administra en días concretos. Pon aquí las fechas que te den; la app avisa la víspera y el mismo día.</p>
-          {age.map((p) => {
-            const e = estadoAgendado(p)
-            const futuras = (p.fechas ?? []).filter((f) => f >= date)
-            const nueva = fechaNueva[p.id] ?? ''
-            return (
-              <div className={'tri-row ' + (tomas[p.id] ?? '')} key={p.id}>
-                <TriButton value={tomas[p.id] ?? null} onChange={(v) => marcar(p.id, v)} label={p.nombre} />
-                <div>
-                  <div onClick={() => setEditando(p)} style={{ cursor: 'pointer' }}><strong>{p.nombre}</strong>{detalle(p) ? <span className="lbl"> · {detalle(p)}</span> : null}</div>
-                  {p.nota && <div className="muted small">{p.nota}</div>}
-                  <div className="small">{e.prox ? <>Próxima: <strong>{fmtDate(e.prox)}</strong> ({cuando(e.prox)})</> : <span className="muted">Sin próxima fecha puesta</span>}</div>
-                  <div className="muted small">{e.ultima ? `Última hecha: ${fmtDate(e.ultima)}` : 'Ninguna hecha todavía'}{e.sinMarcar.length > 0 ? ` · sin marcar: ${e.sinMarcar.map((f) => fmtDate(f)).join(', ')}` : ''}</div>
-                  {futuras.length > 0 && (
-                    <div className="chips" style={{ margin: '.4rem 0' }}>
-                      {futuras.map((f) => (
-                        <span className="chip" key={f} style={{ cursor: 'default' }}>
-                          {fmtDate(f)} <button type="button" className="quitar" aria-label={`Quitar el ${fmtDate(f)}`} onClick={() => ponerFechas(p, (p.fechas ?? []).filter((x) => x !== f))}>×</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <form className="row" style={{ margin: '.4rem 0' }} onSubmit={(ev) => { ev.preventDefault(); if (nueva) { ponerFechas(p, [...(p.fechas ?? []), nueva]); setFechaNueva((x) => ({ ...x, [p.id]: '' })) } }}>
-                    <input type="date" aria-label={`Fecha nueva de ${p.nombre}`} style={{ width: '10.5rem' }} value={nueva} onChange={(ev) => setFechaNueva((x) => ({ ...x, [p.id]: ev.target.value }))} />
-                    <button className="btn sm secondary" disabled={!nueva}>Añadir fecha</button>
-                  </form>
-                  {retirarLink(p)}
-                </div>
-              </div>
-            )
-          })}
         </Section>
       )}
 

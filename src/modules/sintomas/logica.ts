@@ -17,7 +17,9 @@ export type Grupo = {
   opciones?: Opcion[]
   /** En grupos 'varias': la primera opción significa «nada» y quita las demás. */
   neutra?: boolean
-  /** En grupos 'escala': qué significan el 0 y el 10. */
+  /** En grupos 'una' y 'varias': además de las opciones, una escala de 0 a 10 debajo. */
+  con_escala?: boolean
+  /** En grupos con escala: qué significan el 0 y el 10. */
   min_txt?: string
   max_txt?: string
 }
@@ -74,6 +76,8 @@ export const GRUPOS_BASE: Grupo[] = [
   { id: 'cabello', nombre: 'Cabello', tipo: 'varias', neutra: true, opciones: op('Normal', 'Bonito', 'Seco', 'Encrespado', 'Con caída', 'Cuero cabelludo graso', 'Cuero cabelludo seco') },
   { id: 'otros', nombre: 'Otros signos y síntomas', tipo: 'texto' },
 ]
+/** ¿Lleva el grupo una escala de 0 a 10 (sola o debajo de sus opciones)? */
+export const tieneEscala = (g: Grupo) => g.tipo === 'escala' || ((g.tipo === 'una' || g.tipo === 'varias') && !!g.con_escala)
 export const gruposDe = (c: SintCfg | null) => c?.grupos ?? GRUPOS_BASE
 
 /** Marca o desmarca una opción respetando el tipo del grupo y su opción neutra. */
@@ -94,7 +98,7 @@ export const ORINA_NOMBRES = ['Transparente', 'Muy claro', 'Amarillo', 'Amarillo
 /** ¿Está respondido el grupo? `null` = no pide respuesta diaria (solo se marca si pasa algo). */
 export function respondido(g: Grupo, d: SintDia): boolean | null {
   switch (g.tipo) {
-    case 'una': return (d.sel?.[g.id]?.length ?? 0) > 0
+    case 'una': return (d.sel?.[g.id]?.length ?? 0) > 0 || (!!g.con_escala && d.escala?.[g.id] != null)
     case 'escala': return d.escala?.[g.id] != null
     case 'varias': return g.neutra ? (d.sel?.[g.id]?.length ?? 0) > 0 : null
     case 'hambre': return !!d.sin_hambre || COMIDAS.every(([k]) => d.hambre?.[k] != null)
@@ -120,7 +124,7 @@ export function leerGrupos(texto: string): Grupo[] | null {
   const lista = Array.isArray(x) ? x : (x as { grupos?: unknown } | null)?.grupos
   if (!Array.isArray(lista) || !lista.length) return null
   const out: Grupo[] = []
-  for (const g of lista as { id?: unknown; nombre?: unknown; tipo?: unknown; neutra?: unknown; opciones?: unknown; min_txt?: unknown; max_txt?: unknown }[]) {
+  for (const g of lista as { id?: unknown; nombre?: unknown; tipo?: unknown; neutra?: unknown; opciones?: unknown; min_txt?: unknown; max_txt?: unknown; con_escala?: unknown }[]) {
     if (!g || typeof g.nombre !== 'string' || !g.nombre.trim()) return null
     const tipo: TipoGrupo = TIPOS.includes(g.tipo as TipoGrupo) ? (g.tipo as TipoGrupo) : 'varias'
     const id = typeof g.id === 'string' && g.id ? g.id : idLibre(g.nombre, out.map((o) => o.id))
@@ -134,7 +138,8 @@ export function leerGrupos(texto: string): Grupo[] | null {
     }
     if (conOpciones(tipo) && !opciones.length) return null
     const txt = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
-    const extremos = tipo === 'escala' ? { ...(txt(g.min_txt) ? { min_txt: txt(g.min_txt) } : {}), ...(txt(g.max_txt) ? { max_txt: txt(g.max_txt) } : {}) } : {}
+    const mixto = (tipo === 'una' || tipo === 'varias') && !!g.con_escala
+    const extremos = tipo === 'escala' || mixto ? { ...(mixto ? { con_escala: true } : {}), ...(txt(g.min_txt) ? { min_txt: txt(g.min_txt) } : {}), ...(txt(g.max_txt) ? { max_txt: txt(g.max_txt) } : {}) } : {}
     // Una escala conserva las opciones que tuvo el grupo: así lo ya registrado con ellas se sigue leyendo.
     out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) || (tipo === 'escala' && opciones.length) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}), ...extremos })
   }

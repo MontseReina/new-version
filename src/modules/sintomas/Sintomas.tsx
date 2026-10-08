@@ -7,7 +7,7 @@ import { useSettings } from '../../store/useSettings'
 import Ciclo from '../ciclo/Ciclo'
 import { Bristol } from './Bristol'
 import { Editor } from './Editor'
-import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, cumplimiento, gruposDe, nivel, type Deposicion, type Detalle, type Grupo, type SintCfg, type SintDia } from './logica'
+import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, cumplimiento, gruposDe, nivel, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintCfg, type SintDia } from './logica'
 
 const DIEZ = Array.from({ length: 10 }, (_, i) => i + 1)
 const ahora = () => new Date().toTimeString().slice(0, 5)
@@ -38,6 +38,17 @@ export default function Sintomas() {
   const heces = d.heces ?? []
   const ponerDepo = (i: number, patch: Deposicion) => set({ heces: heces.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
 
+  const escala = (g: Grupo) => {
+    const v = d.escala?.[g.id]
+    return (
+      <>
+        <div className="seg escala fina" role="group" aria-label={`${g.nombre}, de 0 a 10`}>
+          {[0, ...DIEZ].map((n) => <button type="button" key={n} className={v === n ? 'on' : ''} aria-pressed={v === n} onClick={() => set({ escala: { ...(d.escala ?? {}), [g.id]: v === n ? null : n } })}>{n}</button>)}
+        </div>
+        {(g.min_txt || g.max_txt) && <div className="muted small" style={{ marginTop: '.3rem' }}>{[g.min_txt && `0 ${g.min_txt}`, g.max_txt && `10 ${g.max_txt}`].filter(Boolean).join(' · ')}</div>}
+      </>
+    )
+  }
   const bloque = (g: Grupo) => {
     switch (g.tipo) {
       case 'hambre':
@@ -103,17 +114,8 @@ export default function Sintomas() {
             </div>
           </>
         )
-      case 'escala': {
-        const v = d.escala?.[g.id]
-        return (
-          <>
-            <div className="seg escala fina" role="group" aria-label={`${g.nombre}, de 0 a 10`}>
-              {[0, ...DIEZ].map((n) => <button type="button" key={n} className={v === n ? 'on' : ''} aria-pressed={v === n} onClick={() => set({ escala: { ...(d.escala ?? {}), [g.id]: v === n ? null : n } })}>{n}</button>)}
-            </div>
-            {(g.min_txt || g.max_txt) && <div className="muted small" style={{ marginTop: '.3rem' }}>{[g.min_txt && `0 ${g.min_txt}`, g.max_txt && `10 ${g.max_txt}`].filter(Boolean).join(' · ')}</div>}
-          </>
-        )
-      }
+      case 'escala':
+        return escala(g)
       case 'texto':
         return <textarea aria-label={g.nombre} placeholder="Escribe lo que quieras anotar de hoy" value={d.texto?.[g.id] ?? ''} onChange={(e) => set({ texto: { ...(d.texto ?? {}), [g.id]: e.target.value } })} />
       default: {
@@ -127,6 +129,7 @@ export default function Sintomas() {
               })}
               {!g.opciones?.length && <span className="muted small">Sin opciones todavía. Añádelas en «Editar grupos».</span>}
             </div>
+            {tieneEscala(g) && <div style={{ marginTop: '.6rem' }}>{escala(g)}</div>}
             {g.tipo === 'detalle' && (g.opciones ?? []).filter((o) => marcadas.includes(o.id)).map((o) => {
               const x = d.det?.[g.id]?.[o.id] ?? {}
               return (

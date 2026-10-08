@@ -5,7 +5,7 @@ import { useSettings } from '../../store/useSettings'
 import { FASES, infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import { objetivo, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
-import { COMIDAS, conOpciones, gruposDe, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
+import { COMIDAS, conOpciones, gruposDe, tieneEscala, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
 import { MOMENTOS, cumplimiento, vigente, type SuplCfg, type SuplDia } from '../suplementos/logica'
 import { pendientesDe, type Pregunta } from './store'
 
@@ -61,11 +61,11 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
   const filas: [string, string][] = []
   for (const g of grupos) {
     if (conOpciones(g.tipo)) { const t = diasPorOpcion(g, dias); if (t) filas.push([g.nombre, t]) }
-    if (g.tipo === 'escala') {
-      const antes = diasPorOpcion(g, dias)
+    if (tieneEscala(g)) {
+      const antes = g.tipo === 'escala' ? diasPorOpcion(g, dias) : ''
       if (antes) filas.push([`${g.nombre} (registro anterior)`, antes])
       const xs = dias.map((d) => d.value.escala?.[g.id]).filter((x): x is number => x != null)
-      if (xs.length) filas.push([g.nombre, `Media ${dec(media(xs))} de 0 a 10 (${pl(xs.length, 'día', 'días')})${g.min_txt ? ` · 0 ${g.min_txt}` : ''}${g.max_txt ? ` · 10 ${g.max_txt}` : ''}`])
+      if (xs.length) filas.push([g.tipo === 'escala' ? g.nombre : `${g.nombre} (escala)`, `Media ${dec(media(xs))} de 0 a 10 (${pl(xs.length, 'día', 'días')})${g.min_txt ? ` · 0 ${g.min_txt}` : ''}${g.max_txt ? ` · 10 ${g.max_txt}` : ''}`])
     }
     if (g.tipo === 'hambre') {
       const t = COMIDAS.map(([k, n]) => {

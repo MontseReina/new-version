@@ -94,6 +94,17 @@ export const delDia = (l: Producto[], date: string) =>
 export const periodicos = (l: Producto[], date: string) => l.filter((p) => vigente(p, date) && esPeriodico(p))
 export const agendados = (l: Producto[], date: string) => l.filter((p) => vigente(p, date) && esAgendado(p))
 /** Primera fecha puesta desde `date` (incluida), o `null`. */
+/** Con cuántos días de antelación se avisa de lo que tiene fecha. */
+export const AVISO_DIAS = 2
+/** Lo que tiene fecha entre `date` y los días de aviso, sin marcar ese día: producto y días que faltan. */
+export function avisosDe(l: Producto[], d: SuplDia, date: string) {
+  return agendados(l, date).flatMap((p) => {
+    const f = proxima(p, date)
+    const faltan = f ? diffDays(f, date) : null
+    return faltan != null && faltan <= AVISO_DIAS && !d.tomas?.[p.id] ? [{ p, faltan }] : []
+  })
+}
+export const enDias = (n: number) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`)
 export const proxima = (p: Producto, date: string) => [...(p.fechas ?? [])].sort().find((f) => f >= date) ?? null
 
 export const clave = (p: Producto, momento: string) => p.id + ':' + momento
