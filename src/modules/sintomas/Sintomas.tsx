@@ -103,6 +103,17 @@ export default function Sintomas() {
             </div>
           </>
         )
+      case 'escala': {
+        const v = d.escala?.[g.id]
+        return (
+          <>
+            <div className="seg escala fina" role="group" aria-label={`${g.nombre}, de 0 a 10`}>
+              {[0, ...DIEZ].map((n) => <button type="button" key={n} className={v === n ? 'on' : ''} aria-pressed={v === n} onClick={() => set({ escala: { ...(d.escala ?? {}), [g.id]: v === n ? null : n } })}>{n}</button>)}
+            </div>
+            {(g.min_txt || g.max_txt) && <div className="muted small" style={{ marginTop: '.3rem' }}>{[g.min_txt && `0 ${g.min_txt}`, g.max_txt && `10 ${g.max_txt}`].filter(Boolean).join(' · ')}</div>}
+          </>
+        )
+      }
       case 'texto':
         return <textarea aria-label={g.nombre} placeholder="Escribe lo que quieras anotar de hoy" value={d.texto?.[g.id] ?? ''} onChange={(e) => set({ texto: { ...(d.texto ?? {}), [g.id]: e.target.value } })} />
       default: {

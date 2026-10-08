@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Field } from '../../components/ui'
 import { GRUPOS_BASE, conOpciones, idLibre, leerGrupos, type Grupo, type TipoGrupo } from './logica'
 
-const TIPOS: [TipoGrupo, string][] = [['varias', 'Varias opciones'], ['una', 'Una sola opción'], ['detalle', 'Varias, con hora, gravedad y urgencias']]
+const TIPOS: [TipoGrupo, string][] = [['varias', 'Varias opciones'], ['una', 'Una sola opción'], ['detalle', 'Varias, con hora, gravedad y urgencias'], ['escala', 'Escala de 0 a 10']]
 const FIJOS: { [t in TipoGrupo]?: string } = { hambre: 'Bloque de hambre', heces: 'Bloque de heces', micciones: 'Bloque de micciones', texto: 'Texto libre' }
 
 /** Edición de los grupos y sus opciones. La lista se guarda en los ajustes de la usuaria. */
@@ -19,6 +19,13 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
     const [g] = l.splice(i, 1)
     l.splice(i + n, 0, g)
     guardar(l)
+  }
+  /** Adelanta una opción un puesto. */
+  const moverOpcion = (g: Grupo, k: number) => {
+    const ops = [...(g.opciones ?? [])]
+    const [o] = ops.splice(k, 1)
+    ops.splice(k - 1, 0, o)
+    cambia(g.id, { opciones: ops })
   }
   const anadirOpcion = (g: Grupo) => {
     const nombre = (nuevas[g.id] ?? '').trim()
@@ -49,19 +56,26 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
             <button type="button" className="btn sm ghost" aria-label="Subir" disabled={i === 0} onClick={() => mover(i, -1)}>↑</button>
             <button type="button" className="btn sm ghost" aria-label="Bajar" disabled={i === grupos.length - 1} onClick={() => mover(i, 1)}>↓</button>
           </div>
-          {!conOpciones(g.tipo) && <div className="muted small" style={{ marginTop: '.3rem' }}>{FIJOS[g.tipo]}: se puede mover, renombrar o quitar.</div>}
-          {conOpciones(g.tipo) && (
+          {!conOpciones(g.tipo) && g.tipo !== 'escala' && <div className="muted small" style={{ marginTop: '.3rem' }}>{FIJOS[g.tipo]}: se puede mover, renombrar o quitar.</div>}
+          {(conOpciones(g.tipo) || g.tipo === 'escala') && (
             <div className="row" style={{ marginTop: '.4rem' }}>
               <select aria-label="Tipo de grupo" value={g.tipo} style={{ flex: 1, minWidth: '10rem' }} onChange={(e) => cambia(g.id, { tipo: e.target.value as TipoGrupo })}>
                 {TIPOS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </select>
             </div>
           )}
+          {g.tipo === 'escala' && (
+            <div className="grid2" style={{ marginTop: '.4rem' }}>
+              <Field label="Qué significa el 0"><input type="text" defaultValue={g.min_txt ?? ''} key={'min' + (g.min_txt ?? '')} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (g.min_txt ?? '')) cambia(g.id, { min_txt: v || undefined }) }} /></Field>
+              <Field label="Qué significa el 10"><input type="text" defaultValue={g.max_txt ?? ''} key={'max' + (g.max_txt ?? '')} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (g.max_txt ?? '')) cambia(g.id, { max_txt: v || undefined }) }} /></Field>
+            </div>
+          )}
           {conOpciones(g.tipo) && (
             <>
               <div className="chips" style={{ marginTop: '.5rem' }}>
-                {(g.opciones ?? []).map((o) => (
+                {(g.opciones ?? []).map((o, k) => (
                   <span className="chip" key={o.id} style={{ cursor: 'default' }}>
+                    {k > 0 && <button type="button" className="quitar" style={{ padding: '0 .2rem 0 0' }} aria-label={`Mover ${o.nombre} antes`} title="Mover antes" onClick={() => moverOpcion(g, k)}>‹</button>}
                     {o.nombre} <button type="button" className="quitar" aria-label={`Quitar ${o.nombre}`} onClick={() => cambia(g.id, { opciones: g.opciones!.filter((x) => x.id !== o.id) })}>×</button>
                   </span>
                 ))}

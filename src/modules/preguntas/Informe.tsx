@@ -61,6 +61,12 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
   const filas: [string, string][] = []
   for (const g of grupos) {
     if (conOpciones(g.tipo)) { const t = diasPorOpcion(g, dias); if (t) filas.push([g.nombre, t]) }
+    if (g.tipo === 'escala') {
+      const antes = diasPorOpcion(g, dias)
+      if (antes) filas.push([`${g.nombre} (registro anterior)`, antes])
+      const xs = dias.map((d) => d.value.escala?.[g.id]).filter((x): x is number => x != null)
+      if (xs.length) filas.push([g.nombre, `Media ${dec(media(xs))} de 0 a 10 (${pl(xs.length, 'día', 'días')})${g.min_txt ? ` · 0 ${g.min_txt}` : ''}${g.max_txt ? ` · 10 ${g.max_txt}` : ''}`])
+    }
     if (g.tipo === 'hambre') {
       const t = COMIDAS.map(([k, n]) => {
         const xs = dias.map((d) => d.value.hambre?.[k]).filter((x): x is number => x != null)
@@ -172,7 +178,7 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
             {productos.map((p) => (
               <tr key={p.id}>
                 <td>{p.nombre}</td>
-                <td className="small">{[p.dosis, p.cada_dias ? `cada ${p.cada_dias} días` : (p.momentos ?? []).map((m) => MOMENTO[m] ?? m).join(', '), p.via && p.via !== 'Oral' ? p.via : '', p.pautado_por].filter(Boolean).join(' · ')}</td>
+                <td className="small">{[p.dosis, p.fechas ? 'en fechas concretas' : p.cada_dias ? `cada ${p.cada_dias} días` : (p.momentos ?? []).map((m) => MOMENTO[m] ?? m).join(', '), p.via && p.via !== 'Oral' ? p.via : '', p.pautado_por].filter(Boolean).join(' · ')}</td>
               </tr>
             ))}
           </tbody></table>

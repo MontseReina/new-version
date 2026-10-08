@@ -5,9 +5,9 @@ export type Opcion = { id: string; nombre: string }
 /**
  * 'una': se elige una opción · 'varias': las que hagan falta · 'detalle': varias, y cada una
  * marcada pide hora, gravedad y si hubo ingreso en urgencias · 'hambre', 'heces', 'micciones':
- * bloques fijos · 'texto': texto libre.
+ * bloques fijos · 'texto': texto libre · 'escala': un número de 0 a 10.
  */
-export type TipoGrupo = 'una' | 'varias' | 'detalle' | 'hambre' | 'heces' | 'micciones' | 'texto'
+export type TipoGrupo = 'una' | 'varias' | 'detalle' | 'escala' | 'hambre' | 'heces' | 'micciones' | 'texto'
 export const CON_OPCIONES: TipoGrupo[] = ['una', 'varias', 'detalle']
 export const conOpciones = (t: TipoGrupo) => CON_OPCIONES.includes(t)
 export type Grupo = {
@@ -17,6 +17,9 @@ export type Grupo = {
   opciones?: Opcion[]
   /** En grupos 'varias': la primera opción significa «nada» y quita las demás. */
   neutra?: boolean
+  /** En grupos 'escala': qué significan el 0 y el 10. */
+  min_txt?: string
+  max_txt?: string
 }
 export type SintCfg = { grupos?: Grupo[] }
 
@@ -40,6 +43,8 @@ export type SintDia = {
   /** Color de la orina, de 1 (transparente) a 6 (marrón o rojizo). */
   orina_color?: number | null
   orina_olor?: boolean | null
+  /** Valor de 0 a 10 de los grupos 'escala'. */
+  escala?: { [grupo: string]: number | null }
   /** Texto libre de los grupos 'texto'. */
   texto?: { [grupo: string]: string }
 }
@@ -90,6 +95,7 @@ export const ORINA_NOMBRES = ['Transparente', 'Muy claro', 'Amarillo', 'Amarillo
 export function respondido(g: Grupo, d: SintDia): boolean | null {
   switch (g.tipo) {
     case 'una': return (d.sel?.[g.id]?.length ?? 0) > 0
+    case 'escala': return d.escala?.[g.id] != null
     case 'varias': return g.neutra ? (d.sel?.[g.id]?.length ?? 0) > 0 : null
     case 'hambre': return !!d.sin_hambre || COMIDAS.every(([k]) => d.hambre?.[k] != null)
     case 'heces': return !!d.sin_heces || (d.heces?.length ?? 0) > 0
@@ -106,7 +112,7 @@ export function cumplimiento(grupos: Grupo[], d: SintDia) {
 }
 export const nivel = (pct: number) => (pct >= 0.9 ? 'verde' : pct >= 0.5 ? 'amarillo' : 'rojo') as 'verde' | 'amarillo' | 'rojo'
 
-const TIPOS: TipoGrupo[] = ['una', 'varias', 'detalle', 'hambre', 'heces', 'micciones', 'texto']
+const TIPOS: TipoGrupo[] = ['una', 'varias', 'detalle', 'escala', 'hambre', 'heces', 'micciones', 'texto']
 /** Comprueba una configuración pegada a mano y la deja limpia. `null` si no vale. */
 export function leerGrupos(texto: string): Grupo[] | null {
   let x: unknown
@@ -114,7 +120,7 @@ export function leerGrupos(texto: string): Grupo[] | null {
   const lista = Array.isArray(x) ? x : (x as { grupos?: unknown } | null)?.grupos
   if (!Array.isArray(lista) || !lista.length) return null
   const out: Grupo[] = []
-  for (const g of lista as { id?: unknown; nombre?: unknown; tipo?: unknown; neutra?: unknown; opciones?: unknown }[]) {
+  for (const g of lista as { id?: unknown; nombre?: unknown; tipo?: unknown; neutra?: unknown; opciones?: unknown; min_txt?: unknown; max_txt?: unknown }[]) {
     if (!g || typeof g.nombre !== 'string' || !g.nombre.trim()) return null
     const tipo: TipoGrupo = TIPOS.includes(g.tipo as TipoGrupo) ? (g.tipo as TipoGrupo) : 'varias'
     const id = typeof g.id === 'string' && g.id ? g.id : idLibre(g.nombre, out.map((o) => o.id))
@@ -127,7 +133,10 @@ export function leerGrupos(texto: string): Grupo[] | null {
       opciones.push({ id: oid, nombre: nombre.trim() })
     }
     if (conOpciones(tipo) && !opciones.length) return null
-    out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}) })
+    const txt = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
+    const extremos = tipo === 'escala' ? { ...(txt(g.min_txt) ? { min_txt: txt(g.min_txt) } : {}), ...(txt(g.max_txt) ? { max_txt: txt(g.max_txt) } : {}) } : {}
+    // Una escala conserva las opciones que tuvo el grupo: así lo ya registrado con ellas se sigue leyendo.
+    out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) || (tipo === 'escala' && opciones.length) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}), ...extremos })
   }
   return out
 }
