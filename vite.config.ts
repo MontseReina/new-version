@@ -31,7 +31,7 @@ export default defineConfig({
         versionJson(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['icon.svg'],
+          includeAssets: ['icon.svg', 'apple-touch-icon.png'],
           manifest: {
             name: 'New Version',
             short_name: 'New Version',
@@ -41,7 +41,12 @@ export default defineConfig({
             display: 'standalone',
             background_color: '#FFFAF2',
             theme_color: '#CCDEDF',
-            icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
+            icons: [
+              { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+              { src: 'pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+              { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+              { src: 'pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            ],
           },
           workbox: {
             globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
