@@ -136,7 +136,9 @@ export function avisosDe(cfg: NutriCfg, date: string): string[] {
 
 // ---------- Registro y horarios ----------
 export const tomasDe = (cfg: NutriCfg | null) => cfg?.tomas ?? []
-export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'tres_cuartos' || t?.estado === 'media'
+/** Anotada sin decir cuánto: tiene escrito lo que ha tomado o alguna hora, pero ningún estado marcado. */
+export const anotada = (t?: TomaDia) => !!t && !t.estado && (!!t.otro?.trim() || aMin(t.ini) != null || aMin(t.fin) != null)
+export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'tres_cuartos' || t?.estado === 'media' || anotada(t)
 /** Hora límite prevista de una toma, en minutos. */
 export const limite = (t: TomaDef) => aMin(t.hasta) ?? aMin(t.hora)
 /** Hora en la que acaba una toma: el fin si lo guarda, o su inicio. */
@@ -193,6 +195,22 @@ export function ayuno(cfg: NutriCfg, ayer: NutriDia | null, d: NutriDia): Ayuno 
   const tope = fin + max - 1440
   const min = ini != null ? ini + 1440 - fin : null
   return { min, antesDe: tope >= 0 ? aHora(tope) : null, ok: min != null ? min <= max : null }
+}
+
+export interface Ultima { nombre: string; hora: string; ayer: boolean; minutos: number }
+/** La última comida con hora: la más tardía de hoy que ya haya pasado; si hoy no hay ninguna, la más tardía de ayer
+ *  (la cena, si está registrada). `minutos` = los que han pasado hasta `ahoraMin`. */
+export function ultimaComida(cfg: NutriCfg, ayer: NutriDia | null, d: NutriDia, ahoraMin: number): Ultima | null {
+  const defs = tomasDe(cfg)
+  const mejor = (dia: NutriDia | null, tope: number) => {
+    let r: { nombre: string; fin: number } | null = null
+    for (const t of defs) { const x = dia?.tomas?.[t.id]; const f = finDe(x); if (hecha(x) && f != null && f <= tope && (!r || f >= r.fin)) r = { nombre: t.nombre, fin: f } }
+    return r
+  }
+  const h = mejor(d, ahoraMin)
+  if (h) return { nombre: h.nombre, hora: aHora(h.fin), ayer: false, minutos: ahoraMin - h.fin }
+  const a = mejor(ayer, 1440)
+  return a ? { nombre: a.nombre, hora: aHora(a.fin), ayer: true, minutos: ahoraMin + 1440 - a.fin } : null
 }
 
 /** Hora de mañana antes de la cual hay que hacer la primera toma, según el final de la cena de hoy. */

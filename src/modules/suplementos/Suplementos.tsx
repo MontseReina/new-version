@@ -125,7 +125,7 @@ export default function Suplementos() {
       )}
 
       {age.length > 0 && (
-        <Section title="Con fecha" open>
+        <Section title="Terapia endovenosa" open>
           <p className="muted small">Lo que se administra en días concretos. Pon aquí las fechas que te den; la app avisa desde dos días antes.</p>
           {age.map((p) => {
             const e = estadoAgendado(p)

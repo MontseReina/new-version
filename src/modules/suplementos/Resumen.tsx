@@ -11,7 +11,7 @@ export function ResumenSuplementos({ day }: { day: string }) {
   const c = cumplimiento(lista, d, day)
   const toca = avisosDe(lista, d, day).map(({ p, faltan }) => `${p.nombre} ${enDias(faltan)}`).join(' · ')
   // El aviso va en su propia línea: junto a las tomas no cabe en el móvil.
-  const aviso = toca ? <span className="estado" style={{ gridColumn: '2 / -1', whiteSpace: 'normal' }}>Con fecha: {toca}</span> : null
+  const aviso = toca ? <span className="estado" style={{ gridColumn: '2 / -1', whiteSpace: 'normal' }}>{toca}</span> : null
   if (!c.total) return <><span className="estado">Sin tomas hoy</span>{aviso}</>
   const lv = nivel(c.pct)
   return (
