@@ -11,10 +11,12 @@ import { cumplimiento, type SuplCfg, type SuplDia } from '../suplementos/logica'
 export type DescansoDia = { despertar?: string | null; dormir?: string | null; sueno_min?: number | null }
 
 /** Márgenes por defecto, en minutos. Se pueden cambiar en los ajustes (`objetivos`). */
+/** Minutos de más o de menos con los que el ayuno de la noche se da por cumplido. */
+export const AYUNO_MARGEN_MIN = 15
 export const DESAYUNO_MAX_MIN = 60
 export const DORMIR_TRAS_CENA_MIN = 120
 export const SUENO_MIN_H = 8
-export type ObjCfg = { desayuno_max_min?: number; dormir_tras_cena_min?: number; sueno_min_h?: number }
+export type ObjCfg = { ayuno_margen_min?: number; desayuno_max_min?: number; dormir_tras_cena_min?: number; sueno_min_h?: number }
 
 /** `ok` cumplido (100 %) · `parcial` a medias (del 50 al 99 %) · `no` no cumplido (menos del 50 %) ·
  *  `pend` hoy, todavía a tiempo · `nada` sin datos o día futuro. */
@@ -62,15 +64,17 @@ const primeraToma = (cfg: NutriCfg, d: NutriDia) => {
 type Regla = (day: string, D: Datos) => Marca
 const sinDato = (day: string, D: Datos): Marca => (day === D.hoy ? 'pend' : 'nada')
 
-const ayunoMax: Regla = (day, D) => {
+/** El ayuno de la noche tiene que ser de las horas justas: ni más ni menos, con un margen de unos minutos. */
+const ayunoJusto: Regla = (day, D) => {
   const a = ayuno(D.nutriCfg, D.nutri.get(addDays(day, -1)) ?? null, D.nutri.get(day) ?? {})
-  if (a.ok != null) return a.ok ? 'ok' : 'no'
+  const horas = (D.nutriCfg.ayuno_max_h ?? 12) * 60, margen = D.objCfg.ayuno_margen_min ?? AYUNO_MARGEN_MIN
+  if (a.min != null) return Math.abs(a.min - horas) <= margen ? 'ok' : 'no'
   if (day !== D.hoy) return 'nada'
-  // Hoy, con la última comida de ayer anotada y sin primera toma: a tiempo mientras no pase la hora límite.
+  // Hoy, con la última comida de ayer anotada y sin primera toma: a tiempo mientras no pase la hora justa más el margen.
   const ayer = D.nutri.get(addDays(day, -1))
   if (!tomasDe(D.nutriCfg).some((t) => hecha(ayer?.tomas?.[t.id]) && finDe(ayer?.tomas?.[t.id]) != null)) return 'nada'
   const tope = aMin(a.antesDe)
-  return tope == null || D.ahoraMin > tope ? 'no' : 'pend'
+  return tope == null || D.ahoraMin > tope + margen ? 'no' : 'pend'
 }
 const sinSaltar: Regla = (day, D) => {
   const d = D.nutri.get(day)
@@ -160,7 +164,7 @@ export function objetivosDe(lunes: string, D: Datos): Objetivo[] {
   const oura = 'Llegará con el anillo Oura'
   const sinKcal = !D.nutriCfg.kcal_min ? 'Falta la cifra diaria pautada' : 'Faltan las kilocalorías de los platos'
   return [
-    fila('ayuno', `Ayuno de la noche de ${D.nutriCfg.ayuno_max_h ?? 12} h como máximo`, 'nutricion', ayunoMax),
+    fila('ayuno', `Ayuno de la noche de ${D.nutriCfg.ayuno_max_h ?? 12} horas justas`, 'nutricion', ayunoJusto),
     fila('comidas', 'No saltarme comidas', 'nutricion', sinSaltar),
     fila('desayuno', `Desayunar en ${horaTxt(D.objCfg.desayuno_max_min ?? DESAYUNO_MAX_MIN)} desde que me despierto`, 'nutricion', desayuno, oura),
     fila('cena', `Cena terminada a las ${D.nutriCfg.cena_fin_max ?? '21:00'}`, 'nutricion', cenaAHora),
