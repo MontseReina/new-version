@@ -8,4 +8,4 @@
 - Estilos solo con las variables de `src/styles/tokens.css`.
 - Cambios de tablas: editar `supabase/schema.sql`, subir `SCHEMA_VERSION` y añadir la migración en `supabase/`.
 - Subir `APP_VERSION` (`src/lib/version.ts`) y `version` de `package.json` en cada publicación.
-- Comidas: sin calorías ni gramos. Sin ayunos ni restricción calórica como marco.
+- Comidas: sin gramos. Las kilocalorías solo como suelo que alcanzar (objetivo de aporte de Inicio), nunca como tope, y con la cifra diaria pautada por nutrición clínica. Sin ayunos ni restricción calórica como marco.
