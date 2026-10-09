@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
 import { avisosDe, cumplimiento, enDias, nivel, type SuplCfg, type SuplDia } from './logica'
@@ -21,4 +22,14 @@ export function ResumenSuplementos({ day }: { day: string }) {
       {aviso}
     </>
   )
+}
+
+/** Aviso en Inicio de la terapia endovenosa (o de lo que tenga fecha) que toca hoy o en los próximos días. */
+export function AvisoSuplementos({ day }: { day: string }) {
+  const { value: d, state } = useDaily<SuplDia>('suplementos', day)
+  const [cfg] = useSettings<SuplCfg>('suplementos')
+  if (state === 'cargando' || !cfg) return null
+  const toca = avisosDe(cfg.lista ?? [], d, day)
+  if (!toca.length) return null
+  return <Link to="/suplementos" className="notice" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>💉 {toca.map(({ p, faltan }) => `${p.nombre} ${enDias(faltan)}`).join(' · ')}</Link>
 }

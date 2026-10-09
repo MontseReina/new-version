@@ -352,3 +352,34 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .reloj-seg, .reloj-uni { font-size: 13px; fill: var(--muted); font-variant-numeric: tabular-nums; }
 .reloj-aviso { color: var(--red); font-weight: 600; }
 .nutri-toma.anotada { border-color: var(--green); }
+/* Inicio: al levantarme y al acostarme, y objetivos de la semana (0.9.0) */
+.midia-fila { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center; padding: .4rem 0; }
+.midia-fila input[type=time] { width: 7.2rem; }
+.midia-check { display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left; padding: .6rem .7rem; margin: .3rem 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer; }
+.midia-check.on { background: var(--primary-soft); border-color: var(--primary); font-weight: 600; }
+.midia-caja { flex: none; width: 1.5rem; height: 1.5rem; border: 1.5px solid var(--primary); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--card); color: var(--primary); font-weight: 700; }
+.sem-nav { display: flex; gap: .3rem; }
+.sem-global { display: grid; grid-template-columns: auto 1fr; gap: .2rem .7rem; align-items: baseline; margin: .6rem 0 .9rem; }
+.sem-global strong { font-family: var(--font-title); font-size: 2.4rem; line-height: 1; }
+.sem-global span { color: var(--muted); font-size: .9rem; }
+.sem-global .barra { grid-column: 1 / -1; }
+.sem-tira { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.sem-dow span { text-align: center; font-size: .72rem; color: var(--muted); }
+.sem-dow span.hoy { color: var(--text); font-weight: 700; }
+.sem-obj { display: block; padding: .65rem 0; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit; }
+.sem-obj strong { flex: 1 1 12rem; font-size: .95rem; line-height: 1.3; }
+.sem-obj .row { margin-bottom: .35rem; align-items: baseline; flex-wrap: nowrap; }
+.sem-res { flex: none; font-size: .8rem; color: var(--muted); text-align: right; white-space: nowrap; }
+.sem-res b { font-size: .95rem; margin-right: .2rem; }
+.sem-res b.verde { color: var(--green); } .sem-res b.amarillo { color: var(--amber); } .sem-res b.rojo { color: var(--red); }
+.sem-celda { height: 1.6rem; border-radius: 6px; border: 1.5px solid transparent; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 700; font-style: normal; line-height: 1; color: var(--card); }
+.sem-celda.ok { background: var(--green); }
+.sem-celda.no { background: var(--red); }
+.sem-celda.parcial { background: var(--amber); }
+.sem-celda.pend { background: var(--card); border-style: dashed; border-color: var(--muted); color: var(--muted); }
+.sem-celda.futuro { background: transparent; border-color: var(--line); }
+.sem-celda.hoy { border-style: solid; border-color: var(--ink-deep); border-width: 2px; }
+.sem-celda.pend.hoy { border-style: dashed; }
+.sem-ley { display: flex; flex-wrap: wrap; gap: .3rem .9rem; margin-top: .7rem; font-size: .75rem; color: var(--muted); }
+.sem-ley span { display: inline-flex; align-items: center; gap: .3rem; }
+.sem-ley .sem-celda { width: 1.1rem; height: 1.1rem; font-size: .7rem; border-radius: 4px; }

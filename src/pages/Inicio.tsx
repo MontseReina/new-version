@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import { fmtDate, todayStr } from '../lib/dates'
-import { modules } from '../modules'
 import { TarjetaCiclo } from '../modules/ciclo/TarjetaCiclo'
 import { CalendarioHoy } from '../modules/calendario/Hoy'
+import { Portada } from '../modules/objetivos/Portada'
 import { PendientesHoy } from '../modules/pendientes/Hoy'
+import { AvisoSuplementos } from '../modules/suplementos/Resumen'
 import { pilares } from '../pilares'
 
-/** Inicio: el ciclo arriba, los objetivos de hoy (un renglón por área) y los pilares. */
+/** Inicio: el ciclo arriba, lo que se anota al levantarse y al acostarse, los objetivos de la semana y los pilares. */
 export function Inicio() {
   const hoy = todayStr()
   return (
@@ -14,16 +15,8 @@ export function Inicio() {
       <h1>Hoy</h1>
       <p className="muted" style={{ textTransform: 'capitalize' }}>{fmtDate(hoy)}</p>
       <TarjetaCiclo />
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Objetivos de hoy</h2>
-        {modules.map((m) => (
-          <Link key={m.id} to={'/' + m.path} className="objetivo">
-            <span className="ico">{m.ico}</span>
-            <strong>{m.name}</strong>
-            {m.Resumen ? <m.Resumen day={hoy} /> : <span className="estado">En preparación</span>}
-          </Link>
-        ))}
-      </div>
+      <AvisoSuplementos day={hoy} />
+      <Portada />
 
       <PendientesHoy />
       <CalendarioHoy />
