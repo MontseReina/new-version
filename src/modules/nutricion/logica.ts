@@ -213,6 +213,20 @@ export function ultimaComida(cfg: NutriCfg, ayer: NutriDia | null, d: NutriDia, 
   return a ? { nombre: a.nombre, hora: aHora(a.fin), ayer: true, minutos: ahoraMin + 1440 - a.fin } : null
 }
 
+export interface Nocturno { desdeNombre: string; desdeHora: string; finNombre: string | null; finHora: string | null; minutos: number; enMarcha: boolean }
+/** Ayuno de la noche: desde la última comida con hora de ayer (la cena; si no, la anterior) hasta la primera
+ *  toma de hoy. Mientras hoy no haya ninguna, sigue en marcha hasta `ahoraMin`; con la primera, se queda fijo. */
+export function ayunoNocturno(cfg: NutriCfg, ayer: NutriDia | null, d: NutriDia, ahoraMin: number): Nocturno | null {
+  const defs = tomasDe(cfg)
+  let desde: { nombre: string; fin: number } | null = null
+  for (const t of defs) { const x = ayer?.tomas?.[t.id]; const f = finDe(x); if (hecha(x) && f != null && (!desde || f >= desde.fin)) desde = { nombre: t.nombre, fin: f } }
+  if (!desde) return null
+  let primera: { nombre: string; ini: number } | null = null
+  for (const t of defs) { const x = d.tomas?.[t.id]; const i = aMin(x?.ini) ?? aMin(x?.fin); if (hecha(x) && i != null && (!primera || i < primera.ini)) primera = { nombre: t.nombre, ini: i } }
+  const hasta = primera ? primera.ini : ahoraMin
+  return { desdeNombre: desde.nombre, desdeHora: aHora(desde.fin), finNombre: primera?.nombre ?? null, finHora: primera ? aHora(primera.ini) : null, minutos: hasta + 1440 - desde.fin, enMarcha: !primera }
+}
+
 /** Hora de mañana antes de la cual hay que hacer la primera toma, según el final de la cena de hoy. */
 export function primeraAntesDe(cfg: NutriCfg, d: NutriDia): string | null {
   const defs = tomasDe(cfg)
