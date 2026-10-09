@@ -12,7 +12,7 @@ import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, ESTADOS, GRACIA_MIN, MENUS,
-  aMin, aguaDe, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
+  aMin, aguaDe, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, primeraAntesDe, semana, textoResumen, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
 import { Peso } from './Peso'
@@ -60,6 +60,7 @@ export default function Nutricion() {
   const h = horarios(c, d, date, hoy, ahoraMin)
   const ay = ayuno(c, ayer, d)
   const lv = nivelDia(h, ay)
+  const manana = primeraAntesDe(c, d)
   const cenaMax = c.cena_fin_max ?? CENA_MAX_POR_DEFECTO
   const ayunoMax = c.ayuno_max_h ?? AYUNO_MAX_POR_DEFECTO
   const estado = state === 'cargando' ? 'Cargando…' : state === 'guardando' ? 'Guardando…' : state === 'error' ? 'Sin guardar' : 'Guardado'
@@ -89,7 +90,7 @@ export default function Nutricion() {
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
 
-      {date === hoy && <Reloj cfg={c} ayer={ayer} dia={d} />}
+      <Reloj cfg={c} ayer={ayer} dia={d} esHoy={date === hoy} />
 
       <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>
         <div>
@@ -99,6 +100,17 @@ export default function Nutricion() {
           </div>
           <div className="muted small">{menu.porque}</div>
           <div className="barra" style={{ marginTop: '.4rem' }}><i className={lv} style={{ width: Math.round((h.hechas / h.total) * 100) + '%' }} /></div>
+          <ul className="nutri-reglas small">
+            {h.pendientes.length > 0 && <li><span className="dot rojo" />Pendiente: {h.pendientes.join(', ').toLowerCase()}.</li>}
+            {h.saltadas.length > 0 && <li><span className="dot rojo" />{date === hoy ? 'No hecha' : 'Sin hacer o sin registrar'}: {h.saltadas.join(', ').toLowerCase()}.</li>}
+            {ay.min != null
+              ? <li><span className={'dot ' + (ay.ok ? 'verde' : 'amarillo')} />Ayuno de esta noche: {duracion(ay.min)} (máximo {ayunoMax} h).</li>
+              : date === hoy && ay.antesDe && <li><span className={'dot ' + (ahoraMin > (aMin(ay.antesDe) ?? 0) ? 'rojo' : 'amarillo')} />Primera toma antes de las {ay.antesDe}, para no pasar de {ayunoMax} horas de ayuno.</li>}
+            {h.cenaFin
+              ? <li><span className={'dot ' + (h.cenaOk ? 'verde' : 'amarillo')} />Cena terminada a las {h.cenaFin}{h.cenaOk ? '' : ` (máximo ${cenaMax})`}.</li>
+              : <li><span className="dot" />Cena terminada a las {cenaMax} como muy tarde.</li>}
+            {manana && <li><span className="dot verde" />Mañana, la primera toma antes de las {manana}.</li>}
+          </ul>
         </div>
       </div>
 
@@ -109,7 +121,7 @@ export default function Nutricion() {
       <fieldset className="sint" disabled={state === 'cargando'}>
         {defs.map((t) => <Ficha key={t.id} t={t} x={d.tomas?.[t.id]} cfg={c} hidra={hidra}
           tocaba={d.tomas?.[t.id]?.nombres?.map((nombre, i) => ({ id: d.tomas![t.id].platos?.[i] ?? nombre, nombre })) ?? platosDe(c, menu, t.id)}
-          pendiente={date === hoy && !d.tomas?.[t.id]?.estado && !anotada(d.tomas?.[t.id]) && limite(t) != null && ahoraMin > limite(t)! + GRACIA_MIN}
+          pendiente={date === hoy && !d.tomas?.[t.id]?.estado && limite(t) != null && ahoraMin > limite(t)! + GRACIA_MIN}
           esHoy={date === hoy} marcar={(e) => marcar(t, e)} poner={(p) => poner(t, p)} />)}
       </fieldset>
 
@@ -184,7 +196,7 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
   const agua = t.principal && hecha(x) ? aguaDe(cfg, x, hidra) : null
   const prevista = t.hora ? (t.hasta ? `${t.hora}–${t.hasta}` : `sobre las ${t.hora}`) : ''
   return (
-    <div className={'card nutri-toma ' + (e ?? (anotada(x) ? 'anotada' : '')) + (pendiente ? ' pendiente-hora' : '')}>
+    <div className={'card nutri-toma ' + (e ?? '') + (pendiente ? ' pendiente-hora' : '')}>
       <div className="row between">
         <h3>{t.nombre} {prevista && <span className="muted small">· {prevista}</span>}</h3>
         {pendiente && <span className="tag rojo">Pendiente</span>}
@@ -192,7 +204,6 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
         {e === 'media' && <span className="tag ambar">Media</span>}
         {e === 'tres_cuartos' && <span className="tag verde">¾</span>}
         {e === 'entera' && <span className="tag verde">Hecha</span>}
-        {anotada(x) && <span className="tag verde">Anotada</span>}
       </div>
       {tocaba.length > 0
         ? (

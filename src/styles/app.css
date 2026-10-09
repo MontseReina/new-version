@@ -338,17 +338,14 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .nutri-otro input { flex: 1; min-width: 0; }
 .nutri-platos.sustituido li > span { color: var(--muted); text-decoration: line-through; }
 
-/* Relojes de Nutrición: ayuno de la noche y tiempo desde la última comida */
-.reloj { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; align-items: start; }
-.reloj-uno { text-align: center; min-width: 0; }
-.reloj-uno > * { margin: .15rem 0; }
-.reloj-uno > strong { display: block; }
-.reloj svg { display: block; width: 100%; max-width: 14rem; height: auto; margin: 0 auto .3rem; }
+/* Reloj de Nutrición: horas de ayuno de la noche */
+.reloj { display: grid; grid-template-columns: minmax(0, 15rem) 1fr; gap: 1rem; align-items: center; }
+.reloj svg { display: block; width: 100%; max-width: 15rem; height: auto; margin: 0 auto; }
 .reloj-fondo { fill: none; stroke: var(--line); stroke-width: 12; }
 .reloj-aro { fill: none; stroke: var(--green); stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
-.reloj-uno.amarillo .reloj-aro { stroke: var(--amber); }
-.reloj-uno.rojo .reloj-aro { stroke: var(--red); }
-.reloj-num { font-size: 46px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; dominant-baseline: middle; }
-.reloj-seg, .reloj-uni { font-size: 13px; fill: var(--muted); font-variant-numeric: tabular-nums; }
-.reloj-aviso { color: var(--red); font-weight: 600; }
-.nutri-toma.anotada { border-color: var(--green); }
+.reloj.amarillo .reloj-aro { stroke: var(--amber); }
+.reloj.rojo .reloj-aro { stroke: var(--red); }
+.reloj-num { font-size: 34px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; dominant-baseline: middle; }
+.reloj-uni { font-size: 13px; fill: var(--muted); }
+.reloj-texto > * { margin: .25rem 0; }
+@media (max-width: 480px) { .reloj { grid-template-columns: 1fr; text-align: center; } .reloj svg { max-width: 17rem; } }
