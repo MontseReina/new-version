@@ -7,7 +7,7 @@ import { addDays, fmtDate, nowHM, todayStr } from '../../lib/dates'
 import { listDaily, type Daily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { CHUPITO_ML, TAZA_ML, nivel, objetivo, suma, total, type HidraCfg, type HidraDia } from './logica'
+import { CHUPITO_ML, TAZA_ML, filaLevantar, levantarHecho, nivel, objetivo, suma, total, tocarLevantar, type HidraCfg, type HidraDia } from './logica'
 
 const num = (s: string) => (s === '' ? null : Number(s))
 
@@ -103,6 +103,15 @@ export default function Hidratacion() {
           {ultimo && <button type="button" className="linkbtn small" onClick={deshacer}>↩︎ Deshacer «{ultimo.txt}»</button>}
         </div>
       </div>
+
+      {/* Sin una fila para ello en la pauta, lo de «al levantarme» se anota con este botón. */}
+      {cfg && filaLevantar(cfg) < 0 && (
+        <button type="button" className={'midia-check' + (levantarHecho(cfg, d) ? ' on' : '')} aria-pressed={levantarHecho(cfg, d)} disabled={state === 'cargando'}
+          onClick={() => { setUltimo(null); set(tocarLevantar(cfg, d, date === todayStr() ? nowHM() : null)) }}>
+          <span className="midia-caja" aria-hidden="true">{levantarHecho(cfg, d) ? '✓' : ''}</span>
+          Vaso de agua y chupito de mar al levantarme
+        </button>
+      )}
 
       {pauta.length > 0 && (
         <Section title="Mi pauta diaria" open>

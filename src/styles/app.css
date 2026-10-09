@@ -352,9 +352,7 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .reloj-seg, .reloj-uni { font-size: 13px; fill: var(--muted); font-variant-numeric: tabular-nums; }
 .reloj-aviso { color: var(--red); font-weight: 600; }
 .nutri-toma.anotada { border-color: var(--green); }
-/* Inicio: al levantarme y al acostarme, y objetivos de la semana (0.9.0) */
-.midia-fila { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center; padding: .4rem 0; }
-.midia-fila input[type=time] { width: 7.2rem; }
+/* Inicio: objetivos de la semana, y botón de «al levantarme» en Hidratación (0.9.0) */
 .midia-check { display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left; padding: .6rem .7rem; margin: .3rem 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer; }
 .midia-check.on { background: var(--primary-soft); border-color: var(--primary); font-weight: 600; }
 .midia-caja { flex: none; width: 1.5rem; height: 1.5rem; border: 1.5px solid var(--primary); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--card); color: var(--primary); font-weight: 700; }
@@ -371,6 +369,8 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .sem-obj .row { margin-bottom: .35rem; align-items: baseline; flex-wrap: nowrap; }
 .sem-res { flex: none; font-size: .8rem; color: var(--muted); text-align: right; white-space: nowrap; }
 .sem-res b { font-size: .95rem; margin-right: .2rem; }
+.sem-res .tag { margin-right: 0; }
+.sem-obj:has(.tag) .row { flex-wrap: wrap; }
 .sem-res b.verde { color: var(--green); } .sem-res b.amarillo { color: var(--amber); } .sem-res b.rojo { color: var(--red); }
 .sem-celda { height: 1.6rem; border-radius: 6px; border: 1.5px solid transparent; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 700; font-style: normal; line-height: 1; color: var(--card); }
 .sem-celda.ok { background: var(--green); }

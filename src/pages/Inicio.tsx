@@ -7,7 +7,7 @@ import { PendientesHoy } from '../modules/pendientes/Hoy'
 import { AvisoSuplementos } from '../modules/suplementos/Resumen'
 import { pilares } from '../pilares'
 
-/** Inicio: el ciclo arriba, lo que se anota al levantarse y al acostarse, los objetivos de la semana y los pilares. */
+/** Inicio: el ciclo arriba, los objetivos de cumplimiento de la semana y los pilares. */
 export function Inicio() {
   const hoy = todayStr()
   return (

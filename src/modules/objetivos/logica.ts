@@ -2,19 +2,22 @@
  *  Sin datos personales: horarios, pautas y listas salen de los ajustes de cada usuaria. */
 import { addDays } from '../../lib/dates'
 import { levantarHecho, objetivo, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
-import { aMin, ayuno, finDe, hecha, horarios, tomasDe, type NutriCfg, type NutriDia } from '../nutricion/logica'
-import { cumplimiento, nivel, type SuplCfg, type SuplDia } from '../suplementos/logica'
+import { aMin, ayuno, finDe, hecha, horarios, tomasDe, type Estado, type NutriCfg, type NutriDia } from '../nutricion/logica'
+import { cumplimiento, type SuplCfg, type SuplDia } from '../suplementos/logica'
 
-/** Horas del día que no salen de ninguna otra área: despertar y acostarse. `dormir` es la hora a la que
- *  se acuesta la noche de ese día; si es de madrugada se guarda igual en el día que termina. */
-export type DescansoDia = { despertar?: string | null; dormir?: string | null }
+/** Datos del descanso, que llegarán del anillo (Oura): no se teclean. `despertar` y `sueno_min` son de la
+ *  noche que termina ese día; `dormir` es la hora a la que se acuesta la noche de ese día (si es de
+ *  madrugada se guarda igual en el día que termina). */
+export type DescansoDia = { despertar?: string | null; dormir?: string | null; sueno_min?: number | null }
 
 /** Márgenes por defecto, en minutos. Se pueden cambiar en los ajustes (`objetivos`). */
 export const DESAYUNO_MAX_MIN = 60
 export const DORMIR_TRAS_CENA_MIN = 120
-export type ObjCfg = { desayuno_max_min?: number; dormir_tras_cena_min?: number }
+export const SUENO_MIN_H = 8
+export type ObjCfg = { desayuno_max_min?: number; dormir_tras_cena_min?: number; sueno_min_h?: number }
 
-/** `ok` cumplido · `no` no cumplido · `parcial` a medias · `pend` hoy, todavía a tiempo · `nada` sin datos o día futuro. */
+/** `ok` cumplido (100 %) · `parcial` a medias (del 50 al 99 %) · `no` no cumplido (menos del 50 %) ·
+ *  `pend` hoy, todavía a tiempo · `nada` sin datos o día futuro. */
 export type Marca = 'ok' | 'no' | 'parcial' | 'pend' | 'nada'
 
 export interface Datos {
@@ -39,7 +42,14 @@ export interface Objetivo {
   /** Parte cumplida, de 0 a 1. `null` = sin datos esta semana. */
   parte: number | null
   texto: string
+  /** Por qué no se puede medir todavía (dato que aún no llega a la app). */
+  falta?: string
 }
+
+/** Cumplido con el 100 %, a medias del 50 al 99 % y no cumplido por debajo del 50 %. */
+export const grado = (parte: number): 'ok' | 'parcial' | 'no' => { const p = Math.round(parte * 100); return p >= 100 ? 'ok' : p >= 50 ? 'parcial' : 'no' }
+/** Lo mismo para un día: hoy, mientras no esté cumplido, sigue pendiente. */
+const delDia = (parte: number, day: string, D: Datos): Marca => { const g = grado(parte); return g !== 'ok' && day === D.hoy ? 'pend' : g }
 
 /** Una hora de acostarse de madrugada cuenta como del día siguiente. */
 const nocheMin = (h?: string | null) => { const m = aMin(h); return m == null ? null : m < 720 ? m + 1440 : m }
@@ -67,12 +77,11 @@ const sinSaltar: Regla = (day, D) => {
   if (!tomasDe(D.nutriCfg).length) return 'nada'
   if (!d) return sinDato(day, D)
   const h = horarios(D.nutriCfg, d, day, D.hoy, D.ahoraMin)
-  if (h.saltadas.length) return 'no'
-  return h.hechas === h.total ? 'ok' : 'pend'
+  return delDia(h.hechas / h.total, day, D)
 }
 const desayuno: Regla = (day, D) => {
   const w = aMin(D.descanso.get(day)?.despertar)
-  if (w == null) return sinDato(day, D)
+  if (w == null) return 'nada'
   const max = D.objCfg.desayuno_max_min ?? DESAYUNO_MAX_MIN
   const p = primeraToma(D.nutriCfg, D.nutri.get(day) ?? {})
   if (p != null) return p - w <= max ? 'ok' : 'no'
@@ -83,13 +92,13 @@ const cena = (day: string, D: Datos) => horarios(D.nutriCfg, D.nutri.get(day) ??
 const cenaAHora: Regla = (day, D) => { const c = cena(day, D).cenaOk; return c == null ? sinDato(day, D) : c ? 'ok' : 'no' }
 const dormir: Regla = (day, D) => {
   const fin = aMin(cena(day, D).cenaFin), n = nocheMin(D.descanso.get(day)?.dormir)
-  if (fin == null || n == null) return sinDato(day, D)
+  if (n == null) return 'nada'
+  if (fin == null) return sinDato(day, D)
   return n - fin >= (D.objCfg.dormir_tras_cena_min ?? DORMIR_TRAS_CENA_MIN) ? 'ok' : 'no'
 }
 const hidratada: Regla = (day, D) => {
   const d = D.hidra.get(day)
-  if (!d) return sinDato(day, D)
-  return total(d) >= objetivo(D.hidraCfg) ? 'ok' : day === D.hoy ? 'pend' : 'no'
+  return d ? delDia(total(d) / objetivo(D.hidraCfg), day, D) : sinDato(day, D)
 }
 const alLevantar: Regla = (day, D) => {
   const d = D.hidra.get(day)
@@ -97,15 +106,46 @@ const alLevantar: Regla = (day, D) => {
   return levantarHecho(D.hidraCfg, d) ? 'ok' : day === D.hoy ? 'pend' : 'no'
 }
 
+const PARTE: { [k in Estado]: number } = { entera: 1, tres_cuartos: 0.75, media: 0.5, no: 0 }
+/** Kilocalorías estimadas de un día a partir de lo registrado: las de los platos del menú de cada toma,
+ *  por la parte que se tomó. `null` si no se pueden calcular (un plato sin cifra, o una toma en la que
+ *  comió otra cosa o no dijo cuánto). Es un suelo que alcanzar, nunca un tope. */
+export function kcalDe(cfg: NutriCfg, d: NutriDia): number | null {
+  let suma = 0
+  for (const t of tomasDe(cfg)) {
+    const x = d.tomas?.[t.id]
+    if (!x || (!x.estado && !hecha(x))) continue
+    if (!x.estado || x.otro?.trim()) return null
+    for (const id of x.platos ?? []) {
+      if (x.postre?.[id] === 'no') continue
+      const k = cfg.platos?.[id]?.kcal
+      if (k == null) return null
+      suma += k * PARTE[x.estado]
+    }
+  }
+  return suma
+}
+const aporte: Regla = (day, D) => {
+  const d = D.nutri.get(day), min = D.nutriCfg.kcal_min
+  if (!min) return 'nada'
+  if (!d) return sinDato(day, D)
+  const k = kcalDe(D.nutriCfg, d)
+  return k == null ? 'nada' : delDia(k / min, day, D)
+}
+const sueno: Regla = (day, D) => {
+  const m = D.descanso.get(day)?.sueno_min
+  return m == null ? 'nada' : grado(m / ((D.objCfg.sueno_min_h ?? SUENO_MIN_H) * 60))
+}
+
 const horaTxt = (min: number) => (min % 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min / 60} h`)
 
 /** Los objetivos de una semana (de lunes a domingo), en el orden en que se enseñan. */
 export function objetivosDe(lunes: string, D: Datos): Objetivo[] {
   const dias = Array.from({ length: 7 }, (_, i) => addDays(lunes, i))
-  const fila = (id: string, nombre: string, ruta: string, regla: Regla): Objetivo => {
+  const fila = (id: string, nombre: string, ruta: string, regla: Regla, falta?: string): Objetivo => {
     const m = dias.map((d) => (d > D.hoy ? 'nada' : regla(d, D)))
-    const ok = m.filter((x) => x === 'ok').length, n = ok + m.filter((x) => x === 'no').length
-    return { id, nombre, ruta, dias: m, parte: n ? ok / n : null, texto: n ? `${ok} de ${n} ${n === 1 ? 'día' : 'días'}` : 'Sin datos' }
+    const ok = m.filter((x) => x === 'ok').length, n = ok + m.filter((x) => x === 'no' || x === 'parcial').length
+    return { id, nombre, ruta, dias: m, parte: n ? ok / n : null, texto: n ? `${ok} de ${n} ${n === 1 ? 'día' : 'días'}` : 'Sin datos', ...(n ? {} : { falta }) }
   }
   const lista = D.suplCfg.lista ?? []
   let hechas = 0, pautadas = 0
@@ -115,18 +155,21 @@ export function objetivosDe(lunes: string, D: Datos): Objetivo[] {
     const c = cumplimiento(lista, x ?? {}, d)
     if (!c.pautadas) return 'nada'
     hechas += c.hechas; pautadas += c.pautadas
-    const lv = nivel(c.pct)
-    return lv === 'verde' ? 'ok' : d === D.hoy ? 'pend' : lv === 'amarillo' ? 'parcial' : 'no'
+    return delDia(c.pct, d, D)
   })
+  const oura = 'Llegará con el anillo Oura'
+  const sinKcal = !D.nutriCfg.kcal_min ? 'Falta la cifra diaria pautada' : 'Faltan las kilocalorías de los platos'
   return [
     fila('ayuno', `Ayuno de la noche de ${D.nutriCfg.ayuno_max_h ?? 12} h como máximo`, 'nutricion', ayunoMax),
     fila('comidas', 'No saltarme comidas', 'nutricion', sinSaltar),
-    fila('desayuno', `Desayunar en ${horaTxt(D.objCfg.desayuno_max_min ?? DESAYUNO_MAX_MIN)} desde que me despierto`, 'nutricion', desayuno),
+    fila('desayuno', `Desayunar en ${horaTxt(D.objCfg.desayuno_max_min ?? DESAYUNO_MAX_MIN)} desde que me despierto`, 'nutricion', desayuno, oura),
     fila('cena', `Cena terminada a las ${D.nutriCfg.cena_fin_max ?? '21:00'}`, 'nutricion', cenaAHora),
-    fila('dormir', `Irme a dormir ${horaTxt(D.objCfg.dormir_tras_cena_min ?? DORMIR_TRAS_CENA_MIN)} después de cenar`, 'nutricion', dormir),
+    fila('dormir', `Irme a dormir ${horaTxt(D.objCfg.dormir_tras_cena_min ?? DORMIR_TRAS_CENA_MIN)} después de cenar`, 'nutricion', dormir, oura),
     fila('hidratacion', 'Hidratación del día cumplida', 'hidratacion', hidratada),
     fila('levantar', 'Vaso de agua y chupito de mar al levantarme', 'hidratacion', alLevantar),
     { id: 'suplementos', nombre: 'Toma de suplementos', ruta: 'suplementos', dias: supl, parte: pautadas ? hechas / pautadas : null, texto: pautadas ? `${hechas} de ${pautadas} tomas` : 'Sin datos' },
+    fila('aporte', 'Aporte calórico diario adecuado para subir de peso', 'nutricion', aporte, sinKcal),
+    fila('sueno', `Dormir ${D.objCfg.sueno_min_h ?? SUENO_MIN_H} horas como mínimo`, 'nutricion', sueno, oura),
   ]
 }
 
