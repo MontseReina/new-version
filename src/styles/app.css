@@ -383,3 +383,28 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .sem-ley { display: flex; flex-wrap: wrap; gap: .3rem .9rem; margin-top: .7rem; font-size: .75rem; color: var(--muted); }
 .sem-ley span { display: inline-flex; align-items: center; gap: .3rem; }
 .sem-ley .sem-celda { width: 1.1rem; height: 1.1rem; font-size: .7rem; border-radius: 4px; }
+
+/* Trabajo introspectivo: diario de tres páginas, agradecimientos, semana y ejercicios (0.10.0) */
+.intro-h { margin: 0 0 .5rem; font-size: 1.25rem; }
+.intro-diario { min-height: 46vh; line-height: 1.65; font-size: 1.02rem; padding: .8rem; }
+.intro-paginas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: .5rem 0 .25rem; }
+.intro-paginas span { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.intro-paginas i { display: block; height: 100%; background: var(--primary); }
+.intro-texto { white-space: pre-line; margin: .2rem 0 .5rem; }
+.intro-gracia { padding: .45rem 0; border-bottom: 1px solid var(--line); }
+.intro-gracia:last-of-type { border-bottom: none; }
+.intro-gracia .chips { margin-top: .4rem; }
+.intro-gracia .chip { font-size: .8rem; padding: .3rem .6rem; }
+.intro-sem { display: grid; grid-template-columns: minmax(4.6rem, auto) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; margin-bottom: .6rem; }
+.intro-sem-tit { font-size: .8rem; color: var(--muted); }
+.intro-dow { text-align: center; font-size: .72rem; color: var(--muted); }
+.intro-dow.hoy { color: var(--text); font-weight: 700; }
+.intro-celda { height: 1.7rem; border-radius: 6px; border: 1.5px solid transparent; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: .82rem; font-weight: 700; color: var(--primary); text-decoration: none; }
+.intro-celda.on { background: var(--primary-soft); border-color: var(--primary); }
+.intro-celda.futuro { background: transparent; border-color: var(--line); pointer-events: none; }
+.intro-celda.hoy { border-color: var(--ink-deep); }
+.intro-veces { flex: none; font-size: .8rem; color: var(--muted); text-align: right; white-space: nowrap; }
+.intro-veces b { font-family: var(--font-title); font-size: 1.5rem; color: var(--text); margin-right: .25rem; }
+.intro-bloque h3 { color: var(--text); margin-bottom: 0; }
+.intro-quitar { margin-top: .35rem; }
+.intro-salida { min-height: 12rem; margin: .6rem 0; font-size: .82rem; background: var(--bg); }

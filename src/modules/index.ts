@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import Hidratacion from './hidratacion/Hidratacion'
+import Introspeccion from './introspeccion/Introspeccion'
 import { ResumenHidratacion } from './hidratacion/Resumen'
 import Nutricion from './nutricion/Nutricion'
 import { ResumenNutricion } from './nutricion/Resumen'
@@ -32,5 +33,5 @@ export const modules: ModuleDef[] = [
   { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion },
   { id: 'ejercicio', name: 'Ejercicio', ico: '🏃', path: 'ejercicio' },
   { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking' },
-  { id: 'emociones', name: 'Trabajo introspectivo', ico: '💛', path: 'emociones' },
+  { id: 'introspeccion', name: 'Trabajo introspectivo', ico: '💛', path: 'introspeccion', Page: Introspeccion },
 ]
