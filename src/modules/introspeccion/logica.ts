@@ -90,6 +90,11 @@ export function textoInforme(
   ]
   const activo = ejercicioActivo(cfg)
   if (activo) out.push(`- Ejercicio de ahora: ${activo.titulo}`)
+  // La lista de ahora viaja con el texto, para que el informe no repita ids ni pise ejercicios.
+  if ((cfg?.bloques ?? []).length) out.push('', '## Mis bloques', ...(cfg!.bloques!.map((b) => `- ${b.id}: ${b.nombre}`)))
+  if ((cfg?.ejercicios ?? []).length) {
+    out.push('', '## Mis ejercicios', ...(cfg!.ejercicios!.map((e) => `- ${e.id}${e.bloque ? ' (' + e.bloque + ')' : ''}: ${e.titulo}${e.id === cfg!.activo ? ' · ahora' : ''}`)))
+  }
   for (const { day, value: d } of dias) {
     const c = ciclo(day)
     out.push('', `## ${day} · ${fmtDate(day)}${c ? ' · ' + c : ''}`)
@@ -144,4 +149,29 @@ export function leerInforme(texto: string): IntroCfg | null {
   if (txt(raiz.activo)) out.activo = txt(raiz.activo)
   if (txt(raiz.periodo)) out.periodo = txt(raiz.periodo)
   return Object.keys(out).length ? out : null
+}
+
+const porId = <T extends { id: string }>(actual: T[] | undefined, nuevo: T[]) => {
+  const ids = new Set(nuevo.map((x) => x.id))
+  return [...(actual ?? []).filter((x) => !ids.has(x.id)), ...nuevo]
+}
+/**
+ * Lo que hay que guardar al cargar un informe: los patrones y el periodo se sustituyen; los
+ * bloques y los ejercicios se suman a los que ya hay (el mismo id actualiza el que estaba).
+ */
+export function aplicarInforme(actual: IntroCfg | null, nuevo: IntroCfg): Partial<IntroCfg> {
+  return {
+    ...nuevo,
+    ...(nuevo.bloques ? { bloques: porId(actual?.bloques, nuevo.bloques) } : {}),
+    ...(nuevo.ejercicios ? { ejercicios: porId(actual?.ejercicios, nuevo.ejercicios) } : {}),
+  }
+}
+/** Qué trae un informe, en una frase. */
+export function resumenInforme(nuevo: IntroCfg): string {
+  return [
+    nuevo.patrones ? `lo que se repite (${nuevo.patrones.length})` : '',
+    nuevo.ejercicios ? `ejercicios (${nuevo.ejercicios.length})` : '',
+    nuevo.bloques ? `bloques (${nuevo.bloques.length})` : '',
+    nuevo.activo ? 'el ejercicio de ahora' : '',
+  ].filter(Boolean).join(', ') || 'el periodo'
 }

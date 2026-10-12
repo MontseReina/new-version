@@ -4,6 +4,7 @@ import { Login } from './auth/Login'
 import { Layout } from './components/Layout'
 import { supabase } from './lib/supabase'
 import { modules } from './modules'
+import CargarIntrospeccion from './modules/introspeccion/Cargar'
 import CargarNutricion from './modules/nutricion/Cargar'
 import Cargar from './modules/sintomas/Cargar'
 import { pilares } from './pilares'
@@ -25,6 +26,7 @@ function Rutas() {
         })}
         {pilares.map((p) => <Route key={p.id} path={p.path} element={p.Page ? <p.Page /> : <EnPreparacion name={p.name} />} />)}
         <Route path="cargar/nutricion/:datos" element={<CargarNutricion />} />
+        <Route path="cargar/introspeccion/:datos" element={<CargarIntrospeccion />} />
         <Route path="cargar/:datos" element={<Cargar />} />
         <Route path="mas" element={<Mas />} />
         <Route path="datos" element={<Datos />} />

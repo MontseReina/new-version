@@ -3,7 +3,7 @@ import { addDays, diffDays, todayStr } from '../../lib/dates'
 import { DEMO, listDaily } from '../../store/repo'
 import { FASES, infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
-import { leerInforme, textoInforme, type IntroCfg, type IntroDia } from './logica'
+import { aplicarInforme, leerInforme, resumenInforme, textoInforme, type IntroCfg, type IntroDia } from './logica'
 
 /**
  * Informe mensual: prepara el texto del periodo (diario, agradecimientos y ejercicios) para
@@ -54,14 +54,8 @@ export function Informe({ cfg, saveCfg, hasta: diaVisto }: { cfg: IntroCfg | nul
     const nuevo = leerInforme(pegado)
     if (!nuevo) { setAviso('El texto no es un informe válido. No se ha cambiado nada.'); return }
     try {
-      await saveCfg(nuevo)
-      const partes = [
-        nuevo.patrones ? `lo que se repite (${nuevo.patrones.length})` : '',
-        nuevo.ejercicios ? `ejercicios (${nuevo.ejercicios.length})` : '',
-        nuevo.bloques ? 'bloques' : '',
-        nuevo.activo ? 'el ejercicio de ahora' : '',
-      ].filter(Boolean)
-      setAviso('Cargado: ' + (partes.join(', ') || 'el periodo') + '.')
+      await saveCfg(aplicarInforme(cfg, nuevo))
+      setAviso('Cargado: ' + resumenInforme(nuevo) + '.')
       setPegado('')
     } catch { setAviso('No se ha podido guardar. Revisa la conexión y vuelve a pulsar.') }
   }
@@ -87,7 +81,7 @@ export function Informe({ cfg, saveCfg, hasta: diaVisto }: { cfg: IntroCfg | nul
       {msg && <p role="status" className="small">{msg}</p>}
 
       <h3>2. Cargar lo que devuelve el informe</h3>
-      <p className="muted small">Pega aquí el texto que viene al final del informe: trae lo que se repite y los ejercicios del mes siguiente. Sustituye a los que ves ahora; lo que ya has anotado se conserva.</p>
+      <p className="muted small">Lo normal es tocar el enlace que viene al final del informe. Si el enlace no funciona, pega aquí el texto que lo acompaña. Lo que se repite se sustituye por lo del informe; los ejercicios nuevos se suman a los que ya tienes.</p>
       <textarea aria-label="Texto del informe" placeholder="Pega aquí el texto del informe" value={pegado} onChange={(e) => { setPegado(e.target.value); setAviso('') }} />
       <button type="button" className="btn secondary" disabled={!cfg || !pegado.trim()} onClick={() => void cargar()}>Cargar</button>
       {aviso && <p role="status" className="small">{aviso}</p>}

@@ -149,7 +149,7 @@ export default function Introspeccion() {
           {dias.map((x, i) => <span key={x} className={'intro-dow' + (x === hoy ? ' hoy' : '')}>{DOW[i]}</span>)}
           {fila('Diario', (v) => (paginas(v.diario) >= PAGINAS ? '✓' : palabras(v.diario) ? '·' : ''))}
           {fila('Gracias', (v) => (escritas(v) ? String(escritas(v)) : ''))}
-          {fila('Dichas', (v) => (expresadas(v) ? String(expresadas(v)) : ''))}
+          {fila('Expresadas', (v) => (expresadas(v) ? String(expresadas(v)) : ''))}
           {fila('Ejercicio', (v) => (hechosDe(v) ? '✓' : ''))}
         </div>
         <p className="muted small">

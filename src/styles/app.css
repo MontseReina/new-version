@@ -395,7 +395,7 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .intro-gracia:last-of-type { border-bottom: none; }
 .intro-gracia .chips { margin-top: .4rem; }
 .intro-gracia .chip { font-size: .8rem; padding: .3rem .6rem; }
-.intro-sem { display: grid; grid-template-columns: minmax(4.6rem, auto) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; margin-bottom: .6rem; }
+.intro-sem { display: grid; grid-template-columns: minmax(5.2rem, auto) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; margin-bottom: .6rem; }
 .intro-sem-tit { font-size: .8rem; color: var(--muted); }
 .intro-dow { text-align: center; font-size: .72rem; color: var(--muted); }
 .intro-dow.hoy { color: var(--text); font-weight: 700; }
