@@ -75,6 +75,7 @@ export function Informe({ cfg, saveCfg, hasta: diaVisto }: { cfg: IntroCfg | nul
           <div className="row">
             <button type="button" className="btn" onClick={() => void copiar()}>Copiar</button>
             {!DEMO && <button type="button" className="btn secondary" onClick={descargar}>Descargar fichero</button>}
+            <button type="button" className="btn ghost" onClick={() => { setTexto(''); setMsg('') }}>Deshacer</button>
           </div>
         </>
       )}
