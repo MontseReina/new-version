@@ -458,3 +458,8 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .vida-logro-item .meta { font-size: .8rem; color: var(--muted); }
 .vida-logro-marca { width: 1.5rem; height: 1.5rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: .85rem; }
 .vida-logro-item.extra .vida-logro-marca { background: var(--primary); color: var(--card); }
+.vida-area { padding: .2rem 0 .6rem; border-bottom: 1px solid var(--line); }
+.vida-area:last-child { border-bottom: none; }
+.vida-area p { margin: .15rem 0; }
+.vida-hecha { display: grid; grid-template-columns: 1.6rem 1fr; gap: .4rem; align-items: start; padding: .25rem 0; font-size: .92rem; overflow-wrap: anywhere; }
+.vida-accion .meta .linkbtn { margin: 0; }

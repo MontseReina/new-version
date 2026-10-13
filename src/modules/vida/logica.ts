@@ -24,7 +24,7 @@ export const siguiente = (e?: Estado | null): Estado | null => (!e ? 'si' : e ==
 export type Marca = { estado: Estado; dia?: string; nota?: string }
 export type Logro = { texto: string; area?: string; dia: string }
 /** Documento del mes (módulo `vida`, día AAAA-MM-01): el plan, lo marcado y los logros. */
-export type VidaMes = { plan?: Plan; marcas?: { [accion: string]: Marca }; logros?: Logro[] }
+export type VidaMes = { plan?: Plan; marcas?: { [accion: string]: Marca }; logros?: Logro[]; quitadas?: string[] }
 /** Ajustes: qué mes está en curso. */
 export type VidaCfg = { mes?: string }
 
@@ -103,7 +103,8 @@ export function textoMes(m: VidaMes): string {
     for (const g of porArea(p, s.acciones)) for (const a of g.acciones) {
       const k = m.marcas?.[a.id]
       const estado = k ? ESTADOS[k.estado].toLowerCase() + (k.dia ? ` (${fmtDate(k.dia)})` : '') : 'sin marcar'
-      out.push(`- [${estado}] ${a.texto}${a.area ? ' · ' + nombreArea(p, a.area) : ''}${a.dia ? ' · previsto ' + fmtDate(a.dia) : ''}${k?.nota?.trim() ? ' — ' + k.nota.trim() : ''}`)
+      const quitada = (m.quitadas ?? []).includes(a.id) ? ' · quitada de pendientes' : ''
+      out.push(`- [${estado}] ${a.texto}${a.area ? ' · ' + nombreArea(p, a.area) : ''}${a.dia ? ' · previsto ' + fmtDate(a.dia) : ''}${quitada}${k?.nota?.trim() ? ' — ' + k.nota.trim() : ''}`)
     }
   }
   out.push('', '## Logros del mes')
@@ -160,4 +161,54 @@ export function leerPlan(texto: string): Plan | null {
       ? v.mantenimiento.filter(esObj).map((a) => limpio({ id: txt(a.id), nombre: txt(a.nombre) ?? '', minimo: txt(a.minimo) })).filter((a) => a.nombre)
       : undefined,
   })
+}
+
+/** Acción pendiente de una semana anterior que se arrastra a la semana en curso. */
+export type Arrastrada = Accion & { origen: string }
+/**
+ * Lo que no se hizo en las semanas anteriores a la `i`: todo lo que no está marcado como hecho
+ * y no se ha quitado de pendientes. Lo que se marca como hecho durante la semana `i` sigue a la vista.
+ */
+export function arrastradas(m: VidaMes, i: number): Arrastrada[] {
+  const out: Arrastrada[] = []
+  const quitadas = new Set(m.quitadas ?? [])
+  const desde = m.plan?.semanas[i]?.desde ?? ''
+  ;(m.plan?.semanas ?? []).slice(0, Math.max(0, i)).forEach((s) => {
+    for (const a of s.acciones) {
+      const k = m.marcas?.[a.id]
+      // Las que se terminan esta semana siguen a la vista hasta que acabe.
+      const sigue = k?.estado !== 'si' || (k.dia ?? '') >= desde
+      if (sigue && !quitadas.has(a.id)) out.push({ ...a, origen: s.desde })
+    }
+  })
+  return out
+}
+
+/** Lo hecho de cada área en el mes, para «Objetivos del mes». */
+export function hechasPorArea(m: VidaMes): { [area: string]: { texto: string; dia: string }[] } {
+  const out: { [area: string]: { texto: string; dia: string }[] } = {}
+  for (const s of m.plan?.semanas ?? []) for (const a of s.acciones) {
+    const k = m.marcas?.[a.id]
+    if (k?.estado === 'si') (out[a.area ?? ''] ??= []).push({ texto: a.texto, dia: k.dia ?? a.dia ?? s.desde })
+  }
+  for (const l of Object.values(out)) l.sort((x, y) => x.dia.localeCompare(y.dia))
+  return out
+}
+
+/**
+ * Une un plan nuevo con el que ya hay para el mismo mes: las semanas que llegan sustituyen a las
+ * que tienen la misma fecha de inicio y las demás se conservan. Así se puede cargar el mes entero
+ * o solo la semana siguiente. La frase, la salud y las áreas se actualizan si llegan.
+ */
+export function unirPlan(actual: Plan | undefined, nuevo: Plan): Plan {
+  if (!actual || actual.mes !== nuevo.mes) return nuevo
+  const nuevas = new Set(nuevo.semanas.map((s) => s.desde))
+  return {
+    ...actual,
+    ...(nuevo.frase ? { frase: nuevo.frase } : {}),
+    ...(nuevo.salud ? { salud: nuevo.salud } : {}),
+    ...(nuevo.areas ? { areas: nuevo.areas } : {}),
+    ...(nuevo.mantenimiento ? { mantenimiento: nuevo.mantenimiento } : {}),
+    semanas: [...actual.semanas.filter((s) => !nuevas.has(s.desde)), ...nuevo.semanas].sort((a, b) => a.desde.localeCompare(b.desde)),
+  }
 }

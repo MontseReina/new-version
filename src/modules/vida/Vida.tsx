@@ -8,27 +8,36 @@ import { useSettings } from '../../store/useSettings'
 import { Pestanas } from '../introspeccion/Pestanas'
 import { guardarPlan } from './guardar'
 import {
-  ESTADOS, diaDelMes, leerPlan, logrosDelMes, nombreArea, nombreMes, porArea, semanaDe, siguiente, textoMes,
-  type Estado, type Marca, type VidaCfg, type VidaMes,
+  ESTADOS, arrastradas, diaDelMes, hechasPorArea, leerPlan, logrosDelMes, nombreArea, nombreMes, porArea, semanaDe, siguiente, textoMes, unirPlan,
+  type Estado, type Marca, type Plan, type VidaCfg, type VidaMes,
 } from './logica'
 
 const SIMBOLO: { [k in Estado]: string } = { si: '✓', media: '½', no: '✗' }
 
 /** La vida que sueño: el plan del mes en semanas, para marcar cada acción, y los logros. */
 export default function Vida() {
-  const hoy = todayStr()
   const [cfg, saveCfg] = useSettings<VidaCfg>('vida')
-  const mes = cfg?.mes ?? hoy.slice(0, 7)
+  const mes = cfg?.mes ?? todayStr().slice(0, 7)
+  // Al cargar un plan desde esta pantalla se vuelve a leer el mes desde la base de datos.
+  const [n, setN] = useState(0)
+  return <VidaMesVista key={mes + '|' + n} mes={mes} onCargado={(m) => { void saveCfg({ mes: m }); setN((x) => x + 1) }} />
+}
+
+function VidaMesVista({ mes, onCargado }: { mes: string; onCargado: (mes: string) => void }) {
+  const hoy = todayStr()
   const { value: d, set, state, retry } = useDaily<VidaMes>('vida', diaDelMes(mes))
   const plan = d.plan
   const marcas = d.marcas ?? {}
   const estado = state === 'cargando' ? 'Cargando…' : state === 'guardando' ? 'Guardando…' : state === 'error' ? 'Sin guardar' : 'Guardado'
 
   const [sem, setSem] = useState<number | null>(null)
-  useEffect(() => setSem(null), [mes])
   const actual = plan ? semanaDe(plan, hoy) : -1
   const i = sem ?? actual
   const semana = plan?.semanas[i]
+  // En la semana en curso se arrastra lo que quedó sin hacer en las anteriores.
+  const pendientes = plan && i === actual ? arrastradas(d, i) : []
+  const quitar = (id: string) => set({ quitadas: [...(d.quitadas ?? []), id] })
+  const hechas = hechasPorArea(d)
 
   const marcar = (id: string) => {
     const e = siguiente(marcas[id]?.estado)
@@ -48,6 +57,14 @@ export default function Vida() {
   const quitarLogro = (k: number) => set({ logros: (d.logros ?? []).filter((_, j) => j !== k) })
 
   const logros = logrosDelMes(d)
+
+  // El plan del mes que está abierto se une aquí mismo, para no pisar lo que se esté guardando;
+  // el de otro mes se guarda en su documento y se pasa a ese mes.
+  const cargarPlan = async (p: Plan) => {
+    if (p.mes === mes) { set({ plan: unirPlan(d.plan, p) }); return }
+    await guardarPlan(p)
+    onCargado(p.mes)
+  }
 
   return (
     <div>
@@ -81,8 +98,8 @@ export default function Vida() {
                 </div>
                 <button type="button" className="btn sm ghost" disabled={i >= plan.semanas.length - 1} aria-label="Semana siguiente" onClick={() => setSem(i + 1)}>›</button>
               </div>
-              {semana.acciones.length === 0 && <p className="muted">Semana sin acciones: es tu semana de colchón.</p>}
-              {semana.acciones.length > 0 && porArea(plan, semana.acciones).map((g) => (
+              {semana.acciones.length + pendientes.length === 0 && <p className="muted">Semana sin acciones: es tu semana de colchón.</p>}
+              {semana.acciones.length + pendientes.length > 0 && porArea(plan, [...pendientes, ...semana.acciones]).map((g) => (
                 <section key={g.id || 'sin'} className="vida-grupo" aria-label={g.nombre}>
                   <h3 className="vida-grupo-tit">{g.nombre}{!g.activa && g.id ? <span className="muted small"> · mantenimiento</span> : null}</h3>
                   {g.acciones.length === 0 && <p className="muted small vida-vacio">Sin acciones esta semana.</p>}
@@ -95,7 +112,12 @@ export default function Vida() {
                           onClick={() => marcar(a.id)}>{k ? SIMBOLO[k.estado] : '○'}</button>
                         <div className="vida-accion-txt">
                           <span className="lbl">{a.texto}</span>
-                          {a.dia && <div className="meta"><span>{fmtDate(a.dia)}</span></div>}
+                          {'origen' in a ? (
+                            <div className="meta">
+                              <span className="tag ambar">Pendiente de la semana del {fmtDate(a.origen as string)}</span>
+                              {k?.estado !== 'si' && <button type="button" className="linkbtn" onClick={() => quitar(a.id)}>Quitar de pendientes</button>}
+                            </div>
+                          ) : a.dia && <div className="meta"><span>{fmtDate(a.dia)}</span></div>}
                           {k && (
                             <input type="text" className="vida-nota" aria-label="Nota" placeholder="Nota (opcional)" value={k.nota ?? ''} onChange={(e) => anotar(a.id, e.target.value)} />
                           )}
@@ -138,38 +160,34 @@ export default function Vida() {
             </div>
           </div>
 
-          <Plegable id="vida-objetivos" title="Objetivos del mes">
-            {(plan.areas ?? []).map((a) => (
+          <Plegable id="vida-objetivos" title="Objetivos del mes" abierto>
+            {[...(plan.areas ?? []).map((a) => ({ id: a.id, nombre: a.nombre, objetivo: a.objetivo, minimo: a.minimo, mant: false })),
+              ...(plan.mantenimiento ?? []).filter((m) => m.id).map((m) => ({ id: m.id!, nombre: m.nombre, objetivo: undefined, minimo: m.minimo, mant: true }))].map((a) => (
               <div key={a.id} className="vida-area">
-                <h3>{a.nombre}</h3>
-                <dl className="ciclo-datos">
-                  {a.objetivo && <div><dt>Objetivo</dt><dd>{a.objetivo}</dd></div>}
-                  {a.minimo && <div><dt>Mínimo viable</dt><dd>{a.minimo}</dd></div>}
-                  {a.resultado && <div><dt>Resultado esperado</dt><dd>{a.resultado}</dd></div>}
-                  {a.anual && <div><dt>Objetivo del año</dt><dd>{a.anual}</dd></div>}
-                </dl>
+                <h3>{a.nombre}{a.mant && <span className="muted small"> · mantenimiento</span>}</h3>
+                {a.objetivo && <p className="small">{a.objetivo}</p>}
+                {a.minimo && <p className="muted small">Mínimo viable: {a.minimo}</p>}
+                {(hechas[a.id] ?? []).length === 0
+                  ? <p className="muted small">Todavía nada tachado este mes.</p>
+                  : (hechas[a.id] ?? []).map((h, k) => (
+                    <div key={k} className="vida-hecha"><span className="vida-logro-marca" aria-hidden="true">✓</span><span>{h.texto} <span className="muted small">· {fmtDate(h.dia)}</span></span></div>
+                  ))}
               </div>
             ))}
-            {(plan.mantenimiento ?? []).length > 0 && (
-              <>
-                <h3>En mantenimiento</h3>
-                {plan.mantenimiento!.map((m) => <p key={m.nombre} className="small">• <strong>{m.nombre}</strong>{m.minimo ? ': ' + m.minimo : ''}</p>)}
-              </>
-            )}
           </Plegable>
 
         </>
       )}
 
       <Plegable id="vida-informe" title="Informe mensual">
-        <InformeVida mesActual={mes} onCargado={(m) => void saveCfg({ mes: m })} />
+        <InformeVida mesActual={mes} cargarPlan={cargarPlan} />
       </Plegable>
     </div>
   )
 }
 
 /** Sacar el texto de un mes para el prompt mensual, y cargar el plan del mes siguiente. */
-function InformeVida({ mesActual, onCargado }: { mesActual: string; onCargado: (mes: string) => void }) {
+function InformeVida({ mesActual, cargarPlan }: { mesActual: string; cargarPlan: (p: Plan) => Promise<void> }) {
   const [mes, setMes] = useState(mesActual)
   useEffect(() => setMes(mesActual), [mesActual])
   const [texto, setTexto] = useState('')
@@ -205,8 +223,7 @@ function InformeVida({ mesActual, onCargado }: { mesActual: string; onCargado: (
     const plan = leerPlan(pegado)
     if (!plan) { setAviso('El texto no es un plan válido. No se ha cambiado nada.'); return }
     try {
-      await guardarPlan(plan)
-      onCargado(plan.mes)
+      await cargarPlan(plan)
       setAviso(`Cargado el plan de ${nombreMes(plan.mes)}.`)
       setPegado('')
     } catch { setAviso('No se ha podido guardar. Revisa la conexión y vuelve a pulsar.') }
