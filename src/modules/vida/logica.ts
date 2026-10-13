@@ -80,7 +80,7 @@ export function textoMes(m: VidaMes): string {
     `# La vida que sueño · ${nombreMes(p.mes)}`,
     '',
     `- Acciones del mes: ${r.total} · hechas ${r.si} · a medias ${r.media} · no hechas ${r.no} · sin marcar ${r.sinMarcar}`,
-    `- Logros apuntados: ${(m.logros ?? []).length}`,
+    `- Logros del mes: ${logrosDelMes(m).length} (${(m.logros ?? []).length} no previstos)`,
   ]
   if (p.frase) out.push(`- Frase guía: ${p.frase}`)
   if (p.salud) out.push(`- Prioridad salud: ${p.salud}`)
@@ -106,11 +106,27 @@ export function textoMes(m: VidaMes): string {
       out.push(`- [${estado}] ${a.texto}${a.area ? ' · ' + nombreArea(p, a.area) : ''}${a.dia ? ' · previsto ' + fmtDate(a.dia) : ''}${k?.nota?.trim() ? ' — ' + k.nota.trim() : ''}`)
     }
   }
-  out.push('', '## Logros')
-  if ((m.logros ?? []).length) {
-    for (const l of m.logros!) out.push(`- ${fmtDate(l.dia)}${l.area ? ' · ' + nombreArea(p, l.area) : ''}: ${l.texto}`)
-  } else out.push('- Sin logros apuntados.')
+  out.push('', '## Logros del mes')
+  const ls = logrosDelMes(m)
+  if (ls.length) {
+    for (const l of ls) out.push(`- ${fmtDate(l.dia)}${l.area ? ' · ' + nombreArea(p, l.area) : ''}: ${l.texto}${l.previsto ? '' : ' (no previsto)'}`)
+  } else out.push('- Sin logros todavía.')
   return out.join('\n') + '\n'
+}
+
+export type LogroVisto = { texto: string; area?: string; dia: string; previsto: boolean; indice?: number }
+/**
+ * Los logros del mes: las acciones del plan marcadas como hechas y lo que se ha apuntado
+ * sin estar previsto, por fecha.
+ */
+export function logrosDelMes(m: VidaMes): LogroVisto[] {
+  const out: LogroVisto[] = []
+  for (const s of m.plan?.semanas ?? []) for (const a of s.acciones) {
+    const k = m.marcas?.[a.id]
+    if (k?.estado === 'si') out.push({ texto: a.texto, area: a.area, dia: k.dia ?? a.dia ?? s.desde, previsto: true })
+  }
+  ;(m.logros ?? []).forEach((l, i) => out.push({ ...l, previsto: false, indice: i }))
+  return out.sort((x, y) => x.dia.localeCompare(y.dia))
 }
 
 const esObj = (x: unknown): x is { [k: string]: Json } => typeof x === 'object' && x !== null && !Array.isArray(x)

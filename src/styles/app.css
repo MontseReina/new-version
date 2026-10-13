@@ -453,3 +453,8 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .vida-grupo-tit { margin: 0; padding: .3rem 0 .2rem; color: var(--ink-deep); font-size: .95rem; border-bottom: 1.5px solid var(--primary-soft); }
 .vida-grupo .vida-accion:last-child { border-bottom: none; }
 .vida-vacio { margin: .35rem 0 0; }
+.vida-logro-item { display: grid; grid-template-columns: 1.6rem 1fr; gap: .5rem; align-items: start; padding: .45rem 0; border-bottom: 1px solid var(--line); }
+.vida-logro-item .main { min-width: 0; overflow-wrap: anywhere; }
+.vida-logro-item .meta { font-size: .8rem; color: var(--muted); }
+.vida-logro-marca { width: 1.5rem; height: 1.5rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: .85rem; }
+.vida-logro-item.extra .vida-logro-marca { background: var(--primary); color: var(--card); }

@@ -8,7 +8,7 @@ import { useSettings } from '../../store/useSettings'
 import { Pestanas } from '../introspeccion/Pestanas'
 import { guardarPlan } from './guardar'
 import {
-  ESTADOS, diaDelMes, leerPlan, nombreArea, nombreMes, porArea, recuento, semanaDe, siguiente, textoMes,
+  ESTADOS, diaDelMes, leerPlan, logrosDelMes, nombreArea, nombreMes, porArea, semanaDe, siguiente, textoMes,
   type Estado, type Marca, type VidaCfg, type VidaMes,
 } from './logica'
 
@@ -47,7 +47,7 @@ export default function Vida() {
   }
   const quitarLogro = (k: number) => set({ logros: (d.logros ?? []).filter((_, j) => j !== k) })
 
-  const r = recuento(plan, marcas)
+  const logros = logrosDelMes(d)
 
   return (
     <div>
@@ -111,24 +111,30 @@ export default function Vida() {
 
           <div className="card">
             <h2 className="intro-h">Mis logros de {nombreMes(plan.mes).split(' ')[0]}</h2>
-            {(d.logros ?? []).length === 0 && <p className="muted small">Apunta aquí lo que consigas, también lo pequeño.</p>}
-            {(d.logros ?? []).map((l, k) => (
-              <div className="item" key={k}>
+            {logros.length === 0 && <p className="muted small">Aquí aparecerá cada acción que taches como hecha.</p>}
+            {logros.map((l, k) => (
+              <div className={'vida-logro-item' + (l.previsto ? '' : ' extra')} key={k}>
+                <span className="vida-logro-marca" aria-hidden="true">{l.previsto ? '✓' : '★'}</span>
                 <div className="main">
                   <div>{l.texto}</div>
-                  <div className="meta">{fmtDate(l.dia)}{l.area ? ' · ' + nombreArea(plan, l.area) : ''} · <button type="button" className="linkbtn" onClick={() => quitarLogro(k)}>Quitar</button></div>
+                  <div className="meta">
+                    {fmtDate(l.dia)}{l.area ? ' · ' + nombreArea(plan, l.area) : ''}
+                    {!l.previsto && <> · no previsto · <button type="button" className="linkbtn" onClick={() => quitarLogro(l.indice!)}>Quitar</button></>}
+                  </div>
                 </div>
               </div>
             ))}
+            <h3>Añadir algo que no estaba previsto</h3>
             <div className="vida-logro">
-              <input type="text" aria-label="Nuevo logro" placeholder="Hoy he conseguido…" value={logro} onChange={(e) => setLogro(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') anadirLogro() }} />
+              <input type="text" aria-label="Logro no previsto" placeholder="Por ejemplo: dije que no a una guardia extra" value={logro} onChange={(e) => setLogro(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') anadirLogro() }} />
               {(plan.areas ?? []).length > 0 && (
                 <select aria-label="Área del logro" value={areaLogro} onChange={(e) => setAreaLogro(e.target.value)}>
                   <option value="">Sin área</option>
                   {plan.areas!.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                  {(plan.mantenimiento ?? []).filter((m) => m.id).map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                 </select>
               )}
-              <button type="button" className="btn secondary" disabled={!logro.trim()} onClick={anadirLogro}>Apuntar</button>
+              <button type="button" className="btn secondary" disabled={!logro.trim()} onClick={anadirLogro}>Añadir</button>
             </div>
           </div>
 
@@ -152,18 +158,6 @@ export default function Vida() {
             )}
           </Plegable>
 
-          <Plegable id="vida-mes" title="El mes semana a semana">
-            <p className="small">{r.si} hechas · {r.media} a medias · {r.no} no hechas · {r.sinMarcar} sin marcar, de {r.total} acciones.</p>
-            {plan.semanas.map((s, k) => (
-              <div key={s.desde} className="vida-resumen-sem">
-                <button type="button" className="linkbtn" onClick={() => setSem(k)}>Del {fmtDate(s.desde)} al {fmtDate(s.hasta)}</button>
-                <div className="vida-puntos">
-                  {s.acciones.map((a) => <span key={a.id} className={'vida-punto ' + (marcas[a.id]?.estado ?? '')} title={a.texto} />)}
-                  {s.acciones.length === 0 && <span className="muted small">colchón</span>}
-                </div>
-              </div>
-            ))}
-          </Plegable>
         </>
       )}
 
