@@ -416,3 +416,6 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .table.tomas tr.cambio-hoy td { background: var(--resalte); }
 .table.tomas tr.cambio-hoy td:first-child { box-shadow: inset 4px 0 0 var(--resalte-borde); }
 .tag-cambio { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: var(--resalte-borde); color: var(--card); vertical-align: middle; }
+.table.tomas tr.futuro td { color: var(--red); }
+.table.tomas tr.futuro .meta, .table.tomas tr.futuro .empieza { color: var(--red); font-size: .8rem; }
+.table.tomas tr.futuro .empieza { font-weight: 700; }

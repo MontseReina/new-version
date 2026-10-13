@@ -97,9 +97,12 @@ const sinRetirar = (p: Producto, date: string) => !p.retirado || date < p.retira
 export const enTerapia = (p: Producto) => esAgendado(p) || (esPeriodico(p) && p.via === 'Endovenosa')
 export const terapia = (l: Producto[], date: string) => l.filter((p) => sinRetirar(p, date) && enTerapia(p))
 /** Lo demás que va cada cierto número de días (también con inicio futuro). */
+/** Lo diario que ya está dado de alta pero empieza más adelante: por fecha de inicio. */
+export const futuros = (l: Producto[], date: string) =>
+  porMomento(l.filter((p) => sinRetirar(p, date) && !esPeriodico(p) && !esAgendado(p) && !!p.inicio && p.inicio > date)).sort((a, b) => a.inicio!.localeCompare(b.inicio!))
 export const periodicos = (l: Producto[], date: string) => l.filter((p) => sinRetirar(p, date) && esPeriodico(p) && !enTerapia(p))
 /** Con cuántos días de antelación se avisa de la terapia endovenosa. */
-export const AVISO_DIAS = 2
+export const AVISO_DIAS = 7
 /** Último día marcado como hecho de cada producto que no es diario. */
 export type Ultimas = { [id: string]: string | undefined }
 export function ultimasDe(historia: { day: string; value: SuplDia }[], d: SuplDia, date: string): Ultimas {
@@ -129,7 +132,7 @@ export const enDias = (n: number) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `e
 export const proxima = (p: Producto, date: string) => [...(p.fechas ?? [])].sort().find((f) => f >= date) ?? null
 
 const y = (xs: string[]) => (xs.length > 1 ? xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1] : xs[0] ?? '')
-const momentosTxt = (p: Producto) => (p.momentos?.length ? y(MOMENTOS.filter(([k]) => p.momentos!.includes(k)).map(([, l]) => l.toLowerCase())) : 'a demanda')
+export const momentosTxt = (p: Producto) => (p.momentos?.length ? y(MOMENTOS.filter(([k]) => p.momentos!.includes(k)).map(([, l]) => l.toLowerCase())) : 'a demanda')
 const diasTxt = (p: Producto) => (p.dias?.length && p.dias.length < 7 ? y(p.dias.map((i) => DIAS[i])) : 'todos los días')
 export type Cambio = { p: Producto; tipo: 'empieza' | 'cambia' | 'termina'; texto: string }
 /** Lo diario que empieza, cambia de dosis, de número de tomas, de momento o de días, o se deja, justo en `date`. */

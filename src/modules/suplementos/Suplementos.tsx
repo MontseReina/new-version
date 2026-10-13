@@ -5,7 +5,7 @@ import { Empty, Field, Plegable, Section, TriButton, type TriState } from '../..
 import { addDays, fmtDate, todayStr } from '../../lib/dates'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { DIAS, MOMENTOS, VIAS, avisosDe, cambiosDe, clave, conCambio, delDia, diasDesde, enDias, esAgendado, mismaPauta, momentosDe, periodicos, proximaDe, terapia, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
+import { AVISO_DIAS, DIAS, MOMENTOS, VIAS, avisosDe, cambiosDe, clave, conCambio, delDia, diasDesde, enDias, esAgendado, futuros, momentosTxt, mismaPauta, momentosDe, periodicos, proximaDe, terapia, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
 import { useUltimas } from './useUltimas'
 
 const nuevoId = () => Math.random().toString(36).slice(2, 10)
@@ -21,6 +21,7 @@ export default function Suplementos() {
   const hoy = delDia(lista, date)
   const per = periodicos(lista, date)
   const ter = terapia(lista, date)
+  const fut = futuros(lista, date)
   const cambios = cambiosDe(lista, date)
   const resaltar = new Map(cambios.filter((x) => x.tipo !== 'termina').map((x) => [x.p.id, x.tipo === 'empieza' ? 'Empieza hoy' : 'Cambia hoy']))
   const [editando, setEditando] = useState<Producto | 'nuevo' | null>(null)
@@ -104,13 +105,13 @@ export default function Suplementos() {
         return <div className="notice" key={p.id}><strong>Toca: {p.nombre}.</strong> {e.u ? `La última fue hace ${e.dias} días.` : 'Aún no hay ninguna registrada.'} {p.nota}</div>
       })}
 
-      {cfg && hoy.length + per.length + ter.length === 0 && (
+      {cfg && hoy.length + fut.length + per.length + ter.length === 0 && (
         <div className="card"><Empty>Aún no hay suplementos. Añade el primero con «+ Producto».</Empty></div>
       )}
 
       {ter.length > 0 && (
         <Plegable id="supl-terapia" title="Terapia endovenosa">
-          <p className="muted small">Lo que se administra en días concretos o cada cierto número de días. La app avisa desde dos días antes.</p>
+          <p className="muted small">Lo que se administra en días concretos o cada cierto número de días. La app avisa desde {AVISO_DIAS} días antes.</p>
           {ter.map((p) => {
             const e = estadoTerapia(p)
             const futuras = (p.fechas ?? []).filter((f) => f >= date)
@@ -154,7 +155,7 @@ export default function Suplementos() {
         </div>
       )}
 
-      {hoy.length > 0 && (
+      {hoy.length + fut.length > 0 && (
         <Section title={esHoy ? 'Tomas de hoy' : `Tomas del ${fmtDate(date)}`} open>
           <p className="muted small">Un toque: ✓ tomado · dos: ✗ no tomado · tres: NP no precisa. Toca el nombre de un momento para marcar toda su columna. Para pasar un producto a otro momento, toca «Modificar».</p>
           <div className="table-wrap">
@@ -186,6 +187,18 @@ export default function Suplementos() {
                         {momentosDe(p).includes(k) && <TriButton value={tomas[clave(p, k)] ?? null} onChange={(v) => marcar(clave(p, k), v)} label={`${p.nombre} · ${l}`} />}
                       </td>
                     ))}
+                  </tr>
+                ))}
+                {fut.map((p) => (
+                  <tr key={p.id} className="futuro">
+                    <td colSpan={columnas.length + 1}>
+                      <div>
+                        {p.nombre}
+                        <div className="meta">{[detalle(p), momentosTxt(p)].filter(Boolean).join(' · ')}</div>
+                        <div className="empieza">Empieza el {fmtDate(p.inicio)} ({cuando(p.inicio!)})</div>
+                      </div>
+                      {retirarLink(p)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
