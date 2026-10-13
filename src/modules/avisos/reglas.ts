@@ -17,8 +17,8 @@ export const AVISOS: { id: AvisoId; nombre: string; detalle: string; porDefecto:
   { id: 'agua', nombre: 'Agua a mediodía', detalle: 'A la hora que digas, si no llegas a la cantidad mínima.', porDefecto: true },
   { id: 'kcal', nombre: 'Kilocalorías del día', detalle: 'A media tarde, si vas en rango o por debajo de lo previsto hasta esa hora; y el balance del día después de cenar. Nunca avisa por pasarte.', porDefecto: true },
   { id: 'dormir', nombre: 'Ya puedes acostarte', detalle: 'Cuando pasan las horas mínimas desde que terminas de cenar.', porDefecto: true },
-  { id: 'pendiente', nombre: 'Comida principal sin anotar', detalle: 'Desayuno, comida o cena sin anotar media hora después de su hora.', porDefecto: false },
-  { id: 'cena', nombre: 'Hora de cenar', detalle: 'Media hora antes de la hora máxima de terminar la cena, si aún no has empezado.', porDefecto: false },
+  { id: 'pendiente', nombre: 'Comida principal sin anotar', detalle: 'Desayuno, comida o cena sin anotar media hora después de su hora.', porDefecto: true },
+  { id: 'cena', nombre: 'Hora de cenar', detalle: 'Media hora antes de la hora máxima de terminar la cena, si aún no has empezado.', porDefecto: true },
 ]
 
 export type AvisosCfg = {

@@ -223,13 +223,13 @@ const AVISOS = [
 		id: "pendiente",
 		nombre: "Comida principal sin anotar",
 		detalle: "Desayuno, comida o cena sin anotar media hora después de su hora.",
-		porDefecto: false
+		porDefecto: true
 	},
 	{
 		id: "cena",
 		nombre: "Hora de cenar",
 		detalle: "Media hora antes de la hora máxima de terminar la cena, si aún no has empezado.",
-		porDefecto: false
+		porDefecto: true
 	}
 ];
 const activo = (c, id) => c.activos?.[id] ?? AVISOS.find((a) => a.id === id).porDefecto;
