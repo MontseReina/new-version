@@ -463,3 +463,10 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .vida-area p { margin: .15rem 0; }
 .vida-hecha { display: grid; grid-template-columns: 1.6rem 1fr; gap: .4rem; align-items: start; padding: .25rem 0; font-size: .92rem; overflow-wrap: anywhere; }
 .vida-accion .meta .linkbtn { margin: 0; }
+.vida-area-cab { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; }
+.vida-area-cab h3 { margin: .5rem 0 .25rem; color: var(--text); }
+.vida-pct { white-space: nowrap; }
+.vida-pct b { font-family: var(--font-title); font-size: 1.35rem; }
+.vida-area .barra { margin: 0 0 .4rem; }
+.vida-area .barra i { background: var(--primary); }
+.vida-hecha.extra .vida-logro-marca { background: var(--primary); color: var(--card); }

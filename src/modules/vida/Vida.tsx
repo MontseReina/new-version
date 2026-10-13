@@ -8,11 +8,12 @@ import { useSettings } from '../../store/useSettings'
 import { Pestanas } from '../introspeccion/Pestanas'
 import { guardarPlan } from './guardar'
 import {
-  ESTADOS, arrastradas, diaDelMes, hechasPorArea, leerPlan, logrosDelMes, nombreArea, nombreMes, porArea, semanaDe, siguiente, textoMes, unirPlan,
+  ESTADOS, arrastradas, cumplimientoPorArea, diaDelMes, hechasPorArea, leerPlan, logrosDelMes, nombreArea, nombreMes, porArea, semanaDe, siguiente, textoMes, unirPlan,
   type Estado, type Marca, type Plan, type VidaCfg, type VidaMes,
 } from './logica'
 
 const SIMBOLO: { [k in Estado]: string } = { si: '✓', media: '½', no: '✗' }
+const fmtNum = (n: number) => String(n).replace('.', ',')
 
 /** La vida que sueño: el plan del mes en semanas, para marcar cada acción, y los logros. */
 export default function Vida() {
@@ -57,6 +58,12 @@ function VidaMesVista({ mes, onCargado }: { mes: string; onCargado: (mes: string
   const quitarLogro = (k: number) => set({ logros: (d.logros ?? []).filter((_, j) => j !== k) })
 
   const logros = logrosDelMes(d)
+  const cumple = cumplimientoPorArea(d, hoy)
+  const areasMes = plan ? [
+    ...(plan.areas ?? []).map((a) => ({ id: a.id, nombre: a.nombre, objetivo: a.objetivo as string | undefined, minimo: a.minimo, mant: false })),
+    ...(plan.mantenimiento ?? []).filter((m) => m.id).map((m) => ({ id: m.id!, nombre: m.nombre, objetivo: undefined, minimo: m.minimo, mant: true })),
+    { id: '', nombre: 'Otros logros', objetivo: undefined, minimo: undefined, mant: false },
+  ] : []
 
   // El plan del mes que está abierto se une aquí mismo, para no pisar lo que se esté guardando;
   // el de otro mes se guarda en su documento y se pasa a ese mes.
@@ -132,49 +139,47 @@ function VidaMesVista({ mes, onCargado }: { mes: string; onCargado: (mes: string
           )}
 
           <div className="card">
-            <h2 className="intro-h">Mis logros de {nombreMes(plan.mes).split(' ')[0]}</h2>
-            {logros.length === 0 && <p className="muted small">Aquí aparecerá cada acción que taches como hecha.</p>}
-            {logros.map((l, k) => (
-              <div className={'vida-logro-item' + (l.previsto ? '' : ' extra')} key={k}>
-                <span className="vida-logro-marca" aria-hidden="true">{l.previsto ? '✓' : '★'}</span>
-                <div className="main">
-                  <div>{l.texto}</div>
-                  <div className="meta">
-                    {fmtDate(l.dia)}{l.area ? ' · ' + nombreArea(plan, l.area) : ''}
-                    {!l.previsto && <> · no previsto · <button type="button" className="linkbtn" onClick={() => quitarLogro(l.indice!)}>Quitar</button></>}
+            <h2 className="intro-h">Objetivos de {nombreMes(plan.mes).split(' ')[0]}</h2>
+            {areasMes.map((a) => {
+              const c = cumple[a.id]
+              const hechasA = (hechas[a.id] ?? []).map((h) => ({ ...h, previsto: true, indice: -1 }))
+              const extra = logros.filter((l) => !l.previsto && (l.area ?? '') === a.id)
+              const lista = [...hechasA, ...extra].sort((x, y) => x.dia.localeCompare(y.dia))
+              if (!a.id && !lista.length) return null
+              return (
+                <div key={a.id || 'otros'} className="vida-area">
+                  <div className="vida-area-cab">
+                    <h3>{a.nombre}{a.mant && <span className="muted small"> · mantenimiento</span>}</h3>
+                    {c && <span className="vida-pct"><b>{c.pct} %</b> <span className="muted small">{fmtNum(c.hechas)} de {c.total}</span></span>}
                   </div>
+                  {c && <div className="barra"><i style={{ width: c.pct + '%' }} /></div>}
+                  {a.objetivo && <p className="small">{a.objetivo}</p>}
+                  {a.minimo && <p className="muted small">Mínimo viable: {a.minimo}</p>}
+                  {lista.length === 0
+                    ? <p className="muted small">Todavía nada tachado este mes.</p>
+                    : lista.map((h, k) => (
+                      <div key={k} className={'vida-hecha' + (h.previsto ? '' : ' extra')}>
+                        <span className="vida-logro-marca" aria-hidden="true">{h.previsto ? '✓' : '★'}</span>
+                        <span>{h.texto} <span className="muted small">· {fmtDate(h.dia)}{h.previsto ? '' : ' · no previsto'}</span>
+                          {!h.previsto && <> <button type="button" className="linkbtn" onClick={() => quitarLogro(h.indice!)}>Quitar</button></>}
+                        </span>
+                      </div>
+                    ))}
                 </div>
-              </div>
-            ))}
+              )
+            })}
+            <p className="muted small vida-ayuda">El porcentaje cuenta las acciones de las semanas ya empezadas: hecha cuenta entera y a medias, media. Lo no previsto (★) no entra en el porcentaje.</p>
+
             <h3>Añadir algo que no estaba previsto</h3>
             <div className="vida-logro">
               <input type="text" aria-label="Logro no previsto" placeholder="Por ejemplo: dije que no a una guardia extra" value={logro} onChange={(e) => setLogro(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') anadirLogro() }} />
-              {(plan.areas ?? []).length > 0 && (
-                <select aria-label="Área del logro" value={areaLogro} onChange={(e) => setAreaLogro(e.target.value)}>
-                  <option value="">Sin área</option>
-                  {plan.areas!.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                  {(plan.mantenimiento ?? []).filter((m) => m.id).map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-                </select>
-              )}
+              <select aria-label="Área del logro" value={areaLogro} onChange={(e) => setAreaLogro(e.target.value)}>
+                <option value="">Sin área</option>
+                {areasMes.filter((a) => a.id).map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+              </select>
               <button type="button" className="btn secondary" disabled={!logro.trim()} onClick={anadirLogro}>Añadir</button>
             </div>
           </div>
-
-          <Plegable id="vida-objetivos" title="Objetivos del mes" abierto>
-            {[...(plan.areas ?? []).map((a) => ({ id: a.id, nombre: a.nombre, objetivo: a.objetivo, minimo: a.minimo, mant: false })),
-              ...(plan.mantenimiento ?? []).filter((m) => m.id).map((m) => ({ id: m.id!, nombre: m.nombre, objetivo: undefined, minimo: m.minimo, mant: true }))].map((a) => (
-              <div key={a.id} className="vida-area">
-                <h3>{a.nombre}{a.mant && <span className="muted small"> · mantenimiento</span>}</h3>
-                {a.objetivo && <p className="small">{a.objetivo}</p>}
-                {a.minimo && <p className="muted small">Mínimo viable: {a.minimo}</p>}
-                {(hechas[a.id] ?? []).length === 0
-                  ? <p className="muted small">Todavía nada tachado este mes.</p>
-                  : (hechas[a.id] ?? []).map((h, k) => (
-                    <div key={k} className="vida-hecha"><span className="vida-logro-marca" aria-hidden="true">✓</span><span>{h.texto} <span className="muted small">· {fmtDate(h.dia)}</span></span></div>
-                  ))}
-              </div>
-            ))}
-          </Plegable>
 
         </>
       )}

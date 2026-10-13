@@ -212,3 +212,24 @@ export function unirPlan(actual: Plan | undefined, nuevo: Plan): Plan {
     semanas: [...actual.semanas.filter((s) => !nuevas.has(s.desde)), ...nuevo.semanas].sort((a, b) => a.desde.localeCompare(b.desde)),
   }
 }
+
+/**
+ * Cumplimiento de cada área en el mes: de las acciones de las semanas ya empezadas (sin contar las
+ * quitadas de pendientes), cuántas están hechas. A medias cuenta como media.
+ */
+export function cumplimientoPorArea(m: VidaMes, hoy: string): { [area: string]: { hechas: number; total: number; pct: number } } {
+  const out: { [area: string]: { hechas: number; total: number; pct: number } } = {}
+  const quitadas = new Set(m.quitadas ?? [])
+  for (const s of m.plan?.semanas ?? []) {
+    if (s.desde > hoy) continue
+    for (const a of s.acciones) {
+      if (quitadas.has(a.id)) continue
+      const c = (out[a.area ?? ''] ??= { hechas: 0, total: 0, pct: 0 })
+      c.total++
+      const e = m.marcas?.[a.id]?.estado
+      c.hechas += e === 'si' ? 1 : e === 'media' ? 0.5 : 0
+    }
+  }
+  for (const c of Object.values(out)) c.pct = c.total ? Math.round((c.hechas / c.total) * 100) : 0
+  return out
+}
