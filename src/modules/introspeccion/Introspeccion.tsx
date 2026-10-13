@@ -8,6 +8,7 @@ import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
 import { Ejercicios } from './Ejercicios'
 import { Informe } from './Informe'
+import { Pestanas } from './Pestanas'
 import {
   EXPRESIONES, PAGINAS, PALABRAS_PAGINA, ejercicioActivo, escritas, expresadas, graciasDe, hechosDe, paginas, palabras, resumen,
   type Gracia, type IntroCfg, type IntroDia,
@@ -77,6 +78,7 @@ export default function Introspeccion() {
   return (
     <div>
       <h1>Trabajo introspectivo</h1>
+      <Pestanas />
       <DateNav date={date} base="/introspeccion" sub={estado} />
       {state === 'error' && (
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>

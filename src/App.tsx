@@ -5,6 +5,8 @@ import { Layout } from './components/Layout'
 import { supabase } from './lib/supabase'
 import { modules } from './modules'
 import CargarIntrospeccion from './modules/introspeccion/Cargar'
+import CargarVida from './modules/vida/Cargar'
+import Vida from './modules/vida/Vida'
 import CargarNutricion, { CargarAjusteNutricion } from './modules/nutricion/Cargar'
 import Cargar from './modules/sintomas/Cargar'
 import { pilares } from './pilares'
@@ -29,6 +31,8 @@ function Rutas() {
         <Route path="cargar/nutricion/:datos" element={<CargarNutricion />} />
         <Route path="cargar/nutricion-ajuste/:datos" element={<CargarAjusteNutricion />} />
         <Route path="cargar/introspeccion/:datos" element={<CargarIntrospeccion />} />
+        <Route path="cargar/vida/:datos" element={<CargarVida />} />
+        <Route path="vida" element={<Vida />} />
         <Route path="cargar/:datos" element={<Cargar />} />
         <Route path="avisos" element={<Avisos />} />
         <Route path="mas" element={<Mas />} />

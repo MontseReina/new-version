@@ -420,3 +420,32 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .table.tomas tr.futuro td { color: var(--red); }
 .table.tomas tr.futuro .meta, .table.tomas tr.futuro .empieza { color: var(--red); font-size: .8rem; }
 .table.tomas tr.futuro .empieza { font-weight: 700; }
+
+/* Pestañas de Trabajo introspectivo y La vida que sueño (0.12.0) */
+.intro-tabs { display: flex; gap: .3rem; margin: 0 0 .8rem; border-bottom: 1px solid var(--line); }
+.intro-tabs a { padding: .45rem .8rem; text-decoration: none; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 600; font-size: .92rem; }
+.intro-tabs a.on { color: var(--primary); border-bottom-color: var(--primary); }
+.vida-cab { background: var(--primary-soft); border-color: var(--primary-soft); }
+.vida-mes { display: block; }
+.vida-mes::first-letter { text-transform: uppercase; }
+.vida-frase { font-family: var(--font-title); font-size: 1.5rem; line-height: 1.25; margin: .2rem 0 .5rem; color: var(--ink-deep); }
+.vida-sem-tit { text-align: center; }
+.vida-accion { display: grid; grid-template-columns: auto 1fr; gap: .7rem; align-items: start; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.vida-accion:last-of-type { border-bottom: none; }
+.vida-accion-txt { min-width: 0; overflow-wrap: anywhere; }
+.vida-accion .meta { display: flex; flex-wrap: wrap; gap: .2rem .5rem; align-items: center; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.vida-accion.si .lbl { color: var(--muted); text-decoration: line-through; }
+.vida-nota { margin-top: .35rem; padding: .35rem .5rem !important; font-size: .85rem; }
+.vida-ayuda { margin-top: .5rem; }
+.vida-logro { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+.vida-logro input { flex: 1 1 12rem; min-width: 0; }
+.vida-logro select { flex: 0 1 10rem; width: auto; }
+.vida-area h3 { color: var(--text); margin-bottom: .2rem; }
+.vida-resumen-sem { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .35rem 0; border-bottom: 1px solid var(--line); }
+.vida-resumen-sem .linkbtn { font-size: .85rem; color: var(--text); text-decoration: none; margin: 0; }
+.vida-puntos { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.vida-punto { width: .8rem; height: .8rem; border-radius: 50%; background: var(--card); border: 1.5px solid var(--muted); }
+.vida-punto.si { background: var(--primary); border-color: var(--primary); }
+.vida-punto.media { background: var(--primary-soft); border-color: var(--primary); }
+.vida-punto.no { background: var(--line); border-color: var(--line); }
+.tri.media { background: var(--card); border: 1.5px dashed var(--primary); color: var(--primary); }
