@@ -247,8 +247,8 @@ function InformeVida({ mesActual, cargarPlan }: { mesActual: string; cargarPlan:
       )}
       {msg && <p role="status" className="small">{msg}</p>}
 
-      <h3>2. Cargar el plan del mes siguiente</h3>
-      <p className="muted small">Lo normal es tocar el enlace «Cargar en la app» que viene al final del prompt mensual. Si no funciona, pega aquí el texto que lo acompaña. Lo que ya marcaste en otros meses se conserva.</p>
+      <h3>2. Cargar un plan</h3>
+      <p className="muted small">Lo normal es tocar el enlace «Cargar en la app» del prompt mensual o del semanal. Si no funciona, pega aquí el texto que lo acompaña. Una semana nueva se suma a las que ya hay; lo que ya marcaste se conserva.</p>
       <textarea aria-label="Texto del plan" placeholder="Pega aquí el texto del plan" value={pegado} onChange={(e) => { setPegado(e.target.value); setAviso('') }} />
       <button type="button" className="btn secondary" disabled={!pegado.trim()} onClick={() => void cargar()}>Cargar</button>
       {aviso && <p role="status" className="small">{aviso}</p>}

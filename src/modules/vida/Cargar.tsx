@@ -41,7 +41,7 @@ export default function CargarVida() {
           <p>Plan de <strong>{nombreMes(plan.mes)}</strong>{plan.frase ? <>: «{plan.frase}»</> : null}</p>
           {(plan.areas ?? []).length > 0 && <p className="muted">Áreas activas: {plan.areas!.map((a) => a.nombre).join(' · ')}</p>}
           <p className="muted small">{plan.semanas.length} {plan.semanas.length === 1 ? 'semana' : 'semanas'} y {acciones} {acciones === 1 ? 'acción' : 'acciones'}, del {fmtDate(plan.semanas[0].desde)} al {fmtDate(plan.semanas[plan.semanas.length - 1].hasta)}.</p>
-          <p className="muted small">Sustituye al plan que hubiera para ese mes. Lo que ya marcaste y tus logros se conservan.</p>
+          <p className="muted small">Las semanas que trae se suman al mes; si ya había una semana con la misma fecha, la sustituyen. Lo que ya marcaste y tus logros se conservan.</p>
           {estado === 'error' && <div className="notice small">No se ha podido guardar. Revisa la conexión y vuelve a pulsar.</div>}
           <div className="row">
             <button type="button" className="btn" disabled={!cfg || estado === 'guardando'} onClick={() => void guardar()}>{estado === 'guardando' ? 'Guardando…' : 'Guardar el plan'}</button>
