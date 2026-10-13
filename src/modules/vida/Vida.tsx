@@ -8,7 +8,7 @@ import { useSettings } from '../../store/useSettings'
 import { Pestanas } from '../introspeccion/Pestanas'
 import { guardarPlan } from './guardar'
 import {
-  ESTADOS, diaDelMes, leerPlan, nombreArea, nombreMes, recuento, semanaDe, siguiente, textoMes,
+  ESTADOS, diaDelMes, leerPlan, nombreArea, nombreMes, porArea, recuento, semanaDe, siguiente, textoMes,
   type Estado, type Marca, type VidaCfg, type VidaMes,
 } from './logica'
 
@@ -82,26 +82,29 @@ export default function Vida() {
                 <button type="button" className="btn sm ghost" disabled={i >= plan.semanas.length - 1} aria-label="Semana siguiente" onClick={() => setSem(i + 1)}>›</button>
               </div>
               {semana.acciones.length === 0 && <p className="muted">Semana sin acciones: es tu semana de colchón.</p>}
-              {semana.acciones.map((a) => {
-                const k = marcas[a.id]
-                return (
-                  <div key={a.id} className={'vida-accion' + (k ? ' ' + k.estado : '')}>
-                    <button type="button" className={'tri ' + (k?.estado === 'si' ? 'si' : k?.estado === 'no' ? 'np' : k?.estado === 'media' ? 'media' : 'vacio')}
-                      disabled={state === 'cargando'} aria-label={`${a.texto}: ${k ? ESTADOS[k.estado] : 'sin marcar'}. Toca para cambiar`}
-                      onClick={() => marcar(a.id)}>{k ? SIMBOLO[k.estado] : '○'}</button>
-                    <div className="vida-accion-txt">
-                      <span className="lbl">{a.texto}</span>
-                      <div className="meta">
-                        {a.area && <span className="tag">{nombreArea(plan, a.area)}</span>}
-                        {a.dia && <span>{fmtDate(a.dia)}</span>}
+              {semana.acciones.length > 0 && porArea(plan, semana.acciones).map((g) => (
+                <section key={g.id || 'sin'} className="vida-grupo" aria-label={g.nombre}>
+                  <h3 className="vida-grupo-tit">{g.nombre}{!g.activa && g.id ? <span className="muted small"> · mantenimiento</span> : null}</h3>
+                  {g.acciones.length === 0 && <p className="muted small vida-vacio">Sin acciones esta semana.</p>}
+                  {g.acciones.map((a) => {
+                    const k = marcas[a.id]
+                    return (
+                      <div key={a.id} className={'vida-accion' + (k ? ' ' + k.estado : '')}>
+                        <button type="button" className={'tri ' + (k?.estado === 'si' ? 'si' : k?.estado === 'no' ? 'np' : k?.estado === 'media' ? 'media' : 'vacio')}
+                          disabled={state === 'cargando'} aria-label={`${a.texto}: ${k ? ESTADOS[k.estado] : 'sin marcar'}. Toca para cambiar`}
+                          onClick={() => marcar(a.id)}>{k ? SIMBOLO[k.estado] : '○'}</button>
+                        <div className="vida-accion-txt">
+                          <span className="lbl">{a.texto}</span>
+                          {a.dia && <div className="meta"><span>{fmtDate(a.dia)}</span></div>}
+                          {k && (
+                            <input type="text" className="vida-nota" aria-label="Nota" placeholder="Nota (opcional)" value={k.nota ?? ''} onChange={(e) => anotar(a.id, e.target.value)} />
+                          )}
+                        </div>
                       </div>
-                      {k && (
-                        <input type="text" className="vida-nota" aria-label="Nota" placeholder="Nota (opcional)" value={k.nota ?? ''} onChange={(e) => anotar(a.id, e.target.value)} />
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+                    )
+                  })}
+                </section>
+              ))}
               <p className="muted small vida-ayuda">Un toque: hecha · dos: a medias · tres: no hecha · cuatro: sin marcar.</p>
             </div>
           )}

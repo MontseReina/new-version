@@ -4,7 +4,7 @@ import { fmtDate } from '../../lib/dates'
 import type { Json } from '../../store/types'
 
 export type Area = { id: string; nombre: string; objetivo?: string; minimo?: string; resultado?: string; anual?: string }
-export type Mantenimiento = { nombre: string; minimo?: string }
+export type Mantenimiento = { id?: string; nombre: string; minimo?: string }
 export type Accion = { id: string; texto: string; area?: string; dia?: string }
 export type Semana = { desde: string; hasta: string; acciones: Accion[] }
 export type Plan = {
@@ -40,7 +40,26 @@ export function semanaDe(plan: Plan, hoy: string): number {
   return hoy < s[0].desde ? 0 : s.length - 1
 }
 
-export const nombreArea = (plan: Plan | undefined, id?: string) => (id ? plan?.areas?.find((a) => a.id === id)?.nombre ?? id : '')
+export const nombreArea = (plan: Plan | undefined, id?: string) =>
+  (id ? plan?.areas?.find((a) => a.id === id)?.nombre ?? plan?.mantenimiento?.find((m) => m.id === id)?.nombre ?? id : '')
+
+export type Grupo = { id: string; nombre: string; activa: boolean; acciones: Accion[] }
+/**
+ * Las acciones de una semana agrupadas por área: primero las áreas activas (aunque no tengan
+ * acciones esa semana), después las de mantenimiento y las demás que tengan alguna, y al final
+ * las acciones sin área.
+ */
+export function porArea(plan: Plan, acciones: Accion[]): Grupo[] {
+  const out: Grupo[] = (plan.areas ?? []).map((a) => ({ id: a.id, nombre: a.nombre, activa: true, acciones: [] }))
+  for (const m of plan.mantenimiento ?? []) if (m.id) out.push({ id: m.id, nombre: m.nombre, activa: false, acciones: [] })
+  const sin: Grupo = { id: '', nombre: 'Sin área', activa: false, acciones: [] }
+  for (const a of acciones) {
+    let g = a.area ? out.find((x) => x.id === a.area) : sin
+    if (!g) { g = { id: a.area!, nombre: a.area!, activa: false, acciones: [] }; out.push(g) }
+    g.acciones.push(a)
+  }
+  return [...out.filter((g) => g.activa || g.acciones.length), ...(sin.acciones.length ? [sin] : [])]
+}
 
 export function recuento(plan: Plan | undefined, marcas: VidaMes['marcas']) {
   let total = 0, si = 0, media = 0, no = 0
@@ -81,7 +100,7 @@ export function textoMes(m: VidaMes): string {
   out.push('', '## Semana a semana')
   for (const s of p.semanas) {
     out.push('', `### Del ${fmtDate(s.desde)} al ${fmtDate(s.hasta)}`)
-    for (const a of s.acciones) {
+    for (const g of porArea(p, s.acciones)) for (const a of g.acciones) {
       const k = m.marcas?.[a.id]
       const estado = k ? ESTADOS[k.estado].toLowerCase() + (k.dia ? ` (${fmtDate(k.dia)})` : '') : 'sin marcar'
       out.push(`- [${estado}] ${a.texto}${a.area ? ' · ' + nombreArea(p, a.area) : ''}${a.dia ? ' · previsto ' + fmtDate(a.dia) : ''}${k?.nota?.trim() ? ' — ' + k.nota.trim() : ''}`)
@@ -122,7 +141,7 @@ export function leerPlan(texto: string): Plan | null {
       ? v.areas.filter(esObj).map((a) => limpio({ id: txt(a.id) ?? '', nombre: txt(a.nombre) ?? '', objetivo: txt(a.objetivo), minimo: txt(a.minimo), resultado: txt(a.resultado), anual: txt(a.anual) })).filter((a) => a.id && a.nombre)
       : undefined,
     mantenimiento: Array.isArray(v.mantenimiento)
-      ? v.mantenimiento.filter(esObj).map((a) => limpio({ nombre: txt(a.nombre) ?? '', minimo: txt(a.minimo) })).filter((a) => a.nombre)
+      ? v.mantenimiento.filter(esObj).map((a) => limpio({ id: txt(a.id), nombre: txt(a.nombre) ?? '', minimo: txt(a.minimo) })).filter((a) => a.nombre)
       : undefined,
   })
 }
