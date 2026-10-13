@@ -35,8 +35,10 @@ export type Menu = {
 export type Aviso = { dias_semana: number[]; texto: string }
 
 export type NutriCfg = {
-  /** Mínimo diario pautado por nutrición clínica. Sin cifra = «sin fijar». */
+  /** Mínimo diario pautado por nutrición clínica. Sin cifra, la referencia es lo previsto en el menú del día. */
   kcal_min?: number | null
+  /** Menú que se enseña siempre, sea cual sea la fase del ciclo. Sin valor, el que toca según el ciclo. */
+  menu_fijo?: MenuId | null
   cena_fin_max?: string
   ayuno_max_h?: number
   agua_margen?: { antes_min?: number; despues_min?: number }
@@ -96,12 +98,16 @@ export interface MenuHoy { id: MenuId; menu: Menu | null; porque: string; indice
 /** Qué menú toca un día y por qué. Folicular desde la regla hasta la ovulación; lúteo desde la ovulación hasta la regla. */
 export function menuDe(cfg: NutriCfg, info: InfoDia | null, date: string): MenuHoy {
   const dow = (new Date(date + 'T12:00:00').getDay() + 6) % 7
-  const id: MenuId = info?.fase === 'lutea' ? 'luteo' : 'folicular'
+  const fijo = cfg.menu_fijo === 'folicular' || cfg.menu_fijo === 'luteo' ? cfg.menu_fijo : null
+  const id: MenuId = fijo ?? (info?.fase === 'lutea' ? 'luteo' : 'folicular')
   const menu = cfg.menus?.[id] ?? null
   const semana = info ? (Math.floor((info.dia - 1) / 7) % 2) + 1 : 1
   let porque = 'Sin reglas registradas todavía: se enseña el menú folicular.'
   let desdeFase = 0
-  if (info) {
+  if (fijo) {
+    porque = `Has elegido ver siempre el ${MENUS[fijo].toLowerCase()}, sea cual sea la fase del ciclo.`
+    if (fijo === 'luteo' && info?.fase === 'lutea') desdeFase = diffDays(date, info.ciclo.ovulacion) - 1
+  } else if (info) {
     const c = info.ciclo
     if (id === 'luteo') {
       desdeFase = diffDays(date, c.ovulacion) - 1
@@ -284,3 +290,48 @@ export function leerCfg(texto: string): NutriCfg | null {
 }
 
 export const semana = (date: string) => Array.from({ length: 7 }, (_, i) => addDays(date, i - 6))
+
+// ---------- Ajuste parcial (sin sustituir los menús) ----------
+/** Cambios sueltos sobre la configuración que ya tiene la usuaria: kilocalorías de platos, cambios en
+ *  algunas tomas y otras claves sueltas. Lo demás se conserva. */
+export type AjusteCfg = {
+  platos_kcal?: { [id: string]: number | null }
+  tomas?: { [id: string]: Partial<TomaDef> }
+  menu_fijo?: MenuId | null
+  kcal_min?: number | null
+}
+
+export function leerAjuste(texto: string): AjusteCfg | null {
+  let x: unknown
+  try { x = JSON.parse(texto) } catch { return null }
+  if (esObj(x) && esObj(x.nutricion_ajuste)) x = x.nutricion_ajuste
+  if (!esObj(x)) return null
+  if (x.platos_kcal !== undefined && (!esObj(x.platos_kcal) || Object.values(x.platos_kcal).some((v) => v !== null && typeof v !== 'number'))) return null
+  if (x.tomas !== undefined && (!esObj(x.tomas) || Object.values(x.tomas).some((v) => !esObj(v)))) return null
+  if (x.menu_fijo !== undefined && x.menu_fijo !== null && x.menu_fijo !== 'folicular' && x.menu_fijo !== 'luteo') return null
+  return x as AjusteCfg
+}
+
+/** Lo que cambia al aplicar un ajuste. Los platos y tomas que no existen se ignoran (y se cuentan). */
+export function aplicarAjuste(cfg: NutriCfg, aj: AjusteCfg): { patch: Partial<NutriCfg>; platos: number; tomas: number; ignorados: string[] } {
+  const patch: Partial<NutriCfg> = {}
+  const ignorados: string[] = []
+  let platos = 0, tomas = 0
+  if (aj.platos_kcal) {
+    const p = { ...(cfg.platos ?? {}) }
+    for (const [id, k] of Object.entries(aj.platos_kcal)) {
+      if (!p[id]) { ignorados.push(id); continue }
+      const { kcal: _, ...resto } = p[id]
+      p[id] = k == null ? resto : { ...resto, kcal: k }
+      platos++
+    }
+    patch.platos = p
+  }
+  if (aj.tomas) {
+    patch.tomas = (cfg.tomas ?? []).map((t) => { const c = aj.tomas![t.id]; if (!c) return t; tomas++; return { ...t, ...c, id: t.id } })
+    for (const id of Object.keys(aj.tomas)) if (!(cfg.tomas ?? []).some((t) => t.id === id)) ignorados.push(id)
+  }
+  if (aj.menu_fijo !== undefined) patch.menu_fijo = aj.menu_fijo
+  if (aj.kcal_min !== undefined) patch.kcal_min = aj.kcal_min
+  return { patch, platos, tomas, ignorados }
+}

@@ -50,6 +50,8 @@ export default defineConfig({
           },
           workbox: {
             globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
+            // Avisos al móvil: recibir y abrir las notificaciones (public/avisos-sw.js).
+            importScripts: ['avisos-sw.js'],
             navigateFallback: base + 'index.html',
           },
         }),

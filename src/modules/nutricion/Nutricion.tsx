@@ -15,6 +15,7 @@ import {
   aMin, aguaDe, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
+import { fmtKcal, kcalDia, RANGO_POR_DEFECTO } from './kcal'
 import { Peso } from './Peso'
 import { Reloj } from './Reloj'
 
@@ -58,6 +59,7 @@ export default function Nutricion() {
   if (!defs.length) return <div><h1>Nutrición</h1><Vacio guardar={saveCfg} /></div>
 
   const h = horarios(c, d, date, hoy, ahoraMin)
+  const kc = kcalDia(c, d, menu, date === hoy ? ahoraMin : null)
   const ay = ayuno(c, ayer, d)
   const lv = nivelDia(h, ay)
   const cenaMax = c.cena_fin_max ?? CENA_MAX_POR_DEFECTO
@@ -99,6 +101,7 @@ export default function Nutricion() {
           </div>
           <div className="muted small">{menu.porque}</div>
           <div className="barra" style={{ marginTop: '.4rem' }}><i className={lv} style={{ width: Math.round((h.hechas / h.total) * 100) + '%' }} /></div>
+          <Kcal kc={kc} esHoy={date === hoy} />
         </div>
       </div>
 
@@ -168,9 +171,33 @@ export default function Nutricion() {
           <Field label="Sin agua antes de comer (min)"><input type="number" inputMode="numeric" min={0} defaultValue={c.agua_margen?.antes_min ?? AGUA_ANTES_POR_DEFECTO} key={'ma' + c.agua_margen?.antes_min} onBlur={(e) => void saveCfg({ agua_margen: { ...(c.agua_margen ?? {}), antes_min: Number(e.target.value) } })} /></Field>
           <Field label="Sin agua después de comer (min)"><input type="number" inputMode="numeric" min={0} defaultValue={c.agua_margen?.despues_min ?? AGUA_DESPUES_POR_DEFECTO} key={'md' + c.agua_margen?.despues_min} onBlur={(e) => void saveCfg({ agua_margen: { ...(c.agua_margen ?? {}), despues_min: Number(e.target.value) } })} /></Field>
         </div>
+        <Field label="Menú que se enseña">
+          <select value={c.menu_fijo ?? ''} onChange={(e) => void saveCfg({ menu_fijo: (e.target.value || null) as MenuId | null })}>
+            <option value="">El que toca según el ciclo</option>
+            <option value="folicular">Siempre el menú folicular</option>
+            <option value="luteo">Siempre el menú lúteo</option>
+          </select>
+        </Field>
         <h3>Cargar mis menús</h3>
         <Cargador guardar={saveCfg} />
       </Plegable>
+    </div>
+  )
+}
+
+/** Kilocalorías del día frente a la referencia (cifra pautada o, sin ella, el menú del día). Solo como suelo. */
+function Kcal({ kc, esHoy }: { kc: ReturnType<typeof kcalDia>; esHoy: boolean }) {
+  if (kc.referencia == null) return null
+  const ref = esHoy ? kc.referenciaHasta : kc.referencia
+  const de = kc.deMenu ? 'del menú' : 'pautadas'
+  const ok = ref != null && ref > 0 && kc.comido >= ref * (RANGO_POR_DEFECTO / 100)
+  return (
+    <div className="small nutri-kcal">
+      <span className={'dot ' + (ref == null || ref === 0 ? '' : ok ? 'verde' : 'amarillo')} />
+      Unas <strong>{fmtKcal(kc.comido)} kcal</strong>
+      {esHoy && ref != null && ref > 0 ? <> de {fmtKcal(ref)} previstas hasta ahora</> : <> de {fmtKcal(kc.referencia)} {de}</>}
+      {esHoy && <span className="muted"> · día entero: {fmtKcal(kc.referencia)} {de}</span>}
+      {kc.sinDato.length > 0 && <span className="muted"> · sin contar: {kc.sinDato.join(', ').toLowerCase()}</span>}
     </div>
   )
 }
@@ -203,7 +230,7 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
               const txt = v === 'si' ? 'tomado' : v === 'no' ? 'no tomado' : 'sin marcar'
               return (
                 <li key={p.id} className={esPostre ? 'postre' : ''}>
-                  <span>{p.nombre}</span>
+                  <span>{p.nombre}{cfg.platos?.[p.id]?.kcal != null && <span className="muted small"> · {fmtKcal(cfg.platos[p.id].kcal!)} kcal</span>}</span>
                   {esPostre && (
                     <button type="button" className={'tri sm ' + (v ?? 'vacio')} title={`Postre ${txt} · toca para cambiar`} aria-label={`${p.nombre}: ${txt}`}
                       onClick={() => poner({ postre: { ...(x?.postre ?? {}), [p.id]: v === null ? 'si' : v === 'si' ? 'no' : null } })}>

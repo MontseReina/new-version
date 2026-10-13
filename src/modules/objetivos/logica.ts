@@ -2,7 +2,8 @@
  *  Sin datos personales: horarios, pautas y listas salen de los ajustes de cada usuaria. */
 import { addDays } from '../../lib/dates'
 import { levantarHecho, objetivo, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
-import { aMin, ayuno, finDe, hecha, horarios, tomasDe, type Estado, type NutriCfg, type NutriDia } from '../nutricion/logica'
+import { kcalDia } from '../nutricion/kcal'
+import { aMin, ayuno, finDe, hecha, horarios, tomasDe, type MenuHoy, type NutriCfg, type NutriDia } from '../nutricion/logica'
 import { cumplimiento, type SuplCfg, type SuplDia } from '../suplementos/logica'
 
 /** Datos del descanso, que llegarán del anillo (Oura): no se teclean. `despertar` y `sueno_min` son de la
@@ -33,6 +34,8 @@ export interface Datos {
   hidra: Map<string, HidraDia>
   supl: Map<string, SuplDia>
   descanso: Map<string, DescansoDia>
+  /** Menú de cada día (según el ciclo o el menú fijado), para las kilocalorías previstas. */
+  menuDia?: (day: string) => MenuHoy | null
 }
 
 export interface Objetivo {
@@ -110,31 +113,14 @@ const alLevantar: Regla = (day, D) => {
   return levantarHecho(D.hidraCfg, d) ? 'ok' : day === D.hoy ? 'pend' : 'no'
 }
 
-const PARTE: { [k in Estado]: number } = { entera: 1, tres_cuartos: 0.75, media: 0.5, no: 0 }
-/** Kilocalorías estimadas de un día a partir de lo registrado: las de los platos del menú de cada toma,
- *  por la parte que se tomó. `null` si no se pueden calcular (un plato sin cifra, o una toma en la que
- *  comió otra cosa o no dijo cuánto). Es un suelo que alcanzar, nunca un tope. */
-export function kcalDe(cfg: NutriCfg, d: NutriDia): number | null {
-  let suma = 0
-  for (const t of tomasDe(cfg)) {
-    const x = d.tomas?.[t.id]
-    if (!x || (!x.estado && !hecha(x))) continue
-    if (!x.estado || x.otro?.trim()) return null
-    for (const id of x.platos ?? []) {
-      if (x.postre?.[id] === 'no') continue
-      const k = cfg.platos?.[id]?.kcal
-      if (k == null) return null
-      suma += k * PARTE[x.estado]
-    }
-  }
-  return suma
-}
 const aporte: Regla = (day, D) => {
-  const d = D.nutri.get(day), min = D.nutriCfg.kcal_min
-  if (!min) return 'nada'
+  const d = D.nutri.get(day), m = D.menuDia?.(day)
+  if (!m) return 'nada'
   if (!d) return sinDato(day, D)
-  const k = kcalDe(D.nutriCfg, d)
-  return k == null ? 'nada' : delDia(k / min, day, D)
+  const k = kcalDia(D.nutriCfg, d, m, null)
+  // Sin referencia, o con alguna toma que no se puede contar («Otro» o sin decir cuánto), no se mide.
+  if (!k.referencia || k.sinDato.length) return day === D.hoy ? 'pend' : 'nada'
+  return delDia(k.comido / k.referencia, day, D)
 }
 const sueno: Regla = (day, D) => {
   const m = D.descanso.get(day)?.sueno_min
@@ -162,7 +148,7 @@ export function objetivosDe(lunes: string, D: Datos): Objetivo[] {
     return delDia(c.pct, d, D)
   })
   const oura = 'Llegará con el anillo Oura'
-  const sinKcal = !D.nutriCfg.kcal_min ? 'Falta la cifra diaria pautada' : 'Faltan las kilocalorías de los platos'
+  const sinKcal = Object.values(D.nutriCfg.platos ?? {}).some((p) => p.kcal != null) ? 'Sin datos' : 'Faltan las kilocalorías de los platos'
   return [
     fila('ayuno', `Ayuno de la noche de ${D.nutriCfg.ayuno_max_h ?? 12} horas justas`, 'nutricion', ayunoJusto),
     fila('comidas', 'No saltarme comidas', 'nutricion', sinSaltar),

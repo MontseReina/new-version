@@ -4,7 +4,9 @@ import { addDays, fmtDate, nowHM, todayStr, weekStart } from '../../lib/dates'
 import { listDaily } from '../../store/repo'
 import { useSettings } from '../../store/useSettings'
 import type { HidraCfg, HidraDia } from '../hidratacion/logica'
-import { aMin, type NutriCfg, type NutriDia } from '../nutricion/logica'
+import { infoDia } from '../ciclo/logica'
+import { useCiclo } from '../ciclo/useCiclo'
+import { aMin, menuDe, type NutriCfg, type NutriDia } from '../nutricion/logica'
 import type { SuplCfg, SuplDia } from '../suplementos/logica'
 import { global, grado, objetivosDe, type DescansoDia, type Marca, type ObjCfg } from './logica'
 
@@ -27,6 +29,7 @@ export function Portada() {
   const [hidraCfg] = useSettings<HidraCfg>('hidratacion')
   const [suplCfg] = useSettings<SuplCfg>('suplementos')
   const [objCfg] = useSettings<ObjCfg>('objetivos')
+  const { modelo, mapa: cicloMapa } = useCiclo()
 
   const [lunes, setLunes] = useState(() => weekStart(hoy))
   const [sem, setSem] = useState<Semana | null>(null)
@@ -45,8 +48,9 @@ export function Portada() {
 
   const objetivos = useMemo(() => {
     if (!sem || !nutriCfg || !suplCfg) return null
-    return objetivosDe(lunes, { hoy, ahoraMin, nutriCfg, hidraCfg, suplCfg, objCfg: objCfg ?? {}, ...sem })
-  }, [sem, lunes, hoy, ahoraMin, nutriCfg, hidraCfg, suplCfg, objCfg])
+    const menuDia = (day: string) => menuDe(nutriCfg, infoDia(modelo, cicloMapa, day), day)
+    return objetivosDe(lunes, { hoy, ahoraMin, nutriCfg, hidraCfg, suplCfg, objCfg: objCfg ?? {}, menuDia, ...sem })
+  }, [sem, lunes, hoy, ahoraMin, nutriCfg, hidraCfg, suplCfg, objCfg, modelo, cicloMapa])
 
   const g = objetivos ? global(objetivos) : null
   const estaSemana = lunes === weekStart(hoy)

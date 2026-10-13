@@ -12,6 +12,7 @@ export function Mas() {
       </div>
       <h2>La app</h2>
       <div className="card">
+        <Link to="/avisos" className="objetivo"><span className="ico">🔔</span><strong>Avisos en el móvil</strong><span className="estado">Ayuno, agua, kcal, dormir</span></Link>
         <Link to="/datos" className="objetivo"><span className="ico">💾</span><strong>Mis datos</strong><span className="estado">Copia completa</span></Link>
         <Link to="/ajustes" className="objetivo"><span className="ico">⚙️</span><strong>Ajustes</strong><span className="estado">Cuenta y versión</span></Link>
       </div>

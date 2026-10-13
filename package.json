@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:demo": "DEMO_SINGLEFILE=1 vite build --outDir dist-demo",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:avisos": "rolldown supabase/functions/avisos/fuente.ts -o supabase/functions/avisos/index.ts -f esm -p neutral -e 'npm:@supabase/supabase-js@2' --banner '// GENERADO con «npm run build:avisos» a partir de fuente.ts y de src/modules/avisos/reglas.ts. No editar a mano: es lo que se pega en Supabase.'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

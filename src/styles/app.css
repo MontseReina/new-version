@@ -302,6 +302,7 @@ fieldset.sint { border: 0; padding: 0; margin: 0; min-width: 0; }
 .nutri-hora { display: flex; align-items: center; gap: .4rem; }
 .nutri-hora input { width: 8rem; }
 .nutri-agua { margin-top: .5rem; color: var(--muted); }
+.nutri-kcal { margin-top: .45rem; }
 .nutri-horario { margin: .3rem 0; flex-wrap: nowrap; }
 .nutri-horario > span:first-child { flex: 1; min-width: 5rem; }
 .nutri-horario input { width: 7.4rem; }
