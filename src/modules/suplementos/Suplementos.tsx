@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
-import { Empty, Field, Section, TriButton, type TriState } from '../../components/ui'
+import { Empty, Field, Plegable, Section, TriButton, type TriState } from '../../components/ui'
 import { addDays, fmtDate, todayStr } from '../../lib/dates'
-import { listDaily, type Daily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { DIAS, MOMENTOS, VIAS, agendados, avisosDe, clave, conCambio, cumplimiento, delDia, diasDesde, enDias, esAgendado, mismaPauta, momentosDe, nivel, periodicos, proxima, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
+import { DIAS, MOMENTOS, VIAS, avisosDe, cambiosDe, clave, conCambio, delDia, diasDesde, enDias, esAgendado, mismaPauta, momentosDe, periodicos, proximaDe, terapia, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
+import { useUltimas } from './useUltimas'
 
 const nuevoId = () => Math.random().toString(36).slice(2, 10)
 
@@ -20,9 +20,9 @@ export default function Suplementos() {
   const tomas = d.tomas ?? {}
   const hoy = delDia(lista, date)
   const per = periodicos(lista, date)
-  const age = agendados(lista, date)
-  const c = cumplimiento(lista, d, date)
-  const lv = nivel(c.pct)
+  const ter = terapia(lista, date)
+  const cambios = cambiosDe(lista, date)
+  const resaltar = new Map(cambios.filter((x) => x.tipo !== 'termina').map((x) => [x.p.id, x.tipo === 'empieza' ? 'Empieza hoy' : 'Cambia hoy']))
   const [editando, setEditando] = useState<Producto | 'nuevo' | null>(null)
   const [retirando, setRetirando] = useState<string | null>(null)
 
@@ -55,31 +55,23 @@ export default function Suplementos() {
   }
 
   // Últimas veces de lo que no es diario (se mira hasta 90 días atrás).
-  const [historia, setHistoria] = useState<Daily<SuplDia>[]>([])
-  const hayPeriodicos = per.length + age.length > 0
-  useEffect(() => {
-    if (!hayPeriodicos) return
-    let alive = true
-    listDaily<SuplDia>('suplementos', addDays(date, -90), date).then((r) => alive && setHistoria(r), () => {})
-    return () => { alive = false }
-  }, [date, rev, hayPeriodicos])
+  const { historia, ultimas, listo } = useUltimas(lista, d, date, rev)
   const estadoPeriodico = (p: Producto) => {
-    const previos = historia.filter((r) => r.day < date && r.value.tomas?.[p.id] === 'si')
-    const u = tomas[p.id] === 'si' ? date : previos.length ? previos[previos.length - 1].day : null
+    const u = ultimas[p.id] ?? null
     const dias = diasDesde(date, u)
-    return { u, dias, toca: dias == null || dias >= (p.cada_dias ?? 0) }
+    const empezado = !p.inicio || p.inicio <= date
+    return { u, dias, toca: empezado && (dias == null || dias >= (p.cada_dias ?? 0)) }
   }
-  const pendientes = per.filter((p) => estadoPeriodico(p).toca && !tomas[p.id])
-  /** Lo que tiene fecha: la próxima, la última hecha y las fechas pasadas que quedaron sin marcar. */
-  const estadoAgendado = (p: Producto) => {
+  const pendientes = listo ? per.filter((p) => estadoPeriodico(p).toca && !tomas[p.id]) : []
+  /** Terapia endovenosa: la próxima, la última hecha y las fechas pasadas que quedaron sin marcar. */
+  const estadoTerapia = (p: Producto) => {
     const marcado = (dia: string) => (dia === date ? tomas[p.id] : historia.find((r) => r.day === dia)?.value.tomas?.[p.id])
-    const hechas = historia.filter((r) => r.day < date && r.value.tomas?.[p.id] === 'si').map((r) => r.day)
-    const ultima = tomas[p.id] === 'si' ? date : hechas.length ? hechas[hechas.length - 1] : null
+    const ultima = ultimas[p.id] ?? null
     const sinMarcar = (p.fechas ?? []).filter((f) => f < date && f >= addDays(date, -90) && !marcado(f))
-    return { prox: proxima(p, date), ultima, sinMarcar }
+    return { prox: proximaDe(p, date, ultima ?? undefined), ultima, sinMarcar }
   }
   const cuando = (f: string) => enDias(diasDesde(f, date) ?? 0)
-  const avisos = avisosDe(lista, d, date)
+  const avisos = listo ? avisosDe(lista, d, date, ultimas) : []
 
   const esHoy = date === todayStr()
   const estado = state === 'cargando' ? 'Cargando…' : state === 'guardando' ? 'Guardando…' : state === 'error' ? 'Sin guardar' : 'Guardado'
@@ -105,30 +97,22 @@ export default function Suplementos() {
       )}
       {editando && <Formulario key={editando === 'nuevo' ? 'nuevo' : editando.id} producto={editando === 'nuevo' ? null : editando} guardar={guardarProducto} cancelar={() => setEditando(null)} />}
       {avisos.map(({ p, faltan }) => (
-        <div className="notice" key={p.id}><strong>{faltan === 0 ? (esHoy ? 'Hoy toca' : 'Este día tocaba') : faltan === 1 ? 'Mañana toca' : `En ${faltan} días toca`}: {p.nombre}.</strong> {faltan > 0 && `Es el ${fmtDate(proxima(p, date))}. `}{p.nota}</div>
+        <div className="notice" key={p.id}><strong>{faltan === 0 ? (esHoy ? 'Hoy toca' : 'Este día tocaba') : faltan === 1 ? 'Mañana toca' : `En ${faltan} días toca`}: {p.nombre}.</strong> {faltan > 0 && `Es el ${fmtDate(addDays(date, faltan))}. `}{p.nota}</div>
       ))}
       {pendientes.map((p) => {
         const e = estadoPeriodico(p)
         return <div className="notice" key={p.id}><strong>Toca: {p.nombre}.</strong> {e.u ? `La última fue hace ${e.dias} días.` : 'Aún no hay ninguna registrada.'} {p.nota}</div>
       })}
 
-      {cfg && hoy.length + per.length + age.length === 0 ? (
+      {cfg && hoy.length + per.length + ter.length === 0 && (
         <div className="card"><Empty>Aún no hay suplementos. Añade el primero con «+ Producto».</Empty></div>
-      ) : hoy.length === 0 ? null : (
-        <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>
-          <div>
-            <div className="vaso-total"><strong>{c.hechas}</strong> de {c.pautadas} tomas hechas</div>
-            <div className="muted small">{c.marcadas < c.total ? `${c.total - c.marcadas} sin marcar` : 'Todo marcado'}{c.total - c.pautadas > 0 ? ` · ${c.total - c.pautadas} no precisan hoy` : ''}</div>
-            <div className="barra" style={{ marginTop: '.5rem' }}><i className={lv} style={{ width: Math.round(c.pct * 100) + '%' }} /></div>
-          </div>
-        </div>
       )}
 
-      {age.length > 0 && (
-        <Section title="Terapia endovenosa" open>
-          <p className="muted small">Lo que se administra en días concretos. Pon aquí las fechas que te den; la app avisa desde dos días antes.</p>
-          {age.map((p) => {
-            const e = estadoAgendado(p)
+      {ter.length > 0 && (
+        <Plegable id="supl-terapia" title="Terapia endovenosa">
+          <p className="muted small">Lo que se administra en días concretos o cada cierto número de días. La app avisa desde dos días antes.</p>
+          {ter.map((p) => {
+            const e = estadoTerapia(p)
             const futuras = (p.fechas ?? []).filter((f) => f >= date)
             const nueva = fechaNueva[p.id] ?? ''
             return (
@@ -137,9 +121,10 @@ export default function Suplementos() {
                 <div>
                   <div onClick={() => setEditando(p)} style={{ cursor: 'pointer' }}><strong>{p.nombre}</strong>{detalle(p) ? <span className="lbl"> · {detalle(p)}</span> : null}</div>
                   {p.nota && <div className="muted small">{p.nota}</div>}
-                  <div className="small">{e.prox ? <>Próxima: <strong>{fmtDate(e.prox)}</strong> ({cuando(e.prox)})</> : <span className="muted">Sin próxima fecha puesta</span>}</div>
+                  {p.cada_dias && !esAgendado(p) && <div className="muted small">Cada {p.cada_dias} días{p.inicio && p.inicio > date && !e.ultima ? ` · empieza el ${fmtDate(p.inicio)}` : ''}</div>}
+                  <div className="small">{!listo ? <span className="muted">Cargando…</span> : e.prox ? <>Próxima: <strong>{fmtDate(e.prox)}</strong> ({cuando(e.prox)})</> : <span className="muted">Sin próxima fecha puesta</span>}</div>
                   <div className="muted small">{e.ultima ? `Última hecha: ${fmtDate(e.ultima)}` : 'Ninguna hecha todavía'}{e.sinMarcar.length > 0 ? ` · sin marcar: ${e.sinMarcar.map((f) => fmtDate(f)).join(', ')}` : ''}</div>
-                  {futuras.length > 0 && (
+                  {esAgendado(p) && futuras.length > 0 && (
                     <div className="chips" style={{ margin: '.4rem 0' }}>
                       {futuras.map((f) => (
                         <span className="chip" key={f} style={{ cursor: 'default' }}>
@@ -148,16 +133,25 @@ export default function Suplementos() {
                       ))}
                     </div>
                   )}
-                  <form className="row" style={{ margin: '.4rem 0' }} onSubmit={(ev) => { ev.preventDefault(); if (nueva) { ponerFechas(p, [...(p.fechas ?? []), nueva]); setFechaNueva((x) => ({ ...x, [p.id]: '' })) } }}>
+                  {esAgendado(p) && <form className="row" style={{ margin: '.4rem 0' }} onSubmit={(ev) => { ev.preventDefault(); if (nueva) { ponerFechas(p, [...(p.fechas ?? []), nueva]); setFechaNueva((x) => ({ ...x, [p.id]: '' })) } }}>
                     <input type="date" aria-label={`Fecha nueva de ${p.nombre}`} style={{ width: '10.5rem' }} value={nueva} onChange={(ev) => setFechaNueva((x) => ({ ...x, [p.id]: ev.target.value }))} />
                     <button className="btn sm secondary" disabled={!nueva}>Añadir fecha</button>
-                  </form>
+                  </form>}
                   {retirarLink(p)}
                 </div>
               </div>
             )
           })}
-        </Section>
+        </Plegable>
+      )}
+
+      {cambios.length > 0 && (
+        <div className="notice cambios">
+          <strong>{esHoy ? 'Hoy cambia tu pauta' : 'Este día cambió la pauta'}</strong>
+          <ul>
+            {cambios.map((x) => <li key={x.p.id}><strong>{x.p.nombre}</strong>: {x.texto}</li>)}
+          </ul>
+        </div>
       )}
 
       {hoy.length > 0 && (
@@ -177,10 +171,11 @@ export default function Suplementos() {
               </thead>
               <tbody>
                 {hoy.map((p) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className={resaltar.has(p.id) ? 'cambio-hoy' : undefined}>
                     <td>
                       <div onClick={() => setEditando(original(p))} style={{ cursor: 'pointer' }}>
                         {p.nombre}
+                        {resaltar.has(p.id) && <span className="tag-cambio">{resaltar.get(p.id)}</span>}
                         {detalle(p) && <div className="meta">{detalle(p)}</div>}
                         {p.nota && <div className="meta">{p.nota}</div>}
                       </div>
@@ -209,7 +204,7 @@ export default function Suplementos() {
                 <div>
                   <div onClick={() => setEditando(p)} style={{ cursor: 'pointer' }}><strong>{p.nombre}</strong>{detalle(p) ? <span className="lbl"> · {detalle(p)}</span> : null}</div>
                   {p.nota && <div className="muted small">{p.nota}</div>}
-                  <div className="muted small">Cada {p.cada_dias} días · {e.u ? `última: ${fmtDate(e.u)}${e.dias ? ` (hace ${e.dias} días)` : ' (hoy)'}` : 'sin registrar todavía'}</div>
+                  <div className="muted small">Cada {p.cada_dias} días · {e.u ? `última: ${fmtDate(e.u)}${e.dias ? ` (hace ${e.dias} días)` : ' (hoy)'}` : p.inicio && p.inicio > date ? `empieza el ${fmtDate(p.inicio)}` : 'sin registrar todavía'}</div>
                   {retirarLink(p)}
                 </div>
               </div>

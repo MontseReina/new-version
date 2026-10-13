@@ -408,3 +408,11 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .intro-bloque h3 { color: var(--text); margin-bottom: 0; }
 .intro-quitar { margin-top: .35rem; }
 .intro-salida { min-height: 12rem; margin: .6rem 0; font-size: .82rem; background: var(--bg); }
+
+/* Suplementos: lo que empieza o cambia de pauta ese día */
+.notice.cambios { text-align: left; align-self: stretch; width: auto; }
+.notice.cambios ul { margin: .3rem 0 0; padding-left: 1.1rem; }
+.notice.cambios li { margin: .15rem 0; }
+.table.tomas tr.cambio-hoy td { background: var(--resalte); }
+.table.tomas tr.cambio-hoy td:first-child { box-shadow: inset 4px 0 0 var(--resalte-borde); }
+.tag-cambio { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: var(--resalte-borde); color: var(--card); vertical-align: middle; }

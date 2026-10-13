@@ -91,21 +91,66 @@ export function porMomento(l: Producto[]): Producto[] {
 /** Productos con tomas pautadas ese día, con la pauta de ese día y ordenados por momento. */
 export const delDia = (l: Producto[], date: string) =>
   porMomento(l.filter((p) => vigente(p, date) && !esPeriodico(p) && !esAgendado(p)).map((p) => enFecha(p, date)).filter((p) => !p.dias?.length || p.dias.includes(diaSemana(date))))
-export const periodicos = (l: Producto[], date: string) => l.filter((p) => vigente(p, date) && esPeriodico(p))
-export const agendados = (l: Producto[], date: string) => l.filter((p) => vigente(p, date) && esAgendado(p))
-/** Primera fecha puesta desde `date` (incluida), o `null`. */
-/** Con cuántos días de antelación se avisa de lo que tiene fecha. */
+const sinRetirar = (p: Producto, date: string) => !p.retirado || date < p.retirado
+/** Terapia endovenosa: lo que va en fechas puestas a mano y lo endovenoso «cada cierto número de días».
+ *  Sale aunque su inicio sea futuro: así se ve cuándo empieza. */
+export const enTerapia = (p: Producto) => esAgendado(p) || (esPeriodico(p) && p.via === 'Endovenosa')
+export const terapia = (l: Producto[], date: string) => l.filter((p) => sinRetirar(p, date) && enTerapia(p))
+/** Lo demás que va cada cierto número de días (también con inicio futuro). */
+export const periodicos = (l: Producto[], date: string) => l.filter((p) => sinRetirar(p, date) && esPeriodico(p) && !enTerapia(p))
+/** Con cuántos días de antelación se avisa de la terapia endovenosa. */
 export const AVISO_DIAS = 2
-/** Lo que tiene fecha entre `date` y los días de aviso, sin marcar ese día: producto y días que faltan. */
-export function avisosDe(l: Producto[], d: SuplDia, date: string) {
-  return agendados(l, date).flatMap((p) => {
-    const f = proxima(p, date)
+/** Último día marcado como hecho de cada producto que no es diario. */
+export type Ultimas = { [id: string]: string | undefined }
+export function ultimasDe(historia: { day: string; value: SuplDia }[], d: SuplDia, date: string): Ultimas {
+  const out: Ultimas = {}
+  for (const r of historia) if (r.day < date) for (const [k, v] of Object.entries(r.value.tomas ?? {})) if (v === 'si' && !k.includes(':')) out[k] = r.day
+  for (const [k, v] of Object.entries(d.tomas ?? {})) if (v === 'si' && !k.includes(':')) out[k] = date
+  return out
+}
+/** Próxima vez que toca desde `date`: la fecha puesta o, si va cada N días, la última hecha + N
+ *  (sin ninguna hecha, el inicio). Si ya tocaba, `date`. */
+export function proximaDe(p: Producto, date: string, ultima?: string): string | null {
+  if (esAgendado(p)) return proxima(p, date)
+  if (!p.cada_dias) return null
+  const f = ultima ? addDays(ultima, p.cada_dias) : p.inicio ?? date
+  return f < date ? date : f
+}
+/** Terapia endovenosa entre `date` y los días de aviso, sin marcar ese día: producto y días que faltan. */
+export function avisosDe(l: Producto[], d: SuplDia, date: string, ultimas: Ultimas = {}) {
+  return terapia(l, date).flatMap((p) => {
+    const f = proximaDe(p, date, ultimas[p.id])
     const faltan = f ? diffDays(f, date) : null
     return faltan != null && faltan <= AVISO_DIAS && !d.tomas?.[p.id] ? [{ p, faltan }] : []
   })
 }
 export const enDias = (n: number) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`)
+/** Primera fecha puesta desde `date` (incluida), o `null`. */
 export const proxima = (p: Producto, date: string) => [...(p.fechas ?? [])].sort().find((f) => f >= date) ?? null
+
+const y = (xs: string[]) => (xs.length > 1 ? xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1] : xs[0] ?? '')
+const momentosTxt = (p: Producto) => (p.momentos?.length ? y(MOMENTOS.filter(([k]) => p.momentos!.includes(k)).map(([, l]) => l.toLowerCase())) : 'a demanda')
+const diasTxt = (p: Producto) => (p.dias?.length && p.dias.length < 7 ? y(p.dias.map((i) => DIAS[i])) : 'todos los días')
+export type Cambio = { p: Producto; tipo: 'empieza' | 'cambia' | 'termina'; texto: string }
+/** Lo diario que empieza, cambia de dosis, de número de tomas, de momento o de días, o se deja, justo en `date`. */
+export function cambiosDe(l: Producto[], date: string): Cambio[] {
+  const ayer = addDays(date, -1)
+  return l.filter((p) => !esPeriodico(p) && !esAgendado(p)).flatMap((p): Cambio[] => {
+    if (p.retirado === date) return [{ p, tipo: 'termina', texto: 'lo dejas desde hoy.' }]
+    if (!vigente(p, date)) return []
+    const hoy = enFecha(p, date)
+    if (p.inicio === date) return [{ p, tipo: 'empieza', texto: `empiezas${hoy.dosis ? `, ${hoy.dosis}` : ''}, en ${momentosTxt(hoy)}.` }]
+    const antes = enFecha(p, ayer)
+    if (mismaPauta(antes, hoy)) return []
+    const partes: string[] = []
+    if ((antes.dosis ?? '') !== (hoy.dosis ?? '')) partes.push(`la dosis pasa de ${antes.dosis || 'sin indicar'} a ${hoy.dosis || 'sin indicar'}`)
+    const na = momentosDe(antes).length, nh = momentosDe(hoy).length
+    if (na !== nh) partes.push(`pasa de ${na} a ${nh} ${nh === 1 ? 'toma' : 'tomas'} al día (${momentosTxt(hoy)})`)
+    else if (momentosTxt(antes) !== momentosTxt(hoy)) partes.push(`pasa de ${momentosTxt(antes)} a ${momentosTxt(hoy)}`)
+    if (diasTxt(antes) !== diasTxt(hoy)) partes.push(`ahora va ${diasTxt(hoy) === 'todos los días' ? 'todos los días' : 'los ' + diasTxt(hoy)}`)
+    return [{ p, tipo: 'cambia', texto: partes.join('; ') + '.' }]
+  })
+}
 
 export const clave = (p: Producto, momento: string) => p.id + ':' + momento
 /** Sin momentos marcados se trata como una sola toma «a demanda». */
