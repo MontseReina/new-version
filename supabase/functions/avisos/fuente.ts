@@ -13,8 +13,10 @@
 //  · POST {accion: 'revisar'} con la cabecera x-avisos-secreto (desde la tarea programada de la base de datos,
 //    cada cinco minutos): para cada usuaria con avisos, mira qué toca y lo envía una sola vez al día.
 //
-// Secretos (Supabase → Edge Functions → Secrets): VAPID_PUBLIC, VAPID_PRIVATE, VAPID_SUBJECT (mailto:…),
-// AVISOS_SECRETO. Se despliega con «Verify JWT» desactivado: la tarea programada llega sin sesión.
+// No necesita secretos: las claves VAPID de cada usuaria se crean aquí la primera vez y se guardan en su fila de
+// `integrations`. Opcional: AVISOS_SECRETO (si existe, la revisión programada tiene que traerlo en x-avisos-secreto;
+// sin él, la revisión es inofensiva: solo envía lo que toca y una vez al día).
+// Se despliega con «Verify JWT» desactivado: la tarea programada llega sin sesión.
 // Las suscripciones y lo enviado se guardan en `integrations` (provider = 'avisos'), que la app no puede leer.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { addDays } from '../../../src/lib/dates'
@@ -23,14 +25,14 @@ import { crearModelo, infoDia, type CicloCfg, type CicloDia } from '../../../src
 import type { HidraCfg, HidraDia } from '../../../src/modules/hidratacion/logica'
 import { menuDe, type NutriCfg, type NutriDia } from '../../../src/modules/nutricion/logica'
 import type { ObjCfg } from '../../../src/modules/objetivos/logica'
-import { enviar, type Suscripcion } from './webpush'
+import { b64url, desB64url, enviar, type Suscripcion } from './webpush'
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response>): void }
 
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://montsereina.github.io/new-version/'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-const VAPID = { publica: Deno.env.get('VAPID_PUBLIC') ?? '', privada: Deno.env.get('VAPID_PRIVATE') ?? '', sujeto: Deno.env.get('VAPID_SUBJECT') ?? 'mailto:avisos@example.com' }
+const SUJETO = Deno.env.get('VAPID_SUBJECT') ?? APP_URL
 const SECRETO = Deno.env.get('AVISOS_SECRETO') ?? ''
 const PROVIDER = 'avisos'
 
@@ -44,7 +46,8 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
 type Movil = Suscripcion & { dispositivo?: string; alta?: string }
-type Fila = { secret: { subs?: Movil[] }; state: { enviados?: { [dia: string]: { [clave: string]: number } }; ultimos?: { cuando: string; titulo: string; cuerpo: string }[] } }
+type Vapid = { publica: string; privada: string }
+type Fila = { secret: { subs?: Movil[]; vapid?: Vapid }; state: { enviados?: { [dia: string]: { [clave: string]: number } }; ultimos?: { cuando: string; titulo: string; cuerpo: string }[] } }
 
 async function leerFila(userId: string): Promise<Fila | null> {
   const { data, error } = await admin.from('integrations').select('secret,state').eq('user_id', userId).eq('provider', PROVIDER).maybeSingle()
@@ -70,13 +73,26 @@ async function diario<T>(userId: string, modulo: string, desde: string, hasta: s
   return new Map((data ?? []).map((r: { day: string; value: T }) => [r.day, r.value]))
 }
 
+/** Claves VAPID de la usuaria: se crean la primera vez y se guardan en su fila. */
+async function clavesDe(userId: string, fila: Fila): Promise<Vapid> {
+  if (fila.secret.vapid?.publica && fila.secret.vapid.privada) return fila.secret.vapid
+  const par = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])) as CryptoKeyPair
+  const jwk = await crypto.subtle.exportKey('jwk', par.privateKey)
+  const x = desB64url(jwk.x!), y = desB64url(jwk.y!)
+  const pub = new Uint8Array(65); pub[0] = 4; pub.set(x, 1); pub.set(y, 33)
+  const vapid = { publica: b64url(pub), privada: jwk.d! }
+  fila.secret = { ...fila.secret, vapid }
+  await guardarFila(userId, fila)
+  return vapid
+}
+
 /** Envía un aviso a todos los móviles de la usuaria. Devuelve los móviles que siguen valiendo. */
-async function mandar(subs: Movil[], a: Aviso, ttl: number): Promise<{ vivas: Movil[]; enviado: boolean; fallos: string[] }> {
+async function mandar(subs: Movil[], a: Aviso, ttl: number, claves: Vapid): Promise<{ vivas: Movil[]; enviado: boolean; fallos: string[] }> {
   const vivas: Movil[] = [], fallos: string[] = []
   let enviado = false
   for (const s of subs) {
     try {
-      const r = await enviar(s, { titulo: a.titulo, cuerpo: a.cuerpo, ruta: a.ruta, tag: a.clave }, VAPID, ttl)
+      const r = await enviar(s, { titulo: a.titulo, cuerpo: a.cuerpo, ruta: a.ruta, tag: a.clave }, { ...claves, sujeto: SUJETO }, ttl)
       if (r.ok) enviado = true
       else fallos.push(`${r.estado} ${r.detalle ?? ''}`.trim())
       if (!r.caducada) vivas.push(s)
@@ -112,7 +128,7 @@ async function revisar(userId: string, fila: Fila) {
   const ultimos = [...(fila.state.ultimos ?? [])]
   const fallos: string[] = []
   for (const a of nuevos) {
-    const r = await mandar(subs, avisosCfg.texto === 'discreto' ? discreto(a) : a, 3600)
+    const r = await mandar(subs, avisosCfg.texto === 'discreto' ? discreto(a) : a, 3600, fila.secret.vapid!)
     subs = r.vivas
     fallos.push(...r.fallos)
     // Se da por enviado aunque falle, para no repetirlo cada cinco minutos.
@@ -134,13 +150,12 @@ Deno.serve(async (req) => {
 
     // Tarea programada: revisar a todas las usuarias con avisos.
     if (cuerpo.accion === 'revisar') {
-      if (!SECRETO || req.headers.get('x-avisos-secreto') !== SECRETO) return json({ error: 'No autorizado' }, 401)
-      if (!VAPID.publica || !VAPID.privada) return json({ error: 'Faltan las claves VAPID en el servidor.' }, 500)
+      if (SECRETO && req.headers.get('x-avisos-secreto') !== SECRETO) return json({ error: 'No autorizado' }, 401)
       const { data, error } = await admin.from('integrations').select('user_id,secret,state').eq('provider', PROVIDER)
       if (error) throw new Error(error.message)
       const res: unknown[] = []
       for (const f of (data ?? []) as (Fila & { user_id: string })[]) {
-        if (!f.secret?.subs?.length) continue
+        if (!f.secret?.subs?.length || !f.secret.vapid) continue
         try { res.push(await revisar(f.user_id, f)) } catch (e) { res.push({ error: String(e) }) }
       }
       return json({ ok: true, usuarias: res.length, res })
@@ -154,8 +169,7 @@ Deno.serve(async (req) => {
     const fila: Fila = (await leerFila(userId)) ?? { secret: {}, state: {} }
 
     if (cuerpo.accion === 'clave') {
-      if (!VAPID.publica) return json({ error: 'Faltan las claves de los avisos en el servidor.' }, 500)
-      return json({ clave: VAPID.publica })
+      return json({ clave: (await clavesDe(userId, fila)).publica })
     }
     if (cuerpo.accion === 'estado') {
       return json({ moviles: (fila.secret.subs ?? []).map((s) => ({ endpoint: s.endpoint, dispositivo: s.dispositivo ?? '', alta: s.alta ?? '' })), ultimos: fila.state.ultimos ?? [] })
@@ -176,7 +190,7 @@ Deno.serve(async (req) => {
     if (cuerpo.accion === 'prueba') {
       const subs = fila.secret.subs ?? []
       if (!subs.length) return json({ error: 'No hay ningún móvil con los avisos activados.' }, 400)
-      const r = await mandar(subs, { clave: 'prueba', id: 'ayuno', titulo: 'New Version', cuerpo: 'Aviso de prueba: los avisos llegan a este móvil.', ruta: 'avisos' }, 600)
+      const r = await mandar(subs, { clave: 'prueba', id: 'ayuno', titulo: 'New Version', cuerpo: 'Aviso de prueba: los avisos llegan a este móvil.', ruta: 'avisos' }, 600, await clavesDe(userId, fila))
       if (r.vivas.length !== subs.length) await guardarFila(userId, { ...fila, secret: { ...fila.secret, subs: r.vivas } })
       return r.enviado ? json({ ok: true }) : json({ error: 'No se ha podido enviar: ' + (r.fallos[0] ?? 'sin respuesta') }, 502)
     }

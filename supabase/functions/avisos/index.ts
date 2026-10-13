@@ -611,11 +611,7 @@ async function enviar(sub, contenido, v, ttl = 3600) {
 const APP_URL = Deno.env.get("APP_URL") ?? "https://montsereina.github.io/new-version/";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const VAPID = {
-	publica: Deno.env.get("VAPID_PUBLIC") ?? "",
-	privada: Deno.env.get("VAPID_PRIVATE") ?? "",
-	sujeto: Deno.env.get("VAPID_SUBJECT") ?? "mailto:avisos@example.com"
-};
+const SUJETO = Deno.env.get("VAPID_SUBJECT") ?? APP_URL;
 const SECRETO = Deno.env.get("AVISOS_SECRETO") ?? "";
 const PROVIDER = "avisos";
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: {
@@ -670,8 +666,32 @@ async function diario(userId, modulo, desde, hasta) {
 	if (error) throw new Error(error.message);
 	return new Map((data ?? []).map((r) => [r.day, r.value]));
 }
+/** Claves VAPID de la usuaria: se crean la primera vez y se guardan en su fila. */
+async function clavesDe(userId, fila) {
+	if (fila.secret.vapid?.publica && fila.secret.vapid.privada) return fila.secret.vapid;
+	const par = await crypto.subtle.generateKey({
+		name: "ECDSA",
+		namedCurve: "P-256"
+	}, true, ["sign", "verify"]);
+	const jwk = await crypto.subtle.exportKey("jwk", par.privateKey);
+	const x = desB64url(jwk.x), y = desB64url(jwk.y);
+	const pub = /* @__PURE__ */ new Uint8Array(65);
+	pub[0] = 4;
+	pub.set(x, 1);
+	pub.set(y, 33);
+	const vapid = {
+		publica: b64url(pub),
+		privada: jwk.d
+	};
+	fila.secret = {
+		...fila.secret,
+		vapid
+	};
+	await guardarFila(userId, fila);
+	return vapid;
+}
 /** Envía un aviso a todos los móviles de la usuaria. Devuelve los móviles que siguen valiendo. */
-async function mandar(subs, a, ttl) {
+async function mandar(subs, a, ttl, claves) {
 	const vivas = [], fallos = [];
 	let enviado = false;
 	for (const s of subs) try {
@@ -680,7 +700,10 @@ async function mandar(subs, a, ttl) {
 			cuerpo: a.cuerpo,
 			ruta: a.ruta,
 			tag: a.clave
-		}, VAPID, ttl);
+		}, {
+			...claves,
+			sujeto: SUJETO
+		}, ttl);
 		if (r.ok) enviado = true;
 		else fallos.push(`${r.estado} ${r.detalle ?? ""}`.trim());
 		if (!r.caducada) vivas.push(s);
@@ -728,7 +751,7 @@ async function revisar(userId, fila) {
 	const ultimos = [...fila.state.ultimos ?? []];
 	const fallos = [];
 	for (const a of nuevos) {
-		const r = await mandar(subs, avisosCfg.texto === "discreto" ? discreto(a) : a, 3600);
+		const r = await mandar(subs, avisosCfg.texto === "discreto" ? discreto(a) : a, 3600, fila.secret.vapid);
 		subs = r.vivas;
 		fallos.push(...r.fallos);
 		enviados[a.clave] = min;
@@ -769,13 +792,12 @@ Deno.serve(async (req) => {
 	try {
 		const cuerpo = await req.json().catch(() => ({}));
 		if (cuerpo.accion === "revisar") {
-			if (!SECRETO || req.headers.get("x-avisos-secreto") !== SECRETO) return json({ error: "No autorizado" }, 401);
-			if (!VAPID.publica || !VAPID.privada) return json({ error: "Faltan las claves VAPID en el servidor." }, 500);
+			if (SECRETO && req.headers.get("x-avisos-secreto") !== SECRETO) return json({ error: "No autorizado" }, 401);
 			const { data, error } = await admin.from("integrations").select("user_id,secret,state").eq("provider", PROVIDER);
 			if (error) throw new Error(error.message);
 			const res = [];
 			for (const f of data ?? []) {
-				if (!f.secret?.subs?.length) continue;
+				if (!f.secret?.subs?.length || !f.secret.vapid) continue;
 				try {
 					res.push(await revisar(f.user_id, f));
 				} catch (e) {
@@ -796,10 +818,7 @@ Deno.serve(async (req) => {
 			secret: {},
 			state: {}
 		};
-		if (cuerpo.accion === "clave") {
-			if (!VAPID.publica) return json({ error: "Faltan las claves de los avisos en el servidor." }, 500);
-			return json({ clave: VAPID.publica });
-		}
+		if (cuerpo.accion === "clave") return json({ clave: (await clavesDe(userId, fila)).publica });
 		if (cuerpo.accion === "estado") return json({
 			moviles: (fila.secret.subs ?? []).map((s) => ({
 				endpoint: s.endpoint,
@@ -850,7 +869,7 @@ Deno.serve(async (req) => {
 				titulo: "New Version",
 				cuerpo: "Aviso de prueba: los avisos llegan a este móvil.",
 				ruta: "avisos"
-			}, 600);
+			}, 600, await clavesDe(userId, fila));
 			if (r.vivas.length !== subs.length) await guardarFila(userId, {
 				...fila,
 				secret: {
