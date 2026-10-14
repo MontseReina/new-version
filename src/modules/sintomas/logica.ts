@@ -10,6 +10,8 @@ export type Opcion = { id: string; nombre: string }
 export type TipoGrupo = 'una' | 'varias' | 'detalle' | 'escala' | 'hambre' | 'heces' | 'micciones' | 'texto'
 export const CON_OPCIONES: TipoGrupo[] = ['una', 'varias', 'detalle']
 export const conOpciones = (t: TipoGrupo) => CON_OPCIONES.includes(t)
+/** Grupos que, además de su bloque fijo, admiten opciones propias para marcar con un toque (las heces). */
+export const admiteOpciones = (t: TipoGrupo) => conOpciones(t) || t === 'heces'
 export type Grupo = {
   id: string
   nombre: string
@@ -102,7 +104,7 @@ export function respondido(g: Grupo, d: SintDia): boolean | null {
     case 'escala': return d.escala?.[g.id] != null
     case 'varias': return g.neutra ? (d.sel?.[g.id]?.length ?? 0) > 0 : null
     case 'hambre': return !!d.sin_hambre || COMIDAS.every(([k]) => d.hambre?.[k] != null)
-    case 'heces': return !!d.sin_heces || (d.heces?.length ?? 0) > 0
+    case 'heces': return !!d.sin_heces || (d.heces?.length ?? 0) > 0 || (d.sel?.[g.id]?.length ?? 0) > 0
     case 'micciones': return d.micciones != null || d.orina_color != null
     default: return null
   }
@@ -141,7 +143,7 @@ export function leerGrupos(texto: string): Grupo[] | null {
     const mixto = (tipo === 'una' || tipo === 'varias') && !!g.con_escala
     const extremos = tipo === 'escala' || mixto ? { ...(mixto ? { con_escala: true } : {}), ...(txt(g.min_txt) ? { min_txt: txt(g.min_txt) } : {}), ...(txt(g.max_txt) ? { max_txt: txt(g.max_txt) } : {}) } : {}
     // Una escala conserva las opciones que tuvo el grupo: así lo ya registrado con ellas se sigue leyendo.
-    out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) || (tipo === 'escala' && opciones.length) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}), ...extremos })
+    out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) || ((tipo === 'escala' || tipo === 'heces') && opciones.length) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}), ...extremos })
   }
   return out
 }

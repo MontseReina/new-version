@@ -75,6 +75,7 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
       const sin = dias.filter((d) => d.value.sin_hambre).length
       if (t || sin) filas.push([g.nombre, [t && `Media de 0 a 10: ${t}`, sin && `come sin hambre: ${pl(sin, 'día', 'días')}`].filter(Boolean).join(' · ')])
     }
+    if (g.tipo === 'heces' && g.opciones?.length) { const t = diasPorOpcion(g, dias); if (t) filas.push([`${g.nombre} (marcas del día)`, t]) }
     if (g.tipo === 'heces') {
       const deps = dias.flatMap((d) => d.value.heces ?? [])
       const sin = dias.filter((d) => d.value.sin_heces).length

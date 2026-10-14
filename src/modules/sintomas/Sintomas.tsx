@@ -71,6 +71,14 @@ export default function Sintomas() {
       case 'heces':
         return (
           <>
+            {(g.opciones?.length ?? 0) > 0 && (
+              <div className="chips" style={{ marginBottom: '.4rem' }}>
+                {g.opciones!.map((o) => {
+                  const on = (d.sel?.[g.id] ?? []).includes(o.id)
+                  return <button type="button" key={o.id} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => marcar(g, o.id)}>{o.nombre}</button>
+                })}
+              </div>
+            )}
             {heces.map((x, i) => (
               <div className="depo" key={i}>
                 <div className="row between">

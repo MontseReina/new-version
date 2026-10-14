@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Field } from '../../components/ui'
-import { GRUPOS_BASE, conOpciones, idLibre, leerGrupos, tieneEscala, type Grupo, type TipoGrupo } from './logica'
+import { GRUPOS_BASE, admiteOpciones, conOpciones, idLibre, leerGrupos, tieneEscala, type Grupo, type TipoGrupo } from './logica'
 
 const TIPOS: [TipoGrupo, string][] = [['varias', 'Varias opciones'], ['una', 'Una sola opción'], ['detalle', 'Varias, con hora, gravedad y urgencias'], ['escala', 'Escala de 0 a 10']]
 const FIJOS: { [t in TipoGrupo]?: string } = { hambre: 'Bloque de hambre', heces: 'Bloque de heces', micciones: 'Bloque de micciones', texto: 'Texto libre' }
@@ -56,7 +56,7 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
             <button type="button" className="btn sm ghost" aria-label="Subir" disabled={i === 0} onClick={() => mover(i, -1)}>↑</button>
             <button type="button" className="btn sm ghost" aria-label="Bajar" disabled={i === grupos.length - 1} onClick={() => mover(i, 1)}>↓</button>
           </div>
-          {!conOpciones(g.tipo) && g.tipo !== 'escala' && <div className="muted small" style={{ marginTop: '.3rem' }}>{FIJOS[g.tipo]}: se puede mover, renombrar o quitar.</div>}
+          {!conOpciones(g.tipo) && g.tipo !== 'escala' && <div className="muted small" style={{ marginTop: '.3rem' }}>{FIJOS[g.tipo]}: se puede mover, renombrar o quitar.{g.tipo === 'heces' ? ' Las opciones de abajo salen encima de las deposiciones, para marcar con un toque.' : ''}</div>}
           {(conOpciones(g.tipo) || g.tipo === 'escala') && (
             <div className="row" style={{ marginTop: '.4rem' }}>
               <select aria-label="Tipo de grupo" value={g.tipo} style={{ flex: 1, minWidth: '10rem' }} onChange={(e) => cambia(g.id, { tipo: e.target.value as TipoGrupo })}>
@@ -76,7 +76,7 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
               <Field label="Qué significa el 10"><input type="text" defaultValue={g.max_txt ?? ''} key={'max' + (g.max_txt ?? '')} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (g.max_txt ?? '')) cambia(g.id, { max_txt: v || undefined }) }} /></Field>
             </div>
           )}
-          {conOpciones(g.tipo) && (
+          {admiteOpciones(g.tipo) && (
             <>
               <div className="chips" style={{ marginTop: '.5rem' }}>
                 {(g.opciones ?? []).map((o, k) => (
