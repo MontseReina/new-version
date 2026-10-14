@@ -94,17 +94,20 @@ export function avisosAhora(x: Contexto): Aviso[] {
     if (u) {
       const cenaId = defs[defs.length - 1]?.id
       const sinCena = u.ayer && cenaId != null && !hecha(x.nutriAyer?.tomas?.[cenaId])
-      const desde = `${u.nombre.toLowerCase()}${u.ayer ? ' de ayer' : ''}, ${u.hora}${sinCena ? '; la cena de ayer no está anotada' : ''}`
+      const nota = sinCena ? ' (La cena de ayer no está anotada.)' : ''
+      const primera = (defs[0]?.nombre ?? 'primera toma').toLowerCase()
       if (dentro(u.minutos, max - 30, 30)) {
         out.push({ clave: 'ayuno-antes', id: 'ayuno', titulo: 'Ayuno', ruta: 'nutricion',
-          cuerpo: `A las ${aHora(m + max - u.minutos)} cumples ${max / 60} horas sin comer (desde: ${desde}). ${algunaHoy ? 'Toca comer.' : 'Prepara la primera toma.'}` })
+          cuerpo: algunaHoy
+            ? `A las ${aHora(m + max - u.minutos)} se cumplen ${max / 60} horas desde tu última comida. Buen momento para preparar algo rico 🌿${nota}`
+            : `A las ${aHora(m + max - u.minutos)} se cumplen tus ${max / 60} horas de descanso digestivo. Buen momento para preparar tu ${primera} 🌿${nota}` })
       } else if (u.minutos >= max) {
         const h = Math.floor(u.minutos / 60)
         if (u.minutos - h * 60 < 30 && h <= 20) {
           out.push({ clave: 'ayuno-' + h, id: 'ayuno', titulo: 'Ayuno', ruta: 'nutricion',
-            cuerpo: h * 60 === max
-              ? `Llevas ${h} horas sin comer (desde: ${desde}). Es la hora: come ya.`
-              : `Llevas ${h} horas sin comer (desde: ${desde}). Prioriza comer ahora.` })
+            cuerpo: (h * 60 === max
+              ? (algunaHoy ? `¡${h} horas desde tu última comida! Ahora toca nutrirte.` : `¡${h} horas de descanso cumplidas! Ahora toca nutrirte: tu ${primera} te espera.`)
+              : `Han pasado ${h} horas desde tu última comida. Tu cuerpo agradecerá un poco de alimento ahora; date ese cuidado.`) + nota })
         }
       }
     }
@@ -115,7 +118,7 @@ export function avisosAhora(x: Contexto): Aviso[] {
     const w = horaLevantar(x.hidraCfg, x.hidraHoy)
     if (w != null && dentro(m, w + 60, 90)) {
       out.push({ clave: 'primera', id: 'primera', titulo: 'Primera toma', ruta: 'nutricion',
-        cuerpo: `Te levantaste a las ${aHora(w)} y aún no has anotado ninguna toma. Toca la primera.` })
+        cuerpo: `Buenos días ☀️ Hace una hora que te levantaste: tu primera toma es el primer gesto de cuidado del día.` })
     }
   }
 
@@ -125,14 +128,14 @@ export function avisosAhora(x: Contexto): Aviso[] {
     const t = total(x.hidraHoy)
     if (dentro(m, h, 90) && t < min) {
       out.push({ clave: 'agua', id: 'agua', titulo: 'Hidratación', ruta: 'hidratacion',
-        cuerpo: `Son las ${aHora(h)} y llevas ${t} ml. Te faltan ${min - t} ml para los ${min} de mediodía. Bebe lejos de las comidas.` })
+        cuerpo: `Mediodía: llevas ${t} ml. ${min - t <= 250 ? 'Un vaso más' : `Unos ${min - t} ml más`} y llegas a los ${min} 💧` })
     }
   }
 
   // 4. Kilocalorías: a media tarde, lo que va de día; después de cenar, el día entero.
   if (activo(cfg, 'kcal')) {
     const rango = (cfg.rango_pct ?? RANGO_POR_DEFECTO) / 100
-    const sin = (s: string[]) => (s.length ? ` Sin contar: ${s.join(', ').toLowerCase()} (anotaste otra cosa o no dijiste cuánto).` : '')
+    const sin = (s: string[]) => (s.length ? ` (Sin contar: ${s.join(', ').toLowerCase()}.)` : '')
     const h = aMin(cfg.kcal_hora ?? KCAL_HORA) ?? 1050
     if (dentro(m, h, 60)) {
       const k = kcalDia(nc, x.nutriHoy, x.menu, m)
@@ -140,8 +143,8 @@ export function avisosAhora(x: Contexto): Aviso[] {
         const ok = k.comido >= k.referenciaHasta * rango
         out.push({ clave: 'kcal-tarde', id: 'kcal', titulo: 'Kilocalorías', ruta: 'nutricion',
           cuerpo: ok
-            ? `Vas en rango: unas ${fmtKcal(k.comido)} kcal de ${fmtKcal(k.referenciaHasta)} previstas hasta ahora.${sin(k.sinDato)}`
-            : `Vas por debajo: unas ${fmtKcal(k.comido)} kcal de ${fmtKcal(k.referenciaHasta)} previstas hasta ahora. Te faltan unas ${fmtKcal(k.referenciaHasta - k.comido)}: no te saltes el snack y haz la cena entera.${sin(k.sinDato)}` })
+            ? `¡Vas genial! Unas ${fmtKcal(k.comido)} kcal de las ${fmtKcal(k.referenciaHasta)} previstas hasta ahora. Sigue así 💪${sin(k.sinDato)}`
+            : `Llevas unas ${fmtKcal(k.comido)} kcal. Con el snack y la cena entera te acercas a lo previsto: cada bocado suma.${sin(k.sinDato)}` })
       }
     }
     // Balance del día: media hora después de terminar la cena o, sin cena anotada, a la hora máxima de cenar + 30 min.
@@ -158,9 +161,9 @@ export function avisosAhora(x: Contexto): Aviso[] {
         const de = k.deMenu ? 'del menú' : 'pautadas'
         out.push({ clave: 'kcal-dia', id: 'kcal', titulo: 'Kilocalorías del día', ruta: 'nutricion',
           cuerpo: (k.comido >= ref * rango
-            ? `Hoy, en rango: unas ${fmtKcal(k.comido)} kcal de ${fmtKcal(ref)} ${de} (${pct} %).`
-            : `Hoy te has quedado por debajo: unas ${fmtKcal(k.comido)} kcal de ${fmtKcal(ref)} ${de} (${pct} %).`)
-            + (finCena == null ? ' La cena aún no está anotada.' : '') + sin(k.sinDato) })
+            ? `¡Día cumplido! Unas ${fmtKcal(k.comido)} kcal (${pct} %). Gracias por cuidarte hoy 🌸`
+            : `Hoy has llegado a unas ${fmtKcal(k.comido)} kcal (${pct} %). Mañana es otra oportunidad para nutrirte un poquito más.`)
+            + (finCena == null ? ' Si ya has cenado, anótalo en la app 😊' : '') + sin(k.sinDato) })
       }
     }
   }
@@ -173,7 +176,7 @@ export function avisosAhora(x: Contexto): Aviso[] {
     const tras = x.objCfg.dormir_tras_cena_min ?? DORMIR_TRAS_CENA_MIN
     if (fin != null && dentro(m, fin + tras, 60)) {
       out.push({ clave: 'dormir', id: 'dormir', titulo: 'A dormir', ruta: 'nutricion',
-        cuerpo: `Han pasado ${tras % 60 ? `${Math.floor(tras / 60)} h ${tras % 60} min` : `${tras / 60} horas`} desde que terminaste de cenar (${aHora(fin)}). Ya puedes irte a la cama.` })
+        cuerpo: `Ya han pasado ${tras % 60 ? `${Math.floor(tras / 60)} h ${tras % 60} min` : `${tras / 60} horas`} desde la cena. Buen momento para irte a descansar. Que duermas bien 🌙` })
     }
   }
 
@@ -185,7 +188,7 @@ export function avisosAhora(x: Contexto): Aviso[] {
       const xt = x.nutriHoy.tomas?.[t.id], l = limite(t)
       if (l != null && !hecha(xt) && xt?.estado !== 'no' && dentro(m, l + GRACIA_MIN, 60)) {
         out.push({ clave: 'pendiente-' + t.id, id: 'pendiente', titulo: t.nombre, ruta: 'nutricion',
-          cuerpo: `${t.nombre} (${t.hasta ? `${t.hora}–${t.hasta}` : t.hora}) sigue sin anotar. ¿La has hecho?` })
+          cuerpo: `¿Qué tal ${t.nombre.toLowerCase() === 'comida' ? 'la comida' : t.nombre.toLowerCase() === 'cena' ? 'la cena' : 'el ' + t.nombre.toLowerCase()}? Cuando puedas, anótalo en la app 😊` })
       }
     }
   }
@@ -197,7 +200,7 @@ export function avisosAhora(x: Contexto): Aviso[] {
     const max = aMin(nc.cena_fin_max ?? CENA_MAX_POR_DEFECTO) ?? 1260
     if (cena && !hecha(xc) && aMin(xc?.ini) == null && dentro(m, max - 30, 30)) {
       out.push({ clave: 'cena', id: 'cena', titulo: 'Cena', ruta: 'nutricion',
-        cuerpo: `Son las ${aHora(max - 30)}: la cena tiene que estar terminada a las ${aHora(max)}.` })
+        cuerpo: `Son las ${aHora(max - 30)}: buen momento para empezar a cenar con calma y terminar antes de las ${aHora(max)}.` })
     }
   }
   return out
