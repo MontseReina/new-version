@@ -4,6 +4,16 @@ import { supabase } from '../lib/supabase'
 
 const TYPES: EmailOtpType[] = ['magiclink', 'signup', 'email', 'invite']
 
+/** Saca el código y el tipo del enlace del correo. Acepta el enlace tal cual, el que Gmail envuelve en su
+ *  propia dirección (google.com/url?q=…) o el texto del correo con el enlace dentro. */
+export function leerEnlace(texto: string): { token: string; type: string } {
+  let t = texto.trim()
+  for (let i = 0; i < 4; i++) { try { const d = decodeURIComponent(t); if (d === t) break; t = d } catch { break } }
+  const token = /[?&#](?:token_hash|token)=([^&#\s"'<>]+)/.exec(t)?.[1] ?? ''
+  const type = /[?&#]type=([a-z_]+)/.exec(t)?.[1] ?? ''
+  return { token, type }
+}
+
 /**
  * Entrada sin contraseña con el enlace que llega por correo.
  * - En el mismo navegador: basta con pulsar el enlace.
@@ -33,12 +43,7 @@ export function Login() {
   async function useLink(e: FormEvent) {
     e.preventDefault()
     if (!supabase) return
-    let token = '', type = ''
-    try {
-      const u = new URL(link.trim())
-      token = u.searchParams.get('token') ?? u.searchParams.get('token_hash') ?? ''
-      type = u.searchParams.get('type') ?? ''
-    } catch { /* no es una dirección */ }
+    const { token, type } = leerEnlace(link)
     if (!token || !TYPES.includes(type as EmailOtpType)) {
       setError('Ese texto no es el enlace del correo. Mantén pulsado «Sign in» en el correo, copia el enlace y pégalo entero.')
       return
