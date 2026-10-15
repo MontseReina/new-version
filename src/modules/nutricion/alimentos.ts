@@ -34,7 +34,7 @@ const VERDURAS: Alimento[] = [
   A('coles_bruselas', 'Coles de Bruselas', 'verdura', '1 ración (100 g)', 43, ['coles de bruselas', 'col de bruselas']),
   A('espinacas', 'Espinacas', 'verdura', '1 ración (100 g)', 23, ['espinaca', 'espinacas']),
   A('acelgas', 'Acelgas', 'verdura', '1 ración (150 g)', 30, ['acelga', 'acelgas']),
-  A('judias_verdes', 'Judías verdes', 'verdura', '1 ración (150 g)', 45, ['judias verdes', 'judia verde', 'vainas']),
+  A('judias_verdes', 'Judías verdes', 'verdura', '1 ración (150 g)', 45, ['judias verdes', 'judia verde', 'judiasverdes', 'vainas']),
   A('calabacin', 'Calabacín', 'verdura', '1 ración (150 g)', 25, ['calabacin', 'calabacines']),
   A('berenjena', 'Berenjena', 'verdura', '1 ración (150 g)', 38, ['berenjena']),
   A('calabaza', 'Calabaza', 'verdura', '1 ración (200 g)', 50, ['calabaza']),
@@ -46,7 +46,7 @@ const VERDURAS: Alimento[] = [
   A('cebolla', 'Cebolla', 'verdura', '1/4 de cebolla (50 g)', 20, ['cebolla', 'cebolleta']),
   A('puerro', 'Puerro', 'verdura', '1 puerro (100 g)', 30, ['puerro']),
   A('alcachofa', 'Alcachofas', 'verdura', '4 corazones (150 g)', 65, ['alcachofa', 'alcachofas']),
-  A('esparragos', 'Espárragos', 'verdura', '6 espárragos (100 g)', 25, ['esparrago', 'esparragos', 'trigueros']),
+  A('esparragos', 'Espárragos', 'verdura', '6 espárragos (100 g)', 25, ['esparrago', 'esparragos', 'trigueros', 'esparragos trigueros']),
   A('setas', 'Setas o champiñones', 'verdura', '1 puñado (100 g)', 25, ['seta', 'setas', 'champiñon', 'champiñones', 'boletus', 'shiitake']),
   A('hojas', 'Lechuga u hojas verdes', 'verdura', '1 puñado (50 g)', 10, ['lechuga', 'canonigos', 'rucula', 'escarola', 'brotes', 'hojas verdes', 'berros', 'endibia', 'endibias']),
   A('ensalada', 'Ensalada', 'verdura', '1 plato (150 g)', 30, ['ensalada', 'ensalada verde', 'ensalada mixta']),
@@ -68,9 +68,11 @@ const PURES = VERDURAS.filter((v) => v.grupo === 'verdura' && !['pure', 'sopa', 
 
 const PROTEINAS: Alimento[] = [
   A('pollo', 'Pechuga de pollo', 'proteina', '1 pechuga pequeña (130 g)', 145, ['pollo', 'pechuga', 'pechuga de pollo', 'pollo a la plancha', 'pollo desmigado', 'pollo asado']),
-  A('pollo_muslo', 'Muslos o contramuslos de pollo', 'proteina', '2 contramuslos (150 g limpios)', 230, ['contramuslo', 'contramuslos', 'muslo de pollo', 'muslos de pollo', 'muslitos', 'muslito', 'alitas']),
-  A('pavo', 'Pavo', 'proteina', '1 filete (130 g)', 140, ['pavo', 'filete de pavo', 'pechuga de pavo']),
-  A('pavo_fiambre', 'Pavo cocido en lonchas', 'proteina', '3-4 lonchas (50 g)', 55, ['pavo cocido', 'fiambre de pavo', 'lonchas de pavo', 'pavo en lonchas']),
+  A('pollo_muslo', 'Muslos o contramuslos de pollo', 'proteina', '2 contramuslos (150 g limpios)', 230, ['contramuslo', 'contramuslos', 'muslo de pollo', 'muslos de pollo', 'muslitos', 'muslito', 'alitas', 'alitas de pollo']),
+  A('codorniz', 'Codorniz', 'proteina', '1 codorniz', 190, ['codorniz', 'codornices', 'alitas de codorniz']),
+  A('bacon', 'Beicon o panceta', 'proteina', '2 lonchas (30 g)', 120, ['bacon', 'beicon', 'beacon', 'panceta', 'chorizo', 'salchichon', 'fuet', 'salchicha', 'salchichas']),
+  A('pavo', 'Pavo', 'proteina', '1 filete (130 g)', 140, ['pavo', 'filete de pavo', 'pechuga de pavo', 'secreto de pavo']),
+  A('pavo_fiambre', 'Pavo cocido en lonchas', 'proteina', '3-4 lonchas (50 g)', 55, ['pavo cocido', 'fiambre de pavo', 'lonchas de pavo', 'pavo en lonchas', 'jamon de pavo', 'jamon pavo']),
   A('jamon', 'Jamón serrano', 'proteina', '2 lonchas (30 g)', 75, ['jamon', 'jamon serrano', 'jamon iberico']),
   A('jamon_york', 'Jamón cocido', 'proteina', '2 lonchas (30 g)', 35, ['jamon york', 'jamon cocido']),
   A('ternera', 'Ternera', 'proteina', '1 filete (140 g)', 200, ['ternera', 'filete de ternera', 'carne de ternera', 'carne roja', 'buey', 'entrecot']),
@@ -128,9 +130,10 @@ const HIDRATOS: Alimento[] = [
   A('pasta', 'Pasta', 'hidrato', '1 plato (60 g en crudo)', 210, ['pasta', 'macarrones', 'espaguetis', 'fideos', 'pasta sin gluten', 'tallarines', 'noodles']),
   A('cereal_cocido', 'Trigo sarraceno, mijo o cuscús', 'hidrato', '1 plato pequeño (150 g cocido)', 160, ['trigo sarraceno', 'alforfon', 'mijo', 'cuscus', 'bulgur', 'amaranto']),
   A('pan', 'Pan', 'hidrato', '1 rebanada (30 g)', 75, ['pan', 'pan sin gluten', 'pan de trigo sarraceno', 'pan integral', 'pan de molde', 'bocadillo'], 2),
-  A('tostada', 'Tostada', 'hidrato', '1 tostada (30 g)', 75, ['tostada'], 1, 2),
+  A('tostada', 'Tostada', 'hidrato', '1 tostada (30 g)', 75, ['tostada', 'tostada de pan', 'tostadas de pan'], 1, 2),
   A('tortitas_arroz', 'Tortitas de arroz o maíz', 'hidrato', '1 tortita', 30, ['tortitas de arroz', 'tortitas de maiz', 'tortita de arroz'], 3),
   A('avena', 'Copos de avena o cereales', 'hidrato', '4 cucharadas (40 g)', 150, ['avena', 'copos de avena', 'cereales', 'muesli', 'granola', 'porridge', 'gachas']),
+  A('yuca', 'Yuca o plátano macho', 'hidrato', '1 ración (150 g)', 240, ['yuca', 'mandioca', 'platano macho', 'patacones', 'patacon', 'tostones']),
   A('crema_arroz', 'Crema de arroz', 'hidrato', '2 cucharadas (20 g)', 72, ['crema de arroz', 'harina de arroz']),
   A('crackers', 'Crackers o picos', 'hidrato', '1 puñado (30 g)', 130, ['cracker', 'crackers', 'picos', 'regañas', 'tostas']),
   A('maiz', 'Maíz', 'hidrato', '1 ración (100 g)', 90, ['maiz', 'mazorca']),
@@ -194,6 +197,7 @@ const DULCES: Alimento[] = [
   A('natillas', 'Natillas, flan o arroz con leche', 'dulce', '1 unidad', 150, ['natillas', 'flan', 'arroz con leche', 'crema catalana']),
   A('tortitas', 'Tortitas o crepes', 'dulce', '3 tortitas', 250, ['tortitas', 'tortita', 'pancakes', 'crepes', 'crepe', 'gofre', 'gofres']),
   A('barrita', 'Barrita', 'dulce', '1 barrita', 200, ['barrita', 'barritas', 'barrita energetica', 'barrita de proteina']),
+  A('bunuelo', 'Buñuelo', 'dulce', '1 buñuelo', 110, ['buñuelo', 'buñuelos', 'buñuelo de crema', 'buñuelos de crema', 'profiterol', 'profiteroles']),
   A('rollito', 'Rollito salado de horno', 'dulce', '1 rollito', 330, ['rollito', 'rollitos']),
 ]
 
@@ -204,7 +208,7 @@ const PLATOS: Alimento[] = [
   A('croquetas', 'Croquetas', 'plato', '3 croquetas', 230, ['croqueta', 'croquetas']),
   A('empanadilla', 'Empanadilla o empanada', 'plato', '1 pieza', 200, ['empanadilla', 'empanadillas', 'empanada']),
   A('pizza', 'Pizza', 'plato', '2 porciones', 500, ['pizza']),
-  A('sandwich', 'Sándwich', 'plato', '1 sándwich', 300, ['sandwich', 'sandwiches', 'mixto', 'wrap']),
+  A('sandwich', 'Sándwich', 'plato', '1 sándwich', 300, ['sandwich', 'sandwiches', 'mixto', 'wrap', 'wrap de yuca', 'bocadillo de jamon', 'bocadillo']),
   A('ensaladilla', 'Ensaladilla', 'plato', '1 ración (200 g)', 300, ['ensaladilla', 'ensaladilla rusa']),
   A('gazpacho', 'Gazpacho o salmorejo', 'plato', '1 vaso (250 ml)', 120, ['gazpacho', 'salmorejo']),
   A('lasana', 'Lasaña o canelones', 'plato', '1 ración (250 g)', 400, ['lasaña', 'canelones', 'musaka', 'moussaka']),
@@ -231,13 +235,13 @@ export const ALIMENTOS: Alimento[] = [...VERDURAS, ...PROTEINAS, ...LACTEOS, ...
 
 /** Minúsculas y sin tildes (la ñ se queda). */
 export const normalizar = (t: string) =>
-  t.toLowerCase().replace(/ñ/g, '\u0000').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\u0000/g, 'ñ')
+  t.toLowerCase().replace(/(.)\1{2,}/g, '$1$1').replace(/ñ/g, '\u0000').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\u0000/g, 'ñ')
 
 const NUMEROS: { [k: string]: number } = {
   un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, medio: 0.5, media: 0.5, 'un poco de': 0.5, poco: 0.5, 'un par de': 2, par: 2,
 }
 const UNIDADES = 'rebanadas?|lonchas?|cucharadas?|cucharaditas?|cdas?|cdtas?|pu(?:ñ|n)ados?|vasos?|tazas?|piezas?|filetes?|trozos?|latas?|unidades?|uds?|raciones?|platos?|cuencos?|bolas?|onzas?|lomos?|rodajas?|tajadas?|porciones?|cacitos?|chorritos?|hojas?'
-const NUM = `(\\d+(?:[.,]\\d+)?|1\\/2|un par de|un poco de|un|una|uno|dos|tres|cuatro|cinco|seis|medio|media|poco|par)`
+const NUM = `(\\d+\\/\\d+|\\d+(?:[.,]\\d+)?|un par de|un poco de|un|una|uno|dos|tres|cuatro|cinco|seis|medio|media|poco|par)`
 const RE_CANT = new RegExp(`(?:^|\\s)${NUM}\\s+(?:(?:${UNIDADES})\\s+)?(?:de\\s+)?$`)
 
 const RE_UNIDAD = new RegExp(`^(?:${UNIDADES})$`)
@@ -245,7 +249,8 @@ const RE_UNIDAD = new RegExp(`^(?:${UNIDADES})$`)
 const RELLENO = new Set(('un una uno unos unas dos tres cuatro cinco seis medio media poco mucho algo par de del con sin y e o al a la el los las lo en '
   + 'para por mas menos tambien solo sola plancha horno vapor asado asada asados asadas cocido cocida cocidos cocidas hervido hervida frito frita fritos fritas '
   + 'salteado salteada guisado guisada estofado estofada casero casera natural integral grande pequeño pequeña mediano mediana buen buena trocitos troceado '
-  + 'microondas papillote rebozado rebozada gratinado gratinada crudo cruda tibio tibia caliente frio fria resto mitad entero entera mio mia').split(' '))
+  + 'microondas papillote rebozado rebozada gratinado gratinada crudo cruda tibio tibia caliente frio fria resto mitad entero entera mio mia '
+  + 'albahaca perejil oregano tomillo romero cilantro eneldo especias especia sal pimienta pimenton curcuma comino canela jengibre vinagre suravitasan').split(' '))
 const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 interface Patron { re: RegExp; a: Alimento; largo: number }
 const PATRONES: Patron[] = ALIMENTOS.flatMap((a) => a.s.map((s) => {
@@ -264,6 +269,9 @@ export interface Leido {
   /** Si se escribió un número (entonces la cantidad del plato no se aplica). */
   conNumero: boolean
   kcal: number
+  /** Posición en el texto normalizado. */
+  ini: number
+  fin: number
 }
 
 /** Lee los alimentos de un texto libre. Devuelve lo reconocido y los trozos que no se han reconocido. */
@@ -283,21 +291,34 @@ export function leerAlimentos(texto: string): { leidos: Leido[]; sinReconocer: s
   hallados.sort((x, y) => x.ini - y.ini)
   const leidos: Leido[] = hallados.map((h) => {
     // Número delante, dentro del mismo trozo: «2 huevos», «media manzana», «3 rebanadas de pan».
-    const antes = original.slice(0, h.ini).split(/[,;+.]|\s(?:y|con|e)\s/).pop() ?? ''
+    const antes = original.slice(0, h.ini).split(/[,;+\-]|\.(?!\d)|\s(?:y|con|e)\s/).pop() ?? ''
     const c = RE_CANT.exec(antes)
     let unidades: number, conNumero = false
     if (c) {
       const v = c[1].replace(',', '.')
-      unidades = v === '1/2' ? 0.5 : NUMEROS[v] ?? Number(v)
+      const fr = /^(\d+)\/(\d+)$/.exec(v)
+      unidades = fr ? Number(fr[1]) / Math.max(1, Number(fr[2])) : NUMEROS[v] ?? Number(v)
       conNumero = true
     } else {
       const plural = /s$/.test(h.txt) && !h.a.s.some((s) => normalizar(s) === h.txt)
       unidades = plural && h.a.np ? h.a.np : h.a.n ?? 1
     }
-    return { alimento: h.a, texto: h.txt, unidades, conNumero, kcal: Math.round(h.a.k * unidades) }
+    return { alimento: h.a, texto: h.txt, unidades, conNumero, kcal: Math.round(h.a.k * unidades), ini: h.ini, fin: h.fin }
   })
+  // «Tortilla de dos huevos», «revuelto de 3 huevos»: los huevos dicen el tamaño, no se suman aparte.
+  // «Fruta granada»: la palabra «fruta» delante de una fruta concreta no se cuenta otra vez.
+  for (let i = leidos.length - 1; i > 0; i--) {
+    const a = leidos[i - 1], b = leidos[i], entre = original.slice(a.fin, b.ini).trim()
+    if (b.alimento.id === 'huevo' && (a.alimento.id === 'tortilla' || a.alimento.id === 'huevos_revueltos') && /^(?:de)?(?:\s*\S+)?$/.test(entre) && (entre === '' || entre === 'de' || b.conNumero)) {
+      const n = b.conNumero ? b.unidades : 2
+      a.unidades = a.alimento.id === 'tortilla' ? n / 2 : n
+      a.conNumero = true
+      a.kcal = Math.round(a.alimento.k * a.unidades)
+      leidos.splice(i, 1)
+    } else if (a.alimento.id === 'fruta' && b.alimento.grupo === 'fruta' && entre === '') leidos.splice(i - 1, 1)
+  }
   // Lo que no se ha reconocido: trozos separados por comas, «y», «con» o «+» que no son solo palabras de relleno.
-  const sinReconocer = resto.split(/[,;+.\n]|\s(?:y|con|e)\s/).map((x) => x.trim().replace(/\s+/g, ' '))
-    .filter((x) => x && !x.split(' ').every((w) => RELLENO.has(w) || RELLENO.has(w.replace(/e?s$/, '')) || RELLENO.has(w.replace(/s$/, '')) || /^\d+(?:[.,]\d+)?$/.test(w) || RE_UNIDAD.test(w)))
+  const sinReconocer = resto.split(/[,;+.\n\-\/]|\s(?:y|con|e)\s/).map((x) => x.trim().replace(/\s+/g, ' '))
+    .filter((x) => x && !x.split(' ').every((w) => RELLENO.has(w) || RELLENO.has(w.replace(/e?s$/, '')) || RELLENO.has(w.replace(/s$/, '')) || /^\d+(?:[.,/]\d+)?$/.test(w) || RE_UNIDAD.test(w)))
   return { leidos, sinReconocer }
 }
