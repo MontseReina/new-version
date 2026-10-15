@@ -11,11 +11,11 @@ import { infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
-  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, ESTADOS, GRACIA_MIN, MENUS,
+  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
   aMin, aguaDe, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
-import { fmtKcal, kcalDia, RANGO_POR_DEFECTO } from './kcal'
+import { fmtKcal, kcalConPlato, kcalDia, kcalOtro, RANGO_POR_DEFECTO } from './kcal'
 import { Peso } from './Peso'
 import { Reloj } from './Reloj'
 
@@ -198,6 +198,7 @@ function Kcal({ kc, esHoy }: { kc: ReturnType<typeof kcalDia>; esHoy: boolean })
       {esHoy && ref != null && ref > 0 ? <> de {fmtKcal(ref)} previstas hasta ahora</> : <> de {fmtKcal(kc.referencia)} {de}</>}
       {esHoy && <span className="muted"> · día entero: {fmtKcal(kc.referencia)} {de}</span>}
       {kc.sinDato.length > 0 && <span className="muted"> · sin contar: {kc.sinDato.join(', ').toLowerCase()}</span>}
+      {kc.enParte.length > 0 && <span className="muted"> · en parte: {kc.enParte.join(', ').toLowerCase()}</span>}
     </div>
   )
 }
@@ -218,7 +219,7 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
         {e === 'no' && <span className="tag rojo">No hecha</span>}
         {e === 'media' && <span className="tag ambar">Media</span>}
         {e === 'tres_cuartos' && <span className="tag verde">¾</span>}
-        {e === 'entera' && <span className="tag verde">Hecha</span>}
+        {(e === 'entera' || e === 'hecha') && <span className="tag verde">Hecha</span>}
         {anotada(x) && <span className="tag verde">Anotada</span>}
       </div>
       {tocaba.length > 0
@@ -246,14 +247,22 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
       {e !== 'no' && (
         <label className="nutri-otro">
           <span className="muted small">Otro</span>
-          <input type="text" aria-label={`Otra cosa en ${t.nombre}`} placeholder="Si has tomado otra cosa, escríbela aquí" value={x?.otro ?? ''} onChange={(ev) => poner({ otro: ev.target.value || null })} />
+          <input type="text" aria-label={`Otra cosa en ${t.nombre}`} placeholder="Lo que has tomado: salmón, patata, brócoli…" value={x?.otro ?? ''} onChange={(ev) => poner({ otro: ev.target.value || null })} />
         </label>
       )}
+      {e !== 'no' && x?.otro?.trim() && <OtroKcal o={kcalOtro(t, x)} conPlato={!!t.plato} />}
       <div className="seg" role="group" aria-label={`Cómo ha ido: ${t.nombre}`}>
-        {ESTADOS.map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
+        {(t.plato && e && e !== 'hecha' && e !== 'no' ? [...estadosDe(t), [e, e === 'media' ? 'Media' : e === 'tres_cuartos' ? '¾' : 'Entera'] as const] : estadosDe(t)).map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
       </div>
       {t.plato && e !== 'no' && (
         <Plato veg={x?.plato?.veg} prot={x?.plato?.prot} hid={x?.plato?.hid} onChange={(p) => poner({ plato: { ...(x?.plato ?? {}), ...p } })} />
+      )}
+      {t.plato && e === 'hecha' && !x?.otro?.trim() && tocaba[0] && cfg.platos?.[tocaba[0].id]?.kcal != null && (
+        <p className="small muted nutri-plato-kcal">
+          {x?.plato && Object.values(x.plato).some((v) => v != null)
+            ? <>Según tu plato, {tocaba[0].nombre.toLowerCase()} cuenta unas <strong>{fmtKcal(kcalConPlato(cfg, tocaba[0].id, x) ?? 0)} kcal</strong> de {fmtKcal(cfg.platos[tocaba[0].id].kcal!)}.</>
+            : <>Sin marcar el plato, cuenta entero ({fmtKcal(cfg.platos[tocaba[0].id].kcal!)} kcal). Toca cada parte si comiste menos o más.</>}
+        </p>
       )}
       {e !== 'no' && (
         <div className="nutri-horas">
@@ -269,6 +278,35 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
             : <>Sin agua de {agua.desde} a {agua.hasta}.</>}
         </div>
       )}
+    </div>
+  )
+}
+
+const FRACCION: { [k: number]: string } = { 0: 'nada', 0.5: '½', 0.75: '¾', 1.5: '1½' }
+const fraccion = (n: number) => FRACCION[n] ?? String(n).replace('.', ',')
+
+/** Lo que se cuenta de lo escrito en «Otro»: cada alimento con su ración y la parte que se toma. */
+function OtroKcal({ o, conPlato }: { o: ReturnType<typeof kcalOtro>; conPlato: boolean }) {
+  if (!o.items.length) {
+    return <p className="small nutri-otro-kcal"><span className="dot amarillo" />No reconozco ningún alimento: esta toma no cuenta en las kilocalorías. Escríbelo con otras palabras, separando con comas.</p>
+  }
+  return (
+    <div className="small nutri-otro-kcal">
+      <ul>
+        {o.items.map((i, k) => (
+          <li key={k}>
+            <span>
+              {i.alimento.nombre}
+              <span className="muted"> · {i.unidades !== 1 ? `${fraccion(i.unidades)} × ${i.alimento.u}` : i.alimento.u}
+                {i.factor !== 1 && <> · {fraccion(i.factor)} {i.segun === 'plato' ? 'según el plato' : 'según lo marcado'}</>}</span>
+            </span>
+            <span className="nowrap">{fmtKcal(i.kcalContadas)} kcal</span>
+          </li>
+        ))}
+      </ul>
+      <div className="row between"><strong>Cuenta unas {fmtKcal(o.total)} kcal</strong></div>
+      {o.sinReconocer.length > 0 && <div className="muted">No reconozco: {o.sinReconocer.map((w) => `«${w}»`).join(', ')}. No suma; prueba con otra palabra.</div>}
+      {conPlato && <div className="muted">Verdura, proteína e hidratos cuentan la cantidad que marques en el plato.</div>}
     </div>
   )
 }

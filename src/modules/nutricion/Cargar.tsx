@@ -70,7 +70,7 @@ export function CargarAjusteNutricion() {
     try { await saveCfg(res.patch); nav('/nutricion', { replace: true }) } catch { setEstado('error') }
   }
   const cambios: string[] = []
-  if (res?.platos) cambios.push(`kilocalorías de ${res.platos} platos`)
+  if (res?.platos) cambios.push(aj?.platos_partes && !aj.platos_kcal ? `reparto de las kilocalorías de ${res.platos} platos (verdura, proteína e hidratos)` : `kilocalorías de ${res.platos} platos`)
   if (aj?.tomas && res) for (const t of cfg?.tomas ?? []) { const c = aj.tomas[t.id]; if (c) cambios.push(`${t.nombre}: ${Object.entries(c).map(([k, v]) => `${k === 'hora' ? 'hora' : k === 'hasta' ? 'hasta' : k} ${v}`).join(', ')}`) }
   if (aj?.menu_fijo !== undefined) cambios.push(aj.menu_fijo ? `enseñar siempre el ${MENUS[aj.menu_fijo].toLowerCase()}` : 'enseñar el menú según el ciclo')
   if (aj?.kcal_min !== undefined) cambios.push(aj.kcal_min ? `cifra diaria pautada: ${aj.kcal_min} kcal` : 'sin cifra diaria pautada')

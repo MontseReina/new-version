@@ -292,7 +292,8 @@ fieldset.sint { border: 0; padding: 0; margin: 0; min-width: 0; }
 .nutri-reglas .dot:not(.verde):not(.amarillo):not(.rojo) { background: var(--line); }
 .nutri-toma h3 { margin: 0; color: var(--text); }
 .nutri-toma.pendiente-hora, .nutri-toma.no { border-color: var(--red); }
-.nutri-toma.entera, .nutri-toma.tres_cuartos { border-color: var(--green); }
+.nutri-toma.entera, .nutri-toma.tres_cuartos, .nutri-toma.hecha { border-color: var(--green); }
+.nutri-plato-kcal { margin: .3rem 0 .5rem; }
 .nutri-toma.media { border-color: var(--amber); }
 .nutri-platos { margin: .4rem 0 .6rem; padding-left: 1.1rem; }
 .nutri-platos li { margin: .15rem 0; }
@@ -339,6 +340,10 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .nutri-otro { display: flex; align-items: center; gap: .5rem; margin: 0 0 .6rem; }
 .nutri-otro input { flex: 1; min-width: 0; }
 .nutri-platos.sustituido li > span { color: var(--muted); text-decoration: line-through; }
+.nutri-otro-kcal { margin: -.2rem 0 .6rem; }
+.nutri-otro-kcal .nowrap { white-space: nowrap; }
+.nutri-otro-kcal ul { list-style: none; margin: 0 0 .3rem; padding: 0; }
+.nutri-otro-kcal li { display: flex; justify-content: space-between; gap: .5rem; padding: .15rem 0; border-bottom: 1px dashed var(--line); }
 
 /* Relojes de Nutrición: ayuno de la noche y tiempo desde la última comida */
 .reloj { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; align-items: start; }

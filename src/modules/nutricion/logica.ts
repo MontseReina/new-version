@@ -21,7 +21,9 @@ export type TomaDef = {
   /** Lo que va después del primer plato es postre y se marca aparte: tomado o no tomado. */
   postre?: boolean
 }
-export type Plato = { nombre: string; kcal?: number; calcio_mg?: number; etiquetas?: string[] }
+/** `partes`: qué parte de las kilocalorías del plato (de 0 a 1) es verdura, proteína e hidratos; el resto (aceite, salsas)
+ *  es lo que falta hasta 1. Sirven para que la cantidad marcada en el plato dibujado cuente en las kilocalorías. */
+export type Plato = { nombre: string; kcal?: number; partes?: { veg?: number; prot?: number; hid?: number }; calcio_mg?: number; etiquetas?: string[] }
 /** Un plato del menú: su id o, si alterna por semanas del ciclo, el id y la semana (1 o 2). */
 export type Ref = string | { id: string; semana?: number }
 export type MenuDia = { [toma: string]: Ref[] }
@@ -48,8 +50,12 @@ export type NutriCfg = {
   avisos?: Aviso[]
 }
 
-export type Estado = 'entera' | 'tres_cuartos' | 'media' | 'no'
+/** `hecha` es el estado de las tomas con plato dibujado (comida y cena): la cantidad la dice el plato.
+ *  Los días antiguos de esas tomas pueden tener `entera`, `tres_cuartos` o `media`, y se siguen contando así. */
+export type Estado = 'entera' | 'tres_cuartos' | 'media' | 'hecha' | 'no'
 export const ESTADOS: [Estado, string][] = [['entera', 'Entera'], ['tres_cuartos', '¾'], ['media', 'Media'], ['no', 'No']]
+export const ESTADOS_PLATO: [Estado, string][] = [['hecha', 'Hecha'], ['no', 'No']]
+export const estadosDe = (t: TomaDef) => (t.plato ? ESTADOS_PLATO : ESTADOS)
 /** Plato dibujado: cuánto había de cada parte. 0 nada · 1 poca · 2 la parte que toca · 3 (solo hidratos) más de la que toca. */
 export type PlatoDia = { veg?: number | null; prot?: number | null; hid?: number | null }
 
@@ -144,7 +150,7 @@ export function avisosDe(cfg: NutriCfg, date: string): string[] {
 export const tomasDe = (cfg: NutriCfg | null) => cfg?.tomas ?? []
 /** Anotada sin decir cuánto: tiene escrito lo que ha tomado o alguna hora, pero ningún estado marcado. */
 export const anotada = (t?: TomaDia) => !!t && !t.estado && (!!t.otro?.trim() || aMin(t.ini) != null || aMin(t.fin) != null)
-export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'tres_cuartos' || t?.estado === 'media' || anotada(t)
+export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'tres_cuartos' || t?.estado === 'media' || t?.estado === 'hecha' || anotada(t)
 /** Hora límite prevista de una toma, en minutos. */
 export const limite = (t: TomaDef) => aMin(t.hasta) ?? aMin(t.hora)
 /** Hora en la que acaba una toma: el fin si lo guarda, o su inicio. */
@@ -296,6 +302,8 @@ export const semana = (date: string) => Array.from({ length: 7 }, (_, i) => addD
  *  algunas tomas y otras claves sueltas. Lo demás se conserva. */
 export type AjusteCfg = {
   platos_kcal?: { [id: string]: number | null }
+  /** Reparto de las kilocalorías de cada plato (fracciones de 0 a 1). `null` lo quita. */
+  platos_partes?: { [id: string]: { veg?: number; prot?: number; hid?: number } | null }
   tomas?: { [id: string]: Partial<TomaDef> }
   menu_fijo?: MenuId | null
   kcal_min?: number | null
@@ -307,6 +315,7 @@ export function leerAjuste(texto: string): AjusteCfg | null {
   if (esObj(x) && esObj(x.nutricion_ajuste)) x = x.nutricion_ajuste
   if (!esObj(x)) return null
   if (x.platos_kcal !== undefined && (!esObj(x.platos_kcal) || Object.values(x.platos_kcal).some((v) => v !== null && typeof v !== 'number'))) return null
+  if (x.platos_partes !== undefined && (!esObj(x.platos_partes) || Object.values(x.platos_partes).some((v) => v !== null && (!esObj(v) || Object.values(v).some((n) => typeof n !== 'number' || n < 0 || n > 1))))) return null
   if (x.tomas !== undefined && (!esObj(x.tomas) || Object.values(x.tomas).some((v) => !esObj(v)))) return null
   if (x.menu_fijo !== undefined && x.menu_fijo !== null && x.menu_fijo !== 'folicular' && x.menu_fijo !== 'luteo') return null
   return x as AjusteCfg
@@ -324,6 +333,16 @@ export function aplicarAjuste(cfg: NutriCfg, aj: AjusteCfg): { patch: Partial<Nu
       const { kcal: _, ...resto } = p[id]
       p[id] = k == null ? resto : { ...resto, kcal: k }
       platos++
+    }
+    patch.platos = p
+  }
+  if (aj.platos_partes) {
+    const p = { ...(patch.platos ?? cfg.platos ?? {}) }
+    for (const [id, v] of Object.entries(aj.platos_partes)) {
+      if (!p[id]) { if (!ignorados.includes(id)) ignorados.push(id); continue }
+      const { partes: _, ...resto } = p[id]
+      p[id] = v == null ? resto : { ...resto, partes: v }
+      if (!aj.platos_kcal?.[id]) platos++
     }
     patch.platos = p
   }
