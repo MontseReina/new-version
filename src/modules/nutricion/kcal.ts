@@ -51,8 +51,8 @@ export function kcalConPlato(cfg: NutriCfg, id: string, x?: TomaDia): number | n
   const f = factoresPlato(x)
   if (!p.partes) return p.kcal * f.resto
   const veg = p.partes.veg ?? 0, prot = p.partes.prot ?? 0, hid = p.partes.hid ?? 0
-  const resto = Math.max(0, p.kcal - veg - prot - hid)
-  return veg * f.veg + prot * f.prot + hid * f.hid + resto * f.resto
+  const resto = Math.max(0, 1 - veg - prot - hid)
+  return p.kcal * (veg * f.veg + prot * f.prot + hid * f.hid + resto * f.resto)
 }
 
 export interface LeidoContado extends Leido {
