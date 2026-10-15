@@ -914,7 +914,7 @@ function platosDe(cfg, m, toma) {
 const tomasDe = (cfg) => cfg?.tomas ?? [];
 /** Anotada sin decir cuánto: tiene escrito lo que ha tomado o alguna hora, pero ningún estado marcado. */
 const anotada = (t) => !!t && !t.estado && (!!t.otro?.trim() || aMin(t.ini) != null || aMin(t.fin) != null);
-const hecha = (t) => t?.estado === "entera" || t?.estado === "tres_cuartos" || t?.estado === "media" || anotada(t);
+const hecha = (t) => t?.estado === "entera" || t?.estado === "tres_cuartos" || t?.estado === "media" || t?.estado === "hecha" || anotada(t);
 /** Hora límite prevista de una toma, en minutos. */
 const limite = (t) => aMin(t.hasta) ?? aMin(t.hora);
 /** Hora en la que acaba una toma: el fin si lo guarda, o su inicio. */
@@ -959,6 +959,7 @@ const PARTE = {
 	entera: 1,
 	tres_cuartos: .75,
 	media: .5,
+	hecha: 1,
 	no: 0
 };
 /** Cantidad de cada parte del plato dibujado: nada, poca, la que toca y (hidratos) más de la que toca. */
@@ -985,6 +986,36 @@ const PARTE_DEL_PLATO = {
 	proteina: "prot",
 	hidrato: "hid"
 };
+/** Parte que se tomó de cada zona del plato dibujado (1 si no se ha marcado). */
+function factoresPlato(x) {
+	const f = (k) => {
+		const n = x?.plato?.[k];
+		return n == null ? null : FACTOR_PLATO[k][n] ?? 1;
+	};
+	const veg = f("veg"), prot = f("prot"), hid = f("hid");
+	const marcados = [
+		veg,
+		prot,
+		hid
+	].filter((v) => v != null);
+	const resto = marcados.length ? marcados.reduce((s, v) => s + v, 0) / marcados.length : 1;
+	return {
+		veg: veg ?? 1,
+		prot: prot ?? 1,
+		hid: hid ?? 1,
+		resto
+	};
+}
+/** Kilocalorías del plato principal de una toma con plato dibujado, según lo marcado en el plato. */
+function kcalConPlato(cfg, id, x) {
+	const p = cfg.platos?.[id];
+	if (p?.kcal == null) return null;
+	const f = factoresPlato(x);
+	if (!p.partes) return p.kcal * f.resto;
+	const veg = p.partes.veg ?? 0, prot = p.partes.prot ?? 0, hid = p.partes.hid ?? 0;
+	const resto = Math.max(0, p.kcal - veg - prot - hid);
+	return veg * f.veg + prot * f.prot + hid * f.hid + resto * f.resto;
+}
 /** Kilocalorías de lo escrito en «Otro»: cada alimento por su ración casera (o por el número escrito) y por la
 *  cantidad marcada en el plato dibujado (verdura, proteína, hidratos) o, si no, en Entera, ¾ o Media. */
 function kcalOtro(t, x) {
@@ -1049,8 +1080,25 @@ function kcalDia(cfg, d, menu, ahoraMin) {
 			fuera += delMenu ?? 0;
 			continue;
 		}
-		const ids = (x.platos?.length ? x.platos : platosDe(cfg, menu, t.id).map((p) => p.id)).filter((id) => x.postre?.[id] !== "no");
-		const k = kcalDePlatos(cfg, ids);
+		const todos = x.platos?.length ? x.platos : platosDe(cfg, menu, t.id).map((p) => p.id);
+		if (x.estado === "hecha") {
+			let k = 0;
+			todos.forEach((id, i) => {
+				if (k == null) return;
+				const esPostre = !!t.postre && i > 0;
+				if (esPostre && x.postre?.[id] === "no") return;
+				const v = esPostre ? cfg.platos?.[id]?.kcal ?? null : kcalConPlato(cfg, id, x);
+				k = v == null ? null : k + v;
+			});
+			if (k == null) {
+				sinDato.push(t.nombre);
+				fuera += delMenu ?? 0;
+				continue;
+			}
+			comido += k;
+			continue;
+		}
+		const k = kcalDePlatos(cfg, todos.filter((id) => x.postre?.[id] !== "no"));
 		if (k == null) {
 			sinDato.push(t.nombre);
 			fuera += delMenu ?? 0;

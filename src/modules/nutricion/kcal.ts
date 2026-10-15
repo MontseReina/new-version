@@ -4,7 +4,7 @@
 import { leerAlimentos, type Grupo, type Leido } from './alimentos'
 import { GRACIA_MIN, hecha, limite, platosDe, tomasDe, type Estado, type MenuHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia } from './logica'
 
-export const PARTE: { [k in Estado]: number } = { entera: 1, tres_cuartos: 0.75, media: 0.5, no: 0 }
+export const PARTE: { [k in Estado]: number } = { entera: 1, tres_cuartos: 0.75, media: 0.5, hecha: 1, no: 0 }
 /** Por debajo de este porcentaje de lo previsto se avisa de que va por debajo. */
 export const RANGO_POR_DEFECTO = 90
 
@@ -33,6 +33,27 @@ export interface KcalDia {
 /** Cantidad de cada parte del plato dibujado: nada, poca, la que toca y (hidratos) más de la que toca. */
 const FACTOR_PLATO = { veg: [0, 0.5, 1], prot: [0, 0.5, 1], hid: [0, 0.5, 1, 1.5] } as const
 const PARTE_DEL_PLATO: Partial<Record<Grupo, keyof typeof FACTOR_PLATO>> = { verdura: 'veg', proteina: 'prot', hidrato: 'hid' }
+
+/** Parte que se tomó de cada zona del plato dibujado (1 si no se ha marcado). */
+export function factoresPlato(x?: TomaDia) {
+  const f = (k: keyof typeof FACTOR_PLATO): number | null => { const n = x?.plato?.[k]; return n == null ? null : (FACTOR_PLATO[k] as readonly number[])[n] ?? 1 }
+  const veg = f('veg'), prot = f('prot'), hid = f('hid')
+  const marcados = [veg, prot, hid].filter((v): v is number => v != null)
+  // Aceite y salsas van con todo el plato: se cuentan en la proporción media de lo marcado.
+  const resto = marcados.length ? marcados.reduce((s, v) => s + v, 0) / marcados.length : 1
+  return { veg: veg ?? 1, prot: prot ?? 1, hid: hid ?? 1, resto }
+}
+
+/** Kilocalorías del plato principal de una toma con plato dibujado, según lo marcado en el plato. */
+export function kcalConPlato(cfg: NutriCfg, id: string, x?: TomaDia): number | null {
+  const p = cfg.platos?.[id]
+  if (p?.kcal == null) return null
+  const f = factoresPlato(x)
+  if (!p.partes) return p.kcal * f.resto
+  const veg = p.partes.veg ?? 0, prot = p.partes.prot ?? 0, hid = p.partes.hid ?? 0
+  const resto = Math.max(0, p.kcal - veg - prot - hid)
+  return veg * f.veg + prot * f.prot + hid * f.hid + resto * f.resto
+}
 
 export interface LeidoContado extends Leido {
   /** Parte que se cuenta: la del plato dibujado (comida y cena) o la de Entera, ¾ o Media. 1 si se escribió un número. */
@@ -85,8 +106,22 @@ export function kcalDia(cfg: NutriCfg, d: NutriDia, menu: MenuHoy, ahoraMin: num
       continue
     }
     if (!x.estado) { sinDato.push(t.nombre); fuera += delMenu ?? 0; continue }
-    const ids = (x.platos?.length ? x.platos : platosDe(cfg, menu, t.id).map((p) => p.id)).filter((id) => x.postre?.[id] !== 'no')
-    const k = kcalDePlatos(cfg, ids)
+    const todos = x.platos?.length ? x.platos : platosDe(cfg, menu, t.id).map((p) => p.id)
+    if (x.estado === 'hecha') {
+      // Comida y cena: el primer plato (o todos, si la toma no lleva postre) según el plato dibujado; el postre, entero si se tomó.
+      let k: number | null = 0
+      todos.forEach((id, i) => {
+        if (k == null) return
+        const esPostre = !!t.postre && i > 0
+        if (esPostre && x.postre?.[id] === 'no') return
+        const v = esPostre ? cfg.platos?.[id]?.kcal ?? null : kcalConPlato(cfg, id, x)
+        k = v == null ? null : k + v
+      })
+      if (k == null) { sinDato.push(t.nombre); fuera += delMenu ?? 0; continue }
+      comido += k
+      continue
+    }
+    const k = kcalDePlatos(cfg, todos.filter((id) => x.postre?.[id] !== 'no'))
     if (k == null) { sinDato.push(t.nombre); fuera += delMenu ?? 0; continue }
     comido += k * PARTE[x.estado]
   }

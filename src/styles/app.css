@@ -292,7 +292,8 @@ fieldset.sint { border: 0; padding: 0; margin: 0; min-width: 0; }
 .nutri-reglas .dot:not(.verde):not(.amarillo):not(.rojo) { background: var(--line); }
 .nutri-toma h3 { margin: 0; color: var(--text); }
 .nutri-toma.pendiente-hora, .nutri-toma.no { border-color: var(--red); }
-.nutri-toma.entera, .nutri-toma.tres_cuartos { border-color: var(--green); }
+.nutri-toma.entera, .nutri-toma.tres_cuartos, .nutri-toma.hecha { border-color: var(--green); }
+.nutri-plato-kcal { margin: .3rem 0 .5rem; }
 .nutri-toma.media { border-color: var(--amber); }
 .nutri-platos { margin: .4rem 0 .6rem; padding-left: 1.1rem; }
 .nutri-platos li { margin: .15rem 0; }

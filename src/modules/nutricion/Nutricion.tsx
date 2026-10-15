@@ -11,11 +11,11 @@ import { infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
-  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, ESTADOS, GRACIA_MIN, MENUS,
+  AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
   aMin, aguaDe, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
-import { fmtKcal, kcalDia, kcalOtro, RANGO_POR_DEFECTO } from './kcal'
+import { fmtKcal, kcalConPlato, kcalDia, kcalOtro, RANGO_POR_DEFECTO } from './kcal'
 import { Peso } from './Peso'
 import { Reloj } from './Reloj'
 
@@ -219,7 +219,7 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
         {e === 'no' && <span className="tag rojo">No hecha</span>}
         {e === 'media' && <span className="tag ambar">Media</span>}
         {e === 'tres_cuartos' && <span className="tag verde">¾</span>}
-        {e === 'entera' && <span className="tag verde">Hecha</span>}
+        {(e === 'entera' || e === 'hecha') && <span className="tag verde">Hecha</span>}
         {anotada(x) && <span className="tag verde">Anotada</span>}
       </div>
       {tocaba.length > 0
@@ -252,10 +252,17 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
       )}
       {e !== 'no' && x?.otro?.trim() && <OtroKcal o={kcalOtro(t, x)} conPlato={!!t.plato} />}
       <div className="seg" role="group" aria-label={`Cómo ha ido: ${t.nombre}`}>
-        {ESTADOS.map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
+        {(t.plato && e && e !== 'hecha' && e !== 'no' ? [...estadosDe(t), [e, e === 'media' ? 'Media' : e === 'tres_cuartos' ? '¾' : 'Entera'] as const] : estadosDe(t)).map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
       </div>
       {t.plato && e !== 'no' && (
         <Plato veg={x?.plato?.veg} prot={x?.plato?.prot} hid={x?.plato?.hid} onChange={(p) => poner({ plato: { ...(x?.plato ?? {}), ...p } })} />
+      )}
+      {t.plato && e === 'hecha' && !x?.otro?.trim() && tocaba[0] && cfg.platos?.[tocaba[0].id]?.kcal != null && (
+        <p className="small muted nutri-plato-kcal">
+          {x?.plato && Object.values(x.plato).some((v) => v != null)
+            ? <>Según tu plato, {tocaba[0].nombre.toLowerCase()} cuenta unas <strong>{fmtKcal(kcalConPlato(cfg, tocaba[0].id, x) ?? 0)} kcal</strong> de {fmtKcal(cfg.platos[tocaba[0].id].kcal!)}.</>
+            : <>Sin marcar el plato, cuenta entero ({fmtKcal(cfg.platos[tocaba[0].id].kcal!)} kcal). Toca cada parte si comiste menos o más.</>}
+        </p>
       )}
       {e !== 'no' && (
         <div className="nutri-horas">

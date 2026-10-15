@@ -21,7 +21,9 @@ export type TomaDef = {
   /** Lo que va después del primer plato es postre y se marca aparte: tomado o no tomado. */
   postre?: boolean
 }
-export type Plato = { nombre: string; kcal?: number; calcio_mg?: number; etiquetas?: string[] }
+/** `partes`: kilocalorías del plato que son verdura, proteína e hidratos (el resto, aceite y salsas, es la diferencia hasta `kcal`).
+ *  Sirven para que la cantidad marcada en el plato dibujado cuente en las kilocalorías. */
+export type Plato = { nombre: string; kcal?: number; partes?: { veg?: number; prot?: number; hid?: number }; calcio_mg?: number; etiquetas?: string[] }
 /** Un plato del menú: su id o, si alterna por semanas del ciclo, el id y la semana (1 o 2). */
 export type Ref = string | { id: string; semana?: number }
 export type MenuDia = { [toma: string]: Ref[] }
@@ -48,8 +50,12 @@ export type NutriCfg = {
   avisos?: Aviso[]
 }
 
-export type Estado = 'entera' | 'tres_cuartos' | 'media' | 'no'
+/** `hecha` es el estado de las tomas con plato dibujado (comida y cena): la cantidad la dice el plato.
+ *  Los días antiguos de esas tomas pueden tener `entera`, `tres_cuartos` o `media`, y se siguen contando así. */
+export type Estado = 'entera' | 'tres_cuartos' | 'media' | 'hecha' | 'no'
 export const ESTADOS: [Estado, string][] = [['entera', 'Entera'], ['tres_cuartos', '¾'], ['media', 'Media'], ['no', 'No']]
+export const ESTADOS_PLATO: [Estado, string][] = [['hecha', 'Hecha'], ['no', 'No']]
+export const estadosDe = (t: TomaDef) => (t.plato ? ESTADOS_PLATO : ESTADOS)
 /** Plato dibujado: cuánto había de cada parte. 0 nada · 1 poca · 2 la parte que toca · 3 (solo hidratos) más de la que toca. */
 export type PlatoDia = { veg?: number | null; prot?: number | null; hid?: number | null }
 
@@ -144,7 +150,7 @@ export function avisosDe(cfg: NutriCfg, date: string): string[] {
 export const tomasDe = (cfg: NutriCfg | null) => cfg?.tomas ?? []
 /** Anotada sin decir cuánto: tiene escrito lo que ha tomado o alguna hora, pero ningún estado marcado. */
 export const anotada = (t?: TomaDia) => !!t && !t.estado && (!!t.otro?.trim() || aMin(t.ini) != null || aMin(t.fin) != null)
-export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'tres_cuartos' || t?.estado === 'media' || anotada(t)
+export const hecha = (t?: TomaDia) => t?.estado === 'entera' || t?.estado === 'tres_cuartos' || t?.estado === 'media' || t?.estado === 'hecha' || anotada(t)
 /** Hora límite prevista de una toma, en minutos. */
 export const limite = (t: TomaDef) => aMin(t.hasta) ?? aMin(t.hora)
 /** Hora en la que acaba una toma: el fin si lo guarda, o su inicio. */
