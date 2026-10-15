@@ -82,6 +82,15 @@ export default function Avisos() {
       <h1>Avisos en el móvil</h1>
       <p className="muted">Te llegan como las notificaciones de cualquier app, en la pantalla bloqueada, aunque la app esté cerrada. Se revisan cada cinco minutos con lo que hayas anotado: si comes o bebes sin anotarlo, el aviso llega igual.</p>
 
+      {estado && estado.ultimos.length > 0 && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Últimos avisos</h2>
+          {estado.ultimos.slice(0, 8).map((u, i) => (
+            <p key={i} className="small"><span className="muted">{u.cuando.slice(8, 10)}/{u.cuando.slice(5, 7)} {u.cuando.slice(11)} · </span><strong>{u.titulo}</strong>: {u.cuerpo}</p>
+          ))}
+        </div>
+      )}
+
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Este móvil</h2>
         {DEMO ? <p className="muted">En la demostración no se pueden activar avisos.</p>
@@ -144,14 +153,6 @@ export default function Avisos() {
         </Field>
       </div>
 
-      {estado && estado.ultimos.length > 0 && (
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Últimos avisos enviados</h2>
-          {estado.ultimos.slice(0, 8).map((u, i) => (
-            <p key={i} className="small"><span className="muted">{u.cuando.slice(8, 10)}/{u.cuando.slice(5, 7)} {u.cuando.slice(11)} · </span><strong>{u.titulo}</strong>: {u.cuerpo}</p>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

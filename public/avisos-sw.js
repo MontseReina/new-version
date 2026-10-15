@@ -8,15 +8,16 @@ self.addEventListener('push', (event) => {
     tag: d.tag || undefined,
     icon: 'pwa-192.png',
     badge: 'pwa-192.png',
-    data: { ruta: d.ruta || '' },
+    data: { ruta: d.ruta || '', titulo: d.titulo || '', cuerpo: d.cuerpo || '' },
   }))
 })
 
-// Al tocar el aviso se abre la app en la página que corresponde.
+// Al tocar el aviso se abre la app con el mensaje entero (página «aviso») y un botón a la página que corresponde.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const ruta = (event.notification.data && event.notification.data.ruta) || ''
-  const url = new URL('./' + (ruta ? '#/' + ruta : ''), self.registration.scope).href
+  const d = event.notification.data || {}
+  const q = new URLSearchParams({ t: d.titulo || event.notification.title || '', c: d.cuerpo || event.notification.body || '', r: d.ruta || '' })
+  const url = new URL('./#/aviso?' + q.toString(), self.registration.scope).href
   event.waitUntil((async () => {
     const ventanas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const w of ventanas) {

@@ -10,6 +10,7 @@ import Vida from './modules/vida/Vida'
 import CargarNutricion, { CargarAjusteNutricion } from './modules/nutricion/Cargar'
 import Cargar from './modules/sintomas/Cargar'
 import { pilares } from './pilares'
+import Aviso from './modules/avisos/Aviso'
 import Avisos from './modules/avisos/Avisos'
 import { Ajustes } from './pages/Ajustes'
 import { Datos } from './pages/Datos'
@@ -35,6 +36,7 @@ function Rutas() {
         <Route path="vida" element={<Vida />} />
         <Route path="cargar/:datos" element={<Cargar />} />
         <Route path="avisos" element={<Avisos />} />
+        <Route path="aviso" element={<Aviso />} />
         <Route path="mas" element={<Mas />} />
         <Route path="datos" element={<Datos />} />
         <Route path="ajustes" element={<Ajustes />} />
