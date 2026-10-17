@@ -6,6 +6,7 @@ import type { ComponentType } from 'react'
 import Calendario from './modules/calendario/Calendario'
 import Pendientes from './modules/pendientes/Pendientes'
 import Preguntas from './modules/preguntas/Preguntas'
+import Informes from './modules/informes/Informes'
 
 export interface PilarDef {
   id: string
@@ -24,5 +25,6 @@ export const pilares: PilarDef[] = [
   { id: 'calendario', name: 'Calendario', ico: '📅', path: 'calendario', Page: Calendario },
   { id: 'pendientes', name: 'Pendientes', ico: '☑️', path: 'pendientes', Page: Pendientes },
   { id: 'preguntas', name: 'Preguntas', ico: '💬', path: 'preguntas', Page: Preguntas },
+  { id: 'informes', name: 'Informes', ico: '📄', path: 'informes', Page: Informes },
   { id: 'evaluaciones', name: 'Evaluaciones', ico: '📊', path: 'evaluaciones' },
 ]

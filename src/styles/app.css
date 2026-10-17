@@ -476,3 +476,13 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .vida-area .barra { margin: 0 0 .4rem; }
 .vida-area .barra i { background: var(--primary); }
 .vida-hecha.extra .vida-logro-marca { background: var(--primary); color: var(--card); }
+
+/* Pilar Informes */
+.inf-opcion { display: flex; gap: .8rem; align-items: flex-start; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.inf-opcion:hover:not(:disabled) { border-color: var(--green); }
+.inf-opcion.luego { cursor: default; opacity: .65; }
+.inf-opcion .tag { margin-left: .4rem; }
+.inf-ico { font-size: 1.4rem; line-height: 1.2; }
+.inf-texto { display: block; margin-top: .2rem; }
+.inf-pct { margin-right: .2rem; }
+.inf-pct.verde { color: var(--green); } .inf-pct.amarillo { color: var(--amber); } .inf-pct.rojo { color: var(--red); }

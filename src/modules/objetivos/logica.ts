@@ -131,7 +131,11 @@ const horaTxt = (min: number) => (min % 60 ? `${Math.floor(min / 60)} h ${min % 
 
 /** Los objetivos de una semana (de lunes a domingo), en el orden en que se enseñan. */
 export function objetivosDe(lunes: string, D: Datos): Objetivo[] {
-  const dias = Array.from({ length: 7 }, (_, i) => addDays(lunes, i))
+  return objetivosEn(Array.from({ length: 7 }, (_, i) => addDays(lunes, i)), D)
+}
+
+/** Los mismos objetivos en cualquier lista de días seguidos (los informes usan el periodo elegido). */
+export function objetivosEn(dias: string[], D: Datos): Objetivo[] {
   const fila = (id: string, nombre: string, ruta: string, regla: Regla, falta?: string): Objetivo => {
     const m = dias.map((d) => (d > D.hoy ? 'nada' : regla(d, D)))
     const ok = m.filter((x) => x === 'ok').length, n = ok + m.filter((x) => x === 'no' || x === 'parcial').length

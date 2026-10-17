@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Empty, Field, Section } from '../../components/ui'
 import { fmtDate, todayStr } from '../../lib/dates'
 import { useSettings } from '../../store/useSettings'
 import { modules } from '..'
 import { pilares } from '../../pilares'
-import Informe from './Informe'
 import {
   borrarPregunta, guardarPregunta, pendientesDe, reabrir, renombrarEspecialista, responder, respondidasDe, usePreguntas,
   type PregCfg, type Pregunta,
@@ -20,14 +20,11 @@ export default function Preguntas() {
   const [elegido, setElegido] = useState('')
   const [texto, setTexto] = useState('')
   const [pilar, setPilar] = useState('')
-  const [informe, setInforme] = useState(false)
   const [fallo, setFallo] = useState('')
 
   const especialistas = cfg?.especialistas ?? []
   const esp = especialistas.includes(elegido) ? elegido : especialistas[0] ?? ''
   const todas = lista ?? []
-
-  if (informe) return <Informe especialistas={especialistas} preguntas={todas} onClose={() => setInforme(false)} />
 
   const pendientes = pendientesDe(todas, esp)
   const respondidas = respondidasDe(todas, esp)
@@ -43,7 +40,7 @@ export default function Preguntas() {
     <div>
       <div className="row between">
         <h1>Preguntas al equipo</h1>
-        <button className="btn sm secondary" onClick={() => setInforme(true)}>Informe de consulta</button>
+        <Link className="btn sm secondary" to="/informes/consulta">Informe de consulta</Link>
       </div>
       {(error || fallo) && <p className="error">No se ha podido {error ? 'cargar' : 'guardar'}: {error || fallo}</p>}
       {(!cfg || (!lista && !error)) && <p className="muted">Cargando…</p>}

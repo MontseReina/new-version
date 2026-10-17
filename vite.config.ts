@@ -18,7 +18,7 @@ function versionJson() {
 }
 
 // Demostración en un solo fichero (npm run build:demo): sin cuenta ni base de datos.
-// Los ajustes y los días de ejemplo se pasan en DEMO_SETTINGS y DEMO_DAILY (JSON) al construir;
+// Los ajustes, los días y los registros sueltos de ejemplo se pasan en DEMO_SETTINGS, DEMO_DAILY y DEMO_ENTRIES (JSON) al construir;
 // no se guardan en el código. DEMO_START es la página en la que arranca (por ejemplo, /preguntas).
 const demo = !!process.env.DEMO_SINGLEFILE
 const base = demo ? './' : (process.env.VITE_BASE || '/')
@@ -60,6 +60,7 @@ export default defineConfig({
     'import.meta.env.VITE_DEMO': JSON.stringify(demo ? '1' : ''),
     'import.meta.env.VITE_DEMO_SETTINGS': JSON.stringify(demo ? (process.env.DEMO_SETTINGS || '') : ''),
     'import.meta.env.VITE_DEMO_DAILY': JSON.stringify(demo ? (process.env.DEMO_DAILY || '') : ''),
+    'import.meta.env.VITE_DEMO_ENTRIES': JSON.stringify(demo ? (process.env.DEMO_ENTRIES || '') : ''),
     'import.meta.env.VITE_DEMO_START': JSON.stringify(demo ? (process.env.DEMO_START || '') : ''),
     ...(demo ? { 'import.meta.env.VITE_SUPABASE_URL': '""', 'import.meta.env.VITE_SUPABASE_ANON_KEY': '""' } : {}),
   },
