@@ -145,3 +145,20 @@ export function leerGrupos(texto: string): Grupo[] | null {
   }
   return out
 }
+
+export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; gravedad: number | null; urgencias: boolean }
+/** Episodios anotados (opciones marcadas en los grupos 'detalle', como Disautonomía), en orden. */
+export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia }[]): Episodio[] {
+  return grupos.filter((g) => g.tipo === 'detalle').flatMap((g) =>
+    dias.flatMap((d) => (d.value.sel?.[g.id] ?? []).map((id) => {
+      const det = d.value.det?.[g.id]?.[id] ?? {}
+      return { dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre: g.opciones?.find((o) => o.id === id)?.nombre ?? id, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias }
+    })),
+  ).sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora))
+}
+
+/** Resumen de los episodios de un día: la gravedad más alta y si alguno acabó en ingreso. */
+export function marcaDia(xs: Episodio[]) {
+  const gs = xs.map((e) => e.gravedad).filter((g): g is number => g != null)
+  return { n: xs.length, gravedad: gs.length ? Math.max(...gs) : null, ingreso: xs.some((e) => e.urgencias) }
+}

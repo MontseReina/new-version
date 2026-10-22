@@ -1,18 +1,21 @@
 import { Link } from 'react-router-dom'
 import { addDays, diffDays, fmtDate } from '../../lib/dates'
-import { pintaDia } from './Calendario'
+import { ListaEpisodios, MarcaEpisodio, pintaDia, textoMarca } from './Calendario'
 import { cuando } from './Ciclo'
 import { FASES, cicloDe, infoDia, rango, retraso } from './logica'
 import { useCiclo } from './useCiclo'
+import { useEpisodios } from './useEpisodios'
 
 const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 /** Ciclo en Inicio: día y fase, la tira del ciclo entero (un recuadro por día, con el día del mes,
- *  en semanas de lunes a domingo), ovulación aproximada y próxima regla. */
+ *  en semanas de lunes a domingo), ovulación (confirmada o aproximada), próxima regla y los
+ *  episodios del ciclo con su gravedad y si hubo ingreso. */
 export function TarjetaCiclo() {
   const { hoy, mapa, modelo, cargando } = useCiclo()
   const c = cicloDe(modelo, hoy)
   const info = infoDia(modelo, mapa, hoy)
+  const epis = useEpisodios(c?.inicio ?? hoy, hoy)
   if (cargando) return <div className="card"><span className="muted">Cargando el ciclo…</span></div>
   if (!c || !info) {
     return <Link to="/sintomas" className="card ciclo-card"><h2 style={{ marginTop: 0 }}>Ciclo</h2><p className="muted">Aún no hay ninguna regla registrada. Toca para anotar la primera.</p></Link>
@@ -33,7 +36,13 @@ export function TarjetaCiclo() {
         {Array.from({ length: huecos }, (_, i) => <span key={'h' + i} />)}
         {rango(c.inicio, addDays(c.siguiente, -1)).map((d) => {
           const p = pintaDia(modelo, mapa, d)
-          return <span key={d} className={'ciclo-celda ' + p.cls}>{Number(d.slice(8))}</span>
+          const m = epis.porDia[d]
+          return (
+            <span key={d} className={'ciclo-celda ' + p.cls} title={textoMarca(m) || undefined}>
+              {Number(d.slice(8))}
+              <MarcaEpisodio m={m} />
+            </span>
+          )
         })}
       </div>
       <div className="ciclo-leyenda" aria-hidden="true">
@@ -41,12 +50,16 @@ export function TarjetaCiclo() {
         <span><i className="ciclo-celda fertil" /> Fértil</span>
         <span><i className="ciclo-celda ovu" /> Ovulación</span>
         {critica && <span><i className="ciclo-celda critica" /> Crítica</span>}
+        {epis.lista.length > 0 && <span><i className="m-epi">6</i> Episodio (gravedad)</span>}
+        {epis.lista.some((e) => e.urgencias) && <span><i className="m-epi ingreso">8</i> Ingreso</span>}
       </div>
       <dl className="ciclo-datos">
-        <div><dt>Ovulación aprox.</dt><dd>{fmtDate(c.ovulacion)} · {cuando(hoy, c.ovulacion)}</dd></div>
+        <div><dt>{c.ovuConfirmada ? 'Ovulación (Oura)' : 'Ovulación aprox.'}</dt><dd>{fmtDate(c.ovulacion)} · {cuando(hoy, c.ovulacion)}</dd></div>
         {critica && <div><dt>Ventana crítica</dt><dd>{critica > hoy ? `desde ${fmtDate(critica)} · ${cuando(hoy, critica)}` : 'estás en ella'}</dd></div>}
         <div><dt>Próxima regla</dt><dd>{tarde > 0 ? `${tarde} ${tarde === 1 ? 'día' : 'días'} de retraso` : `${fmtDate(c.siguiente)} · ${cuando(hoy, c.siguiente)}`}</dd></div>
+        <div><dt>Episodios en este ciclo</dt><dd>{epis.lista.length ? `${epis.lista.length}${epis.lista.some((e) => e.urgencias) ? ` · ${epis.lista.filter((e) => e.urgencias).length} con ingreso` : ''}` : 'ninguno'}</dd></div>
       </dl>
+      {epis.lista.length > 0 && <ListaEpisodios lista={epis.lista} />}
     </Link>
   )
 }

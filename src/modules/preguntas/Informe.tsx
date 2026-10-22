@@ -5,7 +5,7 @@ import { useSettings } from '../../store/useSettings'
 import { FASES, infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import { objetivo, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
-import { COMIDAS, conOpciones, gruposDe, tieneEscala, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
+import { COMIDAS, conOpciones, episodiosDe, gruposDe, tieneEscala, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
 import { MOMENTOS, cumplimiento, vigente, type SuplCfg, type SuplDia } from '../suplementos/logica'
 import { pendientesDe, type Pregunta } from './store'
 
@@ -94,12 +94,7 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
       if (xs.length) filas.push([g.nombre, `Media ${dec(media(xs))} al día (${pl(xs.length, 'día', 'días')})`])
     }
   }
-  const episodios = grupos.filter((g) => g.tipo === 'detalle').flatMap((g) =>
-    dias.flatMap((d) => (d.value.sel?.[g.id] ?? []).map((id) => {
-      const det = d.value.det?.[g.id]?.[id] ?? {}
-      return { dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre: g.opciones?.find((o) => o.id === id)?.nombre ?? id, gravedad: det.gravedad, urgencias: !!det.urgencias }
-    })),
-  ).sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora))
+  const episodios = episodiosDe(grupos, dias)
   const notas = grupos.filter((g) => g.tipo === 'texto').flatMap((g) =>
     dias.filter((d) => d.value.texto?.[g.id]?.trim()).map((d) => ({ dia: d.day, texto: d.value.texto![g.id].trim() })),
   )

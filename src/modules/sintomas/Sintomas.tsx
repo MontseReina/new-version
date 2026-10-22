@@ -165,7 +165,7 @@ export default function Sintomas() {
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
 
-      <Ciclo date={date} onDate={(x) => nav('/sintomas/' + x)} />
+      <Ciclo date={date} onDate={(x) => nav('/sintomas/' + x)} sintDia={d} />
 
       <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>
         <div>

@@ -16,7 +16,13 @@ export const MANCHADOS = [
 /** 'si' = hubo regla, sin detallar la cantidad (reglas pasadas añadidas por fechas). */
 export type Flujo = (typeof FLUJOS)[number][0] | 'si'
 export type Manchado = (typeof MANCHADOS)[number][0]
-export type CicloDia = { regla?: Flujo | null; manchado?: Manchado | null; coagulos?: boolean | null }
+export type CicloDia = {
+  regla?: Flujo | null
+  manchado?: Manchado | null
+  coagulos?: boolean | null
+  /** Ovulación confirmada ese día (la que marca Oura). Manda sobre la ovulación calculada. */
+  ovulacion?: boolean | null
+}
 export type Mapa = { [day: string]: CicloDia }
 
 export type CicloCfg = {
@@ -54,6 +60,8 @@ export interface Modelo {
   mediaRegla: number
   lutea: number
   critica: number
+  /** Días con la ovulación confirmada, en orden. */
+  ovus: string[]
 }
 
 /** Agrupa los días con regla en reglas. El manchado no abre ciclo. */
@@ -85,7 +93,21 @@ export function crearModelo(m: Mapa, cfg: CicloCfg, hoy: string): Modelo {
     mediaRegla: cerradas.length ? mediaDe(cerradas.map((r) => diffDays(r.fin, r.inicio) + 1)) : REGLA_POR_DEFECTO,
     lutea: cfg.lutea_dias || LUTEA_POR_DEFECTO,
     critica: cfg.critica_dias ?? CRITICA_POR_DEFECTO,
+    ovus: Object.keys(m).filter((k) => m[k]?.ovulacion).sort(),
   }
+}
+
+/** Ovulación confirmada entre `desde` (incluido) y `hasta` (sin incluir); la última si hay varias. */
+function ovuEntre(mo: Modelo, desde: string, hasta?: string) {
+  const xs = mo.ovus.filter((d) => d >= desde && (!hasta || d < hasta))
+  return xs[xs.length - 1]
+}
+
+/** Regla siguiente esperada para el último ciclo registrado: con la ovulación confirmada,
+ *  ovulación + fase lútea; sin ella, inicio + duración media. */
+function siguienteEsperada(mo: Modelo, r: Regla) {
+  const ov = ovuEntre(mo, r.inicio)
+  return ov ? addDays(ov, mo.lutea) : addDays(r.inicio, mo.media)
 }
 
 export interface Ciclo {
@@ -94,6 +116,8 @@ export interface Ciclo {
   siguiente: string
   finRegla: string
   ovulacion: string
+  /** La ovulación está confirmada (marcada por Oura), no calculada. */
+  ovuConfirmada: boolean
   /** El ciclo entero es una previsión: su regla de inicio aún no ha llegado. */
   previsto: boolean
   /** El inicio del ciclo siguiente es una previsión. */
@@ -103,7 +127,7 @@ export interface Ciclo {
 /** Días de retraso de la regla respecto a la previsión (0 si no hay retraso). */
 export function retraso(mo: Modelo): number {
   const u = mo.reglas[mo.reglas.length - 1]
-  return u ? Math.max(0, diffDays(mo.hoy, addDays(u.inicio, mo.media))) : 0
+  return u ? Math.max(0, diffDays(mo.hoy, siguienteEsperada(mo, u))) : 0
 }
 
 /** Ciclo al que pertenece una fecha. `null` si es anterior a la primera regla registrada. */
@@ -113,10 +137,13 @@ export function cicloDe(mo: Modelo, date: string): Ciclo | null {
   let i = reglas.length - 1
   while (reglas[i].inicio > date) i--
   const r = reglas[i]
-  const con = (c: Omit<Ciclo, 'ovulacion'>): Ciclo => ({ ...c, ovulacion: addDays(c.siguiente, -lutea) })
+  const con = (c: Omit<Ciclo, 'ovulacion' | 'ovuConfirmada'>): Ciclo => {
+    const ov = c.previsto ? undefined : ovuEntre(mo, c.inicio, c.siguientePrevisto ? undefined : c.siguiente)
+    return { ...c, ovulacion: ov ?? addDays(c.siguiente, -lutea), ovuConfirmada: !!ov }
+  }
   if (i < reglas.length - 1) return con({ inicio: r.inicio, siguiente: reglas[i + 1].inicio, finRegla: r.fin, previsto: false, siguientePrevisto: false })
   // Último ciclo real: si la regla prevista ya debería haber llegado, se espera para hoy.
-  let sig = addDays(r.inicio, media)
+  let sig = siguienteEsperada(mo, r)
   if (sig < hoy) sig = hoy
   if (date < sig) {
     const enCurso = diffDays(hoy, r.fin) <= 1

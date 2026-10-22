@@ -943,7 +943,7 @@ function menuDe(cfg, info, date) {
 		const c = info.ciclo;
 		if (id === "luteo") {
 			desdeFase = diffDays(date, c.ovulacion) - 1;
-			porque = `Día ${info.dia} del ciclo: la ovulación fue hacia el ${fmtDate(c.ovulacion)}. Toca el menú lúteo hasta que venga la regla (${c.siguientePrevisto ? "prevista el " : ""}${fmtDate(c.siguiente)}).`;
+			porque = `Día ${info.dia} del ciclo: la ovulación fue ${c.ovuConfirmada ? "el" : "hacia el"} ${fmtDate(c.ovulacion)}${c.ovuConfirmada ? " (Oura)" : ""}. Toca el menú lúteo hasta que venga la regla (${c.siguientePrevisto ? "prevista el " : ""}${fmtDate(c.siguiente)}).`;
 		} else porque = `Día ${info.dia} del ciclo: toca el menú folicular hasta la ovulación (hacia el ${fmtDate(c.ovulacion)}).`;
 	}
 	const n = menu?.dias.length ?? 0;
@@ -1422,8 +1422,20 @@ function crearModelo(m, cfg, hoy) {
 		nMedia: validas.length,
 		mediaRegla: cerradas.length ? mediaDe(cerradas.map((r) => diffDays(r.fin, r.inicio) + 1)) : 5,
 		lutea: cfg.lutea_dias || 14,
-		critica: cfg.critica_dias ?? 7
+		critica: cfg.critica_dias ?? 7,
+		ovus: Object.keys(m).filter((k) => m[k]?.ovulacion).sort()
 	};
+}
+/** Ovulación confirmada entre `desde` (incluido) y `hasta` (sin incluir); la última si hay varias. */
+function ovuEntre(mo, desde, hasta) {
+	const xs = mo.ovus.filter((d) => d >= desde && (!hasta || d < hasta));
+	return xs[xs.length - 1];
+}
+/** Regla siguiente esperada para el último ciclo registrado: con la ovulación confirmada,
+*  ovulación + fase lútea; sin ella, inicio + duración media. */
+function siguienteEsperada(mo, r) {
+	const ov = ovuEntre(mo, r.inicio);
+	return ov ? addDays(ov, mo.lutea) : addDays(r.inicio, mo.media);
 }
 /** Ciclo al que pertenece una fecha. `null` si es anterior a la primera regla registrada. */
 function cicloDe(mo, date) {
@@ -1432,10 +1444,14 @@ function cicloDe(mo, date) {
 	let i = reglas.length - 1;
 	while (reglas[i].inicio > date) i--;
 	const r = reglas[i];
-	const con = (c) => ({
-		...c,
-		ovulacion: addDays(c.siguiente, -lutea)
-	});
+	const con = (c) => {
+		const ov = c.previsto ? void 0 : ovuEntre(mo, c.inicio, c.siguientePrevisto ? void 0 : c.siguiente);
+		return {
+			...c,
+			ovulacion: ov ?? addDays(c.siguiente, -lutea),
+			ovuConfirmada: !!ov
+		};
+	};
 	if (i < reglas.length - 1) return con({
 		inicio: r.inicio,
 		siguiente: reglas[i + 1].inicio,
@@ -1443,7 +1459,7 @@ function cicloDe(mo, date) {
 		previsto: false,
 		siguientePrevisto: false
 	});
-	let sig = addDays(r.inicio, media);
+	let sig = siguienteEsperada(mo, r);
 	if (sig < hoy) sig = hoy;
 	if (date < sig) {
 		const enCurso = diffDays(hoy, r.fin) <= 1;

@@ -117,7 +117,7 @@ export function menuDe(cfg: NutriCfg, info: InfoDia | null, date: string): MenuH
     const c = info.ciclo
     if (id === 'luteo') {
       desdeFase = diffDays(date, c.ovulacion) - 1
-      porque = `Día ${info.dia} del ciclo: la ovulación fue hacia el ${fmtDate(c.ovulacion)}. Toca el menú lúteo hasta que venga la regla (${c.siguientePrevisto ? 'prevista el ' : ''}${fmtDate(c.siguiente)}).`
+      porque = `Día ${info.dia} del ciclo: la ovulación fue ${c.ovuConfirmada ? 'el' : 'hacia el'} ${fmtDate(c.ovulacion)}${c.ovuConfirmada ? ' (Oura)' : ''}. Toca el menú lúteo hasta que venga la regla (${c.siguientePrevisto ? 'prevista el ' : ''}${fmtDate(c.siguiente)}).`
     } else {
       porque = `Día ${info.dia} del ciclo: toca el menú folicular hasta la ovulación (hacia el ${fmtDate(c.ovulacion)}).`
     }
