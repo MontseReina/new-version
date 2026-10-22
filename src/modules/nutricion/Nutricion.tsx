@@ -196,6 +196,10 @@ export default function Nutricion() {
 
 /** Kilocalorías del día frente a la referencia (cifra pautada o, sin ella, el menú del día). Solo como suelo. */
 const fmtG = (n: number) => Math.round(n).toLocaleString('es-ES')
+/** Proteína efectiva que tiene, de media, el pollo o el pescado en crudo (unos 21 g por cada 100 g). Sirve para
+ *  pasar los gramos de proteína a gramos de alimento proteico, que es como se ve en el plato. */
+const PROT_POR_G_ALIMENTO = 0.21
+const enAlimento = (g: number) => Math.round(g / PROT_POR_G_ALIMENTO / 10) * 10
 const coma = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 2 })
 
 /** Lo que llevas del día, debajo de los relojes: proteína frente a la que pide el día (g/kg × peso deseado) y,
@@ -210,14 +214,18 @@ function Balance({ cfg, pr, kc, esHoy }: { cfg: NutriCfg; pr: ReturnType<typeof 
     <div className="card nutri-balance">
       <div className="row between">
         <strong>Proteína del día</strong>
-        <span className="vaso-total"><strong>{fmtG(pr.comida)} g</strong>{obj ? <> de {obj} g</> : null}</span>
+        <span className="vaso-total"><strong>{fmtG(pr.comida)} g</strong>{obj ? <> de {obj} g</> : null} <span className="muted small">efectiva</span></span>
+      </div>
+      <div className="row between small">
+        <span className="muted">En pollo o pescado</span>
+        <span className="vaso-total">≈ <strong>{fmtG(enAlimento(pr.comida))} g</strong>{obj ? <> de {fmtG(enAlimento(obj))} g</> : null}</span>
       </div>
       {obj ? (
         <>
           <div className="barra"><i className={llega ? 'verde' : 'amarillo'} style={{ width: Math.round(pct * 100) + '%' }} /></div>
           <div className="muted small">
             {llega ? 'Llegas a lo que pide el día.' : <>Te faltan unos <strong>{fmtG(obj - pr.comida)} g</strong>.</>}{' '}
-            Meta: {coma(cfg.proteina!.g_kg!)} g por kilo de {coma(cfg.proteina!.peso_kg!)} kg.
+            Meta: {coma(cfg.proteina!.g_kg!)} g de proteína efectiva por kilo de {coma(cfg.proteina!.peso_kg!)} kg = {obj} g, que son unos {fmtG(enAlimento(obj))} g de pollo o pescado (cada 100 g llevan unos 21 g de proteína).
             {pr.sinDato.length > 0 && <> Sin contar: {pr.sinDato.join(', ').toLowerCase()}.</>}
           </div>
         </>
