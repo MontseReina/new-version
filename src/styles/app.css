@@ -498,3 +498,5 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .ciclo-card a.ciclo-dia { color: inherit; text-decoration: none; }
 .ciclo-tira button.ciclo-celda { cursor: pointer; font: inherit; font-size: .78rem; }
 .plato-modelo { gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .4rem; }
+.nutri-balance .barra { margin: .35rem 0 .3rem; }
+.nutri-balance .vaso-total { font-variant-numeric: tabular-nums; }
