@@ -9,17 +9,19 @@ export interface Registro { modulo: string; dia: string; valor: Obj }
 /**
  * En los registros de 'sintomas', los episodios y la nota pueden ir por nombre (como se ven en la
  * app), para cargar históricos sin conocer los identificadores de cada cuenta:
- * { episodios: [{ grupo: 'Disautonomía', opcion: 'Disautonomía nocturna', hora, gravedad, urgencias }], nota: 'texto' }.
+ * { episodios: [{ grupo: 'Disautonomía', opcion: 'Disautonomía nocturna', hora, gravedad, urgencias }],
+ *   marcar: [{ grupo: 'Dolor', opcion: 'Ovulación' }], nota: 'texto' }.
  * Se traducen a `sel`, `det` y `texto` con los grupos de la usuaria. La nota va al primer grupo de texto libre.
  */
 type EpiPorNombre = { grupo?: Json; opcion?: Json; hora?: Json; gravedad?: Json; urgencias?: Json }
+type MarcaPorNombre = { grupo?: Json; opcion?: Json }
 const mismo = (a: string, b: string) => slug(a) === slug(b)
 
 function traducir(valor: Obj, grupos: Grupo[], faltan: Set<string>): Obj {
-  const { episodios, nota, ...resto } = valor
+  const { episodios, marcar, nota, ...resto } = valor
   const out: Obj = { ...resto }
+  const sel: { [g: string]: string[] } = {}
   if (Array.isArray(episodios)) {
-    const sel: { [g: string]: string[] } = {}
     const det: { [g: string]: { [o: string]: Obj } } = {}
     for (const e of episodios as EpiPorNombre[]) {
       const g = grupos.find((x) => x.tipo === 'detalle' && (mismo(x.nombre, String(e.grupo)) || x.id === e.grupo))
@@ -28,9 +30,18 @@ function traducir(valor: Obj, grupos: Grupo[], faltan: Set<string>): Obj {
       sel[g.id] = [...new Set([...(sel[g.id] ?? []), o.id])]
       det[g.id] = { ...(det[g.id] ?? {}), [o.id]: { hora: e.hora ?? null, gravedad: e.gravedad ?? null, urgencias: e.urgencias ?? null } }
     }
-    out.sel = sel
     out.det = det
   }
+  // Opciones marcadas sin más detalle (grupos de una o de varias opciones).
+  if (Array.isArray(marcar)) {
+    for (const m of marcar as MarcaPorNombre[]) {
+      const g = grupos.find((x) => (x.tipo === 'una' || x.tipo === 'varias' || x.tipo === 'detalle') && (mismo(x.nombre, String(m.grupo)) || x.id === m.grupo))
+      const o = g?.opciones?.find((x) => mismo(x.nombre, String(m.opcion)) || x.id === m.opcion)
+      if (!g || !o) { faltan.add(`${String(m.grupo)} → ${String(m.opcion)}`); continue }
+      sel[g.id] = g.tipo === 'una' ? [o.id] : [...new Set([...(sel[g.id] ?? []), o.id])]
+    }
+  }
+  if (Object.keys(sel).length) out.sel = sel
   if (typeof nota === 'string' && nota.trim()) {
     const t = grupos.find((x) => x.tipo === 'texto')
     if (t) out.texto = { [t.id]: nota.trim() }
@@ -80,7 +91,7 @@ export function leerRegistros(texto: string): Registro[] | null {
 /** Guarda los registros uno a uno, sumándolos a lo ya anotado en cada día. Devuelve cuántos. */
 export async function importar(registros: Registro[], avance?: (hechos: number) => void): Promise<number> {
   // Primero se traduce todo lo que va por nombre: si falta algún grupo u opción, no se guarda nada.
-  if (registros.some((r) => r.modulo === 'sintomas' && ('episodios' in r.valor || 'nota' in r.valor))) {
+  if (registros.some((r) => r.modulo === 'sintomas' && ('episodios' in r.valor || 'marcar' in r.valor || 'nota' in r.valor))) {
     const grupos = gruposDe(((await getSettings()).sintomas ?? null) as SintCfg | null)
     const faltan = new Set<string>()
     registros = registros.map((r) => (r.modulo === 'sintomas' ? { ...r, valor: traducir(r.valor, grupos, faltan) } : r))
