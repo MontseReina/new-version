@@ -971,8 +971,18 @@ const MENUS = {
 	folicular: "Menú folicular",
 	luteo: "Menú lúteo"
 };
-/** Plato con el que se marcó una toma; si aún no se ha marcado, el que se sigue ahora. */
-const modeloDe = (cfg, x) => x?.plato?.modelo ?? cfg?.plato_modelo ?? "verdura";
+/** ¿Tiene la toma alguna parte del plato marcada? */
+const platoMarcado = (x) => !!x?.plato && [
+	"veg",
+	"prot",
+	"hid"
+].some((k) => x.plato[k] != null);
+/**
+* Plato con el que se marcó una toma. Una toma ya marcada se queda con su plato aunque luego se cambie el que se
+* sigue (las marcadas antes de poder elegir eran del plato de ½ verduras): cambiar el botón no cambia lo comido.
+* Si aún no se ha marcado, el que se sigue ahora.
+*/
+const modeloDe = (cfg, x) => x?.plato?.modelo ?? (platoMarcado(x) ? "verdura" : cfg?.plato_modelo ?? "verdura");
 const aMin = (h) => {
 	const m = /^(\d{1,2}):(\d{2})$/.exec(h ?? "");
 	return m ? Number(m[1]) * 60 + Number(m[2]) : null;

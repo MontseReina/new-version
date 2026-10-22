@@ -63,8 +63,15 @@ export type PlatoDia = { veg?: number | null; prot?: number | null; hid?: number
 /** Plato de Harvard: 'verdura' = ½ verdura, ¼ proteína, ¼ hidratos; 'hidratos' = ½ hidratos, ¼ verdura, ¼ proteína. */
 export type PlatoModelo = 'verdura' | 'hidratos'
 export const PLATO_MODELOS: [PlatoModelo, string][] = [['verdura', '½ verduras'], ['hidratos', '½ hidratos']]
-/** Plato con el que se marcó una toma; si aún no se ha marcado, el que se sigue ahora. */
-export const modeloDe = (cfg: NutriCfg | null | undefined, x?: TomaDia): PlatoModelo => x?.plato?.modelo ?? cfg?.plato_modelo ?? 'verdura'
+/** ¿Tiene la toma alguna parte del plato marcada? */
+export const platoMarcado = (x?: TomaDia) => !!x?.plato && (['veg', 'prot', 'hid'] as const).some((k) => x.plato![k] != null)
+/**
+ * Plato con el que se marcó una toma. Una toma ya marcada se queda con su plato aunque luego se cambie el que se
+ * sigue (las marcadas antes de poder elegir eran del plato de ½ verduras): cambiar el botón no cambia lo comido.
+ * Si aún no se ha marcado, el que se sigue ahora.
+ */
+export const modeloDe = (cfg: NutriCfg | null | undefined, x?: TomaDia): PlatoModelo =>
+  x?.plato?.modelo ?? (platoMarcado(x) ? 'verdura' : cfg?.plato_modelo ?? 'verdura')
 
 export type TomaDia = {
   estado?: Estado | null

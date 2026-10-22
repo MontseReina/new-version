@@ -12,7 +12,7 @@ import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
-  aMin, aguaDe, modeloDe, PLATO_MODELOS, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
+  aMin, aguaDe, modeloDe, platoMarcado, PLATO_MODELOS, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
 import { fmtKcal, kcalConPlato, kcalDia, kcalOtro, RANGO_POR_DEFECTO } from './kcal'
@@ -261,7 +261,17 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
         {(t.plato && e && e !== 'hecha' && e !== 'no' ? [...estadosDe(t), [e, e === 'media' ? 'Media' : e === 'tres_cuartos' ? '¾' : 'Entera'] as const] : estadosDe(t)).map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
       </div>
       {t.plato && e !== 'no' && (
-        <Plato modelo={modeloDe(cfg, x)} veg={x?.plato?.veg} prot={x?.plato?.prot} hid={x?.plato?.hid} onChange={(p) => poner({ plato: { ...(x?.plato ?? {}), ...p, modelo: modeloDe(cfg, x) } })} />
+        <>
+          <Plato modelo={modeloDe(cfg, x)} veg={x?.plato?.veg} prot={x?.plato?.prot} hid={x?.plato?.hid} onChange={(p) => poner({ plato: { ...(x?.plato ?? {}), ...p, modelo: modeloDe(cfg, x) } })} />
+          {platoMarcado(x) && modeloDe(cfg, x) !== (cfg.plato_modelo ?? 'verdura') && (
+            <p className="small muted nutri-plato-kcal">
+              Esta toma se marcó con el plato de {modeloDe(cfg, x) === 'hidratos' ? '½ hidratos' : '½ verduras'}.{' '}
+              <button type="button" className="linkbtn" onClick={() => poner({ plato: { ...(x?.plato ?? {}), modelo: cfg.plato_modelo ?? 'verdura' } })}>
+                Pasarla al plato de {(cfg.plato_modelo ?? 'verdura') === 'hidratos' ? '½ hidratos' : '½ verduras'}
+              </button>
+            </p>
+          )}
+        </>
       )}
       {t.plato && e === 'hecha' && !x?.otro?.trim() && tocaba[0] && cfg.platos?.[tocaba[0].id]?.kcal != null && (
         <p className="small muted nutri-plato-kcal">
