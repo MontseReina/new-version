@@ -296,8 +296,17 @@ function piezasDe(a: Alimento, unidad: string | undefined): { n: number; nombre:
 const singular = (w: string) => (/ones$/.test(w) ? w.replace(/ones$/, 'ón') : /[^aeiou]es$/.test(w) && !/[rnl]es$/.test(w) ? w.slice(0, -1) : /(?:les|res|nes)$/.test(w) ? w.slice(0, -2) : w.replace(/s$/, ''))
 const fmtN = (n: number) => (Number.isInteger(n) ? String(n) : n === 0.5 ? '½' : n.toLocaleString('es-ES', { maximumFractionDigits: 2 }))
 
-/** Lee los alimentos de un texto libre. Devuelve lo reconocido y los trozos que no se han reconocido. */
-export function leerAlimentos(texto: string): { leidos: Leido[]; sinReconocer: string[] } {
+/**
+ * Plato de Harvard: parte del plato que ocupa una ración casera de cada grupo (verdura y fruta, la mitad;
+ * proteína e hidratos, un cuarto; un plato combinado, el plato entero). En las tomas con plato dibujado,
+ * una fracción escrita («1/3 calabacín», «1/2 yuca») es la parte del plato, no de la pieza.
+ */
+const PARTE_PLATO: Partial<Record<Grupo, number>> = { verdura: 0.5, fruta: 0.5, proteina: 0.25, hidrato: 0.25, plato: 1 }
+const FRAC: { [k: string]: string } = { '1/2': '½', '1/3': '⅓', '2/3': '⅔', '1/4': '¼', '3/4': '¾', '1/5': '⅕', '1/6': '⅙', '1/8': '⅛' }
+
+/** Lee los alimentos de un texto libre. Devuelve lo reconocido y los trozos que no se han reconocido.
+ *  `plato`: la toma lleva plato dibujado (comida y cena), y las fracciones son partes del plato. */
+export function leerAlimentos(texto: string, opciones: { plato?: boolean } = {}): { leidos: Leido[]; sinReconocer: string[] } {
   // «1/3calabacín», «2huevos»: el número pegado a la palabra se separa.
   const original = normalizar(texto ?? '').replace(/(\d)([a-zñ])/g, '$1 $2')
   let resto = original
@@ -323,7 +332,11 @@ export function leerAlimentos(texto: string): { leidos: Leido[]; sinReconocer: s
       unidades = fr ? Number(fr[1]) / Math.max(1, Number(fr[2])) : NUMEROS[v] ?? Number(v)
       conNumero = true
       const pz = piezasDe(h.a, c[2])
-      if (pz) {
+      const delPlato = opciones.plato && fr && !c[2] && unidades <= 1 ? PARTE_PLATO[h.a.grupo] : undefined
+      if (delPlato) {
+        piezas = `${FRAC[v] ?? v} del plato`
+        unidades = unidades / delPlato
+      } else if (pz) {
         piezas = `${fmtN(unidades)} ${unidades <= 1 ? singular(pz.nombre) : pz.nombre}`
         unidades = unidades / pz.n
       }

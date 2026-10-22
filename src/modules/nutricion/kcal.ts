@@ -66,7 +66,7 @@ export interface LeidoContado extends Leido {
 /** Kilocalorías de lo escrito en «Otro»: cada alimento por su ración casera (o por el número escrito) y por la
  *  cantidad marcada en el plato dibujado (verdura, proteína, hidratos) o, si no, en Entera, ¾ o Media. */
 export function kcalOtro(t: TomaDef, x?: TomaDia): { items: LeidoContado[]; sinReconocer: string[]; total: number } {
-  const { leidos, sinReconocer } = leerAlimentos(x?.otro ?? '')
+  const { leidos, sinReconocer } = leerAlimentos(x?.otro ?? '', { plato: !!t.plato })
   const deToma = x?.estado && x.estado !== 'no' ? PARTE[x.estado] : 1
   const items = leidos.map((l): LeidoContado => {
     if (l.conNumero) return { ...l, factor: 1, segun: 'numero', kcalContadas: l.kcal }

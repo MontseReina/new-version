@@ -875,8 +875,31 @@ function piezasDe(a, unidad) {
 /** «dátiles» → «dátil», «lonchas» → «loncha», «corazones» → «corazón». */
 const singular = (w) => /ones$/.test(w) ? w.replace(/ones$/, "ón") : /[^aeiou]es$/.test(w) && !/[rnl]es$/.test(w) ? w.slice(0, -1) : /(?:les|res|nes)$/.test(w) ? w.slice(0, -2) : w.replace(/s$/, "");
 const fmtN = (n) => Number.isInteger(n) ? String(n) : n === .5 ? "½" : n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
-/** Lee los alimentos de un texto libre. Devuelve lo reconocido y los trozos que no se han reconocido. */
-function leerAlimentos(texto) {
+/**
+* Plato de Harvard: parte del plato que ocupa una ración casera de cada grupo (verdura y fruta, la mitad;
+* proteína e hidratos, un cuarto; un plato combinado, el plato entero). En las tomas con plato dibujado,
+* una fracción escrita («1/3 calabacín», «1/2 yuca») es la parte del plato, no de la pieza.
+*/
+const PARTE_PLATO = {
+	verdura: .5,
+	fruta: .5,
+	proteina: .25,
+	hidrato: .25,
+	plato: 1
+};
+const FRAC = {
+	"1/2": "½",
+	"1/3": "⅓",
+	"2/3": "⅔",
+	"1/4": "¼",
+	"3/4": "¾",
+	"1/5": "⅕",
+	"1/6": "⅙",
+	"1/8": "⅛"
+};
+/** Lee los alimentos de un texto libre. Devuelve lo reconocido y los trozos que no se han reconocido.
+*  `plato`: la toma lleva plato dibujado (comida y cena), y las fracciones son partes del plato. */
+function leerAlimentos(texto, opciones = {}) {
 	const original = normalizar(texto ?? "").replace(/(\d)([a-zñ])/g, "$1 $2");
 	let resto = original;
 	const hallados = [];
@@ -904,7 +927,11 @@ function leerAlimentos(texto) {
 			unidades = fr ? Number(fr[1]) / Math.max(1, Number(fr[2])) : NUMEROS[v] ?? Number(v);
 			conNumero = true;
 			const pz = piezasDe(h.a, c[2]);
-			if (pz) {
+			const delPlato = opciones.plato && fr && !c[2] && unidades <= 1 ? PARTE_PLATO[h.a.grupo] : void 0;
+			if (delPlato) {
+				piezas = `${FRAC[v] ?? v} del plato`;
+				unidades = unidades / delPlato;
+			} else if (pz) {
 				piezas = `${fmtN(unidades)} ${unidades <= 1 ? singular(pz.nombre) : pz.nombre}`;
 				unidades = unidades / pz.n;
 			}
@@ -1103,7 +1130,7 @@ function kcalConPlato(cfg, id, x) {
 /** Kilocalorías de lo escrito en «Otro»: cada alimento por su ración casera (o por el número escrito) y por la
 *  cantidad marcada en el plato dibujado (verdura, proteína, hidratos) o, si no, en Entera, ¾ o Media. */
 function kcalOtro(t, x) {
-	const { leidos, sinReconocer } = leerAlimentos(x?.otro ?? "");
+	const { leidos, sinReconocer } = leerAlimentos(x?.otro ?? "", { plato: !!t.plato });
 	const deToma = x?.estado && x.estado !== "no" ? PARTE[x.estado] : 1;
 	const items = leidos.map((l) => {
 		if (l.conNumero) return {
