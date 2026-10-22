@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Política de privacidad · New Version</title>
+  <link rel="icon" href="icon.svg" />
+  <style>
+    /* Colores del manual SADHAKA (mismos valores que src/styles/tokens.css). Página estática, sin dependencias. */
+    :root { --bg: #FFFAF2; --text: #181818; --muted: #6d7266; --line: #e7e1d6; --primary: #3D4126; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 Nunito, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1, h2 { font-family: 'Cormorant Garamond', Georgia, serif; color: var(--primary); font-weight: 600; }
+    h1 { font-size: 2rem; margin: 0 0 .25rem; }
+    h2 { font-size: 1.35rem; margin: 2rem 0 .5rem; }
+    .fecha { color: var(--muted); margin: 0 0 1.5rem; }
+    a { color: var(--primary); }
+    ul { padding-left: 1.2rem; }
+    footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Política de privacidad</h1>
+  <p class="fecha">New Version · última actualización: 22 de octubre de 2026</p>
+
+  <p>New Version es una aplicación web de uso personal para registrar hábitos y salud. La usa una sola persona, su titular, y no se ofrece al público. Esta página explica qué datos trata la aplicación, dónde se guardan y con quién se comparten.</p>
+
+  <h2>Qué datos se guardan</h2>
+  <ul>
+    <li>Lo que la usuaria registra en la aplicación: ciclo, síntomas, suplementos, alimentación, hidratación, peso, diario y preguntas para sus consultas.</li>
+    <li>Su correo electrónico, para entrar con un enlace sin contraseña.</li>
+    <li>Si conecta Google Calendar u Oura, el permiso de acceso que esos servicios entregan y los datos descritos más abajo.</li>
+  </ul>
+
+  <h2>Dónde se guardan</h2>
+  <p>En una base de datos de Supabase alojada en la Unión Europea (Irlanda). Cada registro está protegido para que solo pueda leerlo la cuenta que lo creó. El código de la aplicación es público, pero no contiene ningún dato personal ni de salud.</p>
+
+  <h2>Google Calendar</h2>
+  <ul>
+    <li>La aplicación pide un único permiso: crear y gestionar un calendario propio llamado «New Version». No puede ver ni cambiar ningún otro calendario de la cuenta de Google.</li>
+    <li>A ese calendario solo viajan el título, el día, la hora, el lugar y las notas de las citas que la usuaria crea. Nunca se envían datos de salud.</li>
+    <li>El uso que hace New Version de la información recibida de las API de Google se ajusta a la <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de datos de usuario de los servicios de API de Google</a>, incluidos los requisitos de uso limitado.</li>
+  </ul>
+
+  <h2>Oura</h2>
+  <ul>
+    <li>Si la usuaria conecta su anillo Oura, la aplicación lee sus datos de sueño, actividad, frecuencia cardíaca, variabilidad, estrés, resiliencia, oxígeno, temperatura y capacidad cardiovascular.</li>
+    <li>Solo lee: no escribe ni cambia nada en la cuenta de Oura. Los datos se guardan en la misma base de datos de la Unión Europea.</li>
+  </ul>
+
+  <h2>Con quién se comparten</h2>
+  <p>Con nadie. Los datos no se venden, no se ceden a terceros, no se usan para publicidad y no se usan para entrenar modelos de inteligencia artificial. Los únicos servicios que intervienen son los necesarios para que la aplicación funcione: Supabase (base de datos), GitHub Pages (publicación de la web), Google Fonts (tipografías), el servicio de notificaciones del navegador para los avisos al móvil y, si se conectan, Google Calendar y Oura.</p>
+
+  <h2>Cómo retirar el acceso o borrar los datos</h2>
+  <ul>
+    <li>Desde la propia aplicación se puede desconectar Google Calendar y Oura en cualquier momento.</li>
+    <li>El acceso de Google también se puede retirar en <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>, y el de Oura desde la cuenta de Oura.</li>
+    <li>Para borrar todos los datos guardados basta con pedirlo en el correo de contacto.</li>
+  </ul>
+
+  <h2>Contacto</h2>
+  <p>mreinamk@gmail.com</p>
+
+  <footer><a href="./">Volver a New Version</a> · <a href="condiciones.html">Condiciones de uso</a></footer>
+</main>
+</body>
+</html>
