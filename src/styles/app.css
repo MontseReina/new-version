@@ -498,26 +498,5 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .ciclo-card a.ciclo-dia { color: inherit; text-decoration: none; }
 .ciclo-tira button.ciclo-celda { cursor: pointer; font: inherit; font-size: .78rem; }
 .plato-modelo { gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .4rem; }
-
-/* Registro de hoy en Inicio, como el «Te queda por rellenar» de Huma. */
-.hoy-ahora { padding: 0; overflow: hidden; }
-.hoy-ahora-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .7rem .9rem .1rem; }
-.hoy-ahora-head h2 { margin: 0; }
-.hoy-registro-n { color: var(--primary); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.hoy-barra { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; margin: .45rem .9rem .8rem; }
-.hoy-barra > div { height: 100%; border-radius: 999px; background: var(--primary); transition: width .4s; }
-.hoy-vacio { color: var(--green); font-weight: 700; padding: .8rem .9rem; border-top: 1px solid var(--line); }
-.hoy-fila { display: flex; align-items: center; gap: .7rem; min-height: 3.6rem; padding: .5rem .9rem; border-top: 1px solid var(--line); text-decoration: none; color: inherit; }
-.hoy-fila:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-.hoy-fila-ico { width: 2.5rem; height: 2.5rem; border-radius: 10px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; }
-.hoy-fila-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.hoy-fila-ir { color: var(--muted); font-size: 1.4rem; line-height: 1; }
-.hoy-fila.urge .hoy-fila-txt .muted { color: var(--red); }
-.hoy-fila.urge .marca { background: var(--red); }
-.hoy-hechos { padding: 0; overflow: hidden; background: var(--bg); }
-.hoy-hechos-head { padding: .55rem .9rem .45rem; text-transform: uppercase; letter-spacing: .04em; font-size: .85rem; font-weight: 800; color: var(--muted); }
-.hoy-fila.hecha { min-height: 3rem; color: var(--muted); }
-.hoy-fila.hecha .hoy-fila-ico { background: var(--card); width: 2.1rem; height: 2.1rem; font-size: 1.05rem; }
-.hoy-fila.hecha strong { font-weight: 600; color: var(--text); }
-.marca { flex-shrink: 0; min-width: 1.6rem; height: 1.6rem; padding: 0 .4rem; border-radius: 999px; background: var(--primary); color: var(--card); font-size: .9rem; font-weight: 800; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
-.marca.hecha { background: var(--primary-soft); color: var(--ink-deep); }
+.nutri-balance .barra { margin: .35rem 0 .3rem; }
+.nutri-balance .vaso-total { font-variant-numeric: tabular-nums; }

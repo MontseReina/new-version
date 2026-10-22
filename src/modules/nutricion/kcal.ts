@@ -67,6 +67,7 @@ export function kcalConPlato(cfg: NutriCfg, id: string, x?: TomaDia): number | n
 }
 
 export interface LeidoContado extends Leido {
+  protContada: number
   /** Parte que se cuenta: la del plato dibujado (comida y cena) o la de Entera, ¾ o Media. 1 si se escribió un número. */
   factor: number
   /** De dónde sale el factor. */
@@ -76,18 +77,18 @@ export interface LeidoContado extends Leido {
 
 /** Kilocalorías de lo escrito en «Otro»: cada alimento por su ración casera (o por el número escrito) y por la
  *  cantidad marcada en el plato dibujado (verdura, proteína, hidratos) o, si no, en Entera, ¾ o Media. */
-export function kcalOtro(t: TomaDef, x?: TomaDia, modelo: PlatoModelo = 'verdura'): { items: LeidoContado[]; sinReconocer: string[]; total: number } {
+export function kcalOtro(t: TomaDef, x?: TomaDia, modelo: PlatoModelo = 'verdura'): { items: LeidoContado[]; sinReconocer: string[]; total: number; prot: number } {
   const { leidos, sinReconocer } = leerAlimentos(x?.otro ?? '', { plato: !!t.plato })
   const deToma = x?.estado && x.estado !== 'no' ? PARTE[x.estado] : 1
   const items = leidos.map((l): LeidoContado => {
-    if (l.conNumero) return { ...l, factor: 1, segun: 'numero', kcalContadas: l.kcal }
+    if (l.conNumero) return { ...l, factor: 1, segun: 'numero', kcalContadas: l.kcal, protContada: l.prot }
     const parte = t.plato ? PARTE_DEL_PLATO[l.alimento.grupo] : undefined
     const nivel = parte ? x?.plato?.[parte] : null
     const factor = parte && nivel != null ? (FACTOR_PLATO[parte][nivel] ?? 1) * ESCALA_MODELO[modelo][parte] : deToma
     const segun = parte && nivel != null ? 'plato' : deToma !== 1 ? 'toma' : null
-    return { ...l, factor, segun, kcalContadas: Math.round(l.kcal * factor) }
+    return { ...l, factor, segun, kcalContadas: Math.round(l.kcal * factor), protContada: l.prot * factor }
   })
-  return { items, sinReconocer, total: items.reduce((s, i) => s + i.kcalContadas, 0) }
+  return { items, sinReconocer, total: items.reduce((s, i) => s + i.kcalContadas, 0), prot: items.reduce((s, i) => s + i.protContada, 0) }
 }
 
 const kcalDePlatos = (cfg: NutriCfg, ids: string[]) => {
@@ -147,3 +148,42 @@ export function kcalDia(cfg: NutriCfg, d: NutriDia, menu: MenuHoy, ahoraMin: num
 }
 
 export const fmtKcal = (n: number) => Math.round(n).toLocaleString('es-ES')
+
+export interface ProtDia {
+  /** Gramos de proteína de lo registrado (sin las tomas de `sinDato`). */
+  comida: number
+  /** Tomas hechas que no se pueden contar: un plato sin cifra de proteína o «Otro» sin nada reconocido. */
+  sinDato: string[]
+}
+
+/** Proteína del día, contada como las kilocalorías: lo del menú por la parte que se tomó (en comida y cena,
+ *  la parte de proteína del plato dibujado; el postre, entero si se tomó) y lo escrito en «Otro» por alimento. */
+export function protDia(cfg: NutriCfg, d: NutriDia, menu: MenuHoy): ProtDia {
+  let comida = 0
+  const sinDato: string[] = []
+  for (const t of tomasDe(cfg)) {
+    const x = d.tomas?.[t.id]
+    if (!x || x.estado === 'no' || !hecha(x)) continue
+    if (x.otro?.trim()) {
+      const o = kcalOtro(t, x, modeloDe(cfg, x))
+      if (!o.items.length) sinDato.push(t.nombre)
+      else comida += o.prot
+      continue
+    }
+    if (!x.estado) { sinDato.push(t.nombre); continue }
+    const todos = x.platos?.length ? x.platos : platosDe(cfg, menu, t.id).map((p) => p.id)
+    const f = factoresPlato(x, modeloDe(cfg, x))
+    let g: number | null = 0
+    todos.forEach((id, i) => {
+      if (g == null) return
+      const esPostre = !!t.postre && i > 0
+      if (esPostre && x.postre?.[id] === 'no') return
+      const v = cfg.platos?.[id]?.prot_g
+      if (v == null) { g = null; return }
+      g += x.estado === 'hecha' ? (esPostre ? v : v * f.prot) : v * PARTE[x.estado!]
+    })
+    if (g == null) sinDato.push(t.nombre)
+    else comida += g
+  }
+  return { comida, sinDato }
+}

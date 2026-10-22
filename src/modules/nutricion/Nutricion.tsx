@@ -12,10 +12,10 @@ import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
-  aMin, aguaDe, modeloDe, platoMarcado, PLATO_MODELOS, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
+  aMin, aguaDe, modeloDe, PLATO_MODELOS, protObjetivo, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
-import { fmtKcal, kcalConPlato, kcalDia, kcalOtro, RANGO_POR_DEFECTO } from './kcal'
+import { fmtKcal, kcalConPlato, kcalDia, kcalOtro, protDia, RANGO_POR_DEFECTO } from './kcal'
 import { Peso } from './Peso'
 import { Reloj } from './Reloj'
 
@@ -60,6 +60,7 @@ export default function Nutricion() {
 
   const h = horarios(c, d, date, hoy, ahoraMin)
   const kc = kcalDia(c, d, menu, date === hoy ? ahoraMin : null)
+  const pr = protDia(c, d, menu)
   const ay = ayuno(c, ayer, d)
   const lv = nivelDia(h, ay)
   const cenaMax = c.cena_fin_max ?? CENA_MAX_POR_DEFECTO
@@ -92,6 +93,7 @@ export default function Nutricion() {
       )}
 
       {date === hoy && <Reloj cfg={c} ayer={ayer} dia={d} />}
+      <Balance cfg={c} pr={pr} kc={kc} esHoy={date === hoy} />
 
       <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>
         <div>
@@ -107,7 +109,6 @@ export default function Nutricion() {
             </div>
           </div>
           <div className="barra" style={{ marginTop: '.4rem' }}><i className={lv} style={{ width: Math.round((h.hechas / h.total) * 100) + '%' }} /></div>
-          <Kcal kc={kc} esHoy={date === hoy} />
         </div>
       </div>
 
@@ -173,6 +174,8 @@ export default function Nutricion() {
         <p className="muted small">Una toma sin registrar cuenta como pendiente {GRACIA_MIN} minutos después de su hora.</p>
         <div className="grid2">
           <Field label="Cena terminada como muy tarde"><input type="time" defaultValue={cenaMax} key={'c' + cenaMax} onBlur={(e) => { if (e.target.value && e.target.value !== cenaMax) void saveCfg({ cena_fin_max: e.target.value }) }} /></Field>
+          <Field label="Proteína: gramos por kilo"><input type="number" inputMode="decimal" step="0.1" min={0} defaultValue={c.proteina?.g_kg ?? ''} key={'pg' + c.proteina?.g_kg} onBlur={(e) => { const v = Number(e.target.value.replace(',', '.')); void saveCfg({ proteina: { ...(c.proteina ?? {}), g_kg: v > 0 ? v : null } }) }} /></Field>
+          <Field label="Peso deseado (kg)"><input type="number" inputMode="decimal" step="0.5" min={0} defaultValue={c.proteina?.peso_kg ?? ''} key={'pk' + c.proteina?.peso_kg} onBlur={(e) => { const v = Number(e.target.value.replace(',', '.')); void saveCfg({ proteina: { ...(c.proteina ?? {}), peso_kg: v > 0 ? v : null } }) }} /></Field>
           <Field label="Ayuno nocturno máximo (horas)"><input type="number" inputMode="numeric" min={1} max={24} defaultValue={ayunoMax} key={'a' + ayunoMax} onBlur={(e) => { const v = Number(e.target.value); if (v > 0 && v !== ayunoMax) void saveCfg({ ayuno_max_h: v }) }} /></Field>
           <Field label="Sin agua antes de comer (min)"><input type="number" inputMode="numeric" min={0} defaultValue={c.agua_margen?.antes_min ?? AGUA_ANTES_POR_DEFECTO} key={'ma' + c.agua_margen?.antes_min} onBlur={(e) => void saveCfg({ agua_margen: { ...(c.agua_margen ?? {}), antes_min: Number(e.target.value) } })} /></Field>
           <Field label="Sin agua después de comer (min)"><input type="number" inputMode="numeric" min={0} defaultValue={c.agua_margen?.despues_min ?? AGUA_DESPUES_POR_DEFECTO} key={'md' + c.agua_margen?.despues_min} onBlur={(e) => void saveCfg({ agua_margen: { ...(c.agua_margen ?? {}), despues_min: Number(e.target.value) } })} /></Field>
@@ -192,6 +195,48 @@ export default function Nutricion() {
 }
 
 /** Kilocalorías del día frente a la referencia (cifra pautada o, sin ella, el menú del día). Solo como suelo. */
+const fmtG = (n: number) => Math.round(n).toLocaleString('es-ES')
+const coma = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 2 })
+
+/** Lo que llevas del día, debajo de los relojes: proteína frente a la que pide el día (g/kg × peso deseado) y,
+ *  debajo, las kilocalorías frente a la referencia. Las dos son un suelo que alcanzar, nunca un tope. */
+function Balance({ cfg, pr, kc, esHoy }: { cfg: NutriCfg; pr: ReturnType<typeof protDia>; kc: ReturnType<typeof kcalDia>; esHoy: boolean }) {
+  const obj = protObjetivo(cfg)
+  const pct = obj ? Math.min(1, pr.comida / obj) : 0
+  const llega = obj != null && pr.comida >= obj
+  const refK = kc.referencia == null ? null : esHoy ? kc.referenciaHasta : kc.referencia
+  const pctK = refK ? Math.min(1, kc.comido / refK) : 0
+  return (
+    <div className="card nutri-balance">
+      <div className="row between">
+        <strong>Proteína del día</strong>
+        <span className="vaso-total"><strong>{fmtG(pr.comida)} g</strong>{obj ? <> de {obj} g</> : null}</span>
+      </div>
+      {obj ? (
+        <>
+          <div className="barra"><i className={llega ? 'verde' : 'amarillo'} style={{ width: Math.round(pct * 100) + '%' }} /></div>
+          <div className="muted small">
+            {llega ? 'Llegas a lo que pide el día.' : <>Te faltan unos <strong>{fmtG(obj - pr.comida)} g</strong>.</>}{' '}
+            Meta: {coma(cfg.proteina!.g_kg!)} g por kilo de {coma(cfg.proteina!.peso_kg!)} kg.
+            {pr.sinDato.length > 0 && <> Sin contar: {pr.sinDato.join(', ').toLowerCase()}.</>}
+          </div>
+        </>
+      ) : <div className="muted small">Pon tu meta de proteína (gramos por kilo y peso deseado) en «Mis horarios y reglas».</div>}
+
+      {kc.referencia != null && (
+        <>
+          <div className="row between" style={{ marginTop: '.7rem' }}>
+            <strong>Kilocalorías</strong>
+            <span className="vaso-total"><strong>{fmtKcal(kc.comido)}</strong>{refK ? <> de {fmtKcal(refK)}</> : null}</span>
+          </div>
+          {refK ? <div className="barra"><i className={kc.comido >= refK * (RANGO_POR_DEFECTO / 100) ? 'verde' : 'amarillo'} style={{ width: Math.round(pctK * 100) + '%' }} /></div> : null}
+          <Kcal kc={kc} esHoy={esHoy} />
+        </>
+      )}
+    </div>
+  )
+}
+
 function Kcal({ kc, esHoy }: { kc: ReturnType<typeof kcalDia>; esHoy: boolean }) {
   if (kc.referencia == null) return null
   const ref = esHoy ? kc.referenciaHasta : kc.referencia
