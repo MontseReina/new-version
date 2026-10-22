@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Fragment } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
 import { Plato } from '../../components/Plato'
@@ -15,6 +15,7 @@ import {
   aMin, aguaDe, modeloDe, PLATO_MODELOS, protObjetivo, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
+import { cantidadPara, FUENTE_POR_DEFECTO, FUENTES_PROTEINA } from './proteinas'
 import { fmtKcal, kcalConPlato, kcalDia, kcalOtro, protDia, RANGO_POR_DEFECTO } from './kcal'
 import { Peso } from './Peso'
 import { Reloj } from './Reloj'
@@ -93,7 +94,7 @@ export default function Nutricion() {
       )}
 
       {date === hoy && <Reloj cfg={c} ayer={ayer} dia={d} />}
-      <Balance cfg={c} pr={pr} kc={kc} esHoy={date === hoy} />
+      <Balance cfg={c} pr={pr} kc={kc} esHoy={date === hoy} guardar={saveCfg} />
 
       <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>
         <div>
@@ -196,16 +197,15 @@ export default function Nutricion() {
 
 /** Kilocalorías del día frente a la referencia (cifra pautada o, sin ella, el menú del día). Solo como suelo. */
 const fmtG = (n: number) => Math.round(n).toLocaleString('es-ES')
-/** Proteína efectiva que tiene, de media, el pollo o el pescado en crudo (unos 21 g por cada 100 g). Sirve para
- *  pasar los gramos de proteína a gramos de alimento proteico, que es como se ve en el plato. */
-const PROT_POR_G_ALIMENTO = 0.21
-const enAlimento = (g: number) => Math.round(g / PROT_POR_G_ALIMENTO / 10) * 10
 const coma = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 2 })
 
 /** Lo que llevas del día, debajo de los relojes: proteína frente a la que pide el día (g/kg × peso deseado) y,
  *  debajo, las kilocalorías frente a la referencia. Las dos son un suelo que alcanzar, nunca un tope. */
-function Balance({ cfg, pr, kc, esHoy }: { cfg: NutriCfg; pr: ReturnType<typeof protDia>; kc: ReturnType<typeof kcalDia>; esHoy: boolean }) {
+function Balance({ cfg, pr, kc, esHoy, guardar }: { cfg: NutriCfg; pr: ReturnType<typeof protDia>; kc: ReturnType<typeof kcalDia>; esHoy: boolean; guardar: (p: Partial<NutriCfg>) => Promise<void> }) {
   const obj = protObjetivo(cfg)
+  // Tipo de proteína en el que se enseña la equivalencia en alimento (se recuerda en la cuenta).
+  const fuente = FUENTES_PROTEINA.find((f) => f.id === cfg.proteina?.fuente) ?? FUENTES_PROTEINA.find((f) => f.id === FUENTE_POR_DEFECTO)!
+  const falta = obj ? Math.max(0, obj - pr.comida) : 0
   const pct = obj ? Math.min(1, pr.comida / obj) : 0
   const llega = obj != null && pr.comida >= obj
   const refK = kc.referencia == null ? null : esHoy ? kc.referenciaHasta : kc.referencia
@@ -216,18 +216,45 @@ function Balance({ cfg, pr, kc, esHoy }: { cfg: NutriCfg; pr: ReturnType<typeof 
         <strong>Proteína del día</strong>
         <span className="vaso-total"><strong>{fmtG(pr.comida)} g</strong>{obj ? <> de {obj} g</> : null} <span className="muted small">efectiva</span></span>
       </div>
-      <div className="row between small">
-        <span className="muted">En pollo o pescado</span>
-        <span className="vaso-total">≈ <strong>{fmtG(enAlimento(pr.comida))} g</strong>{obj ? <> de {fmtG(enAlimento(obj))} g</> : null}</span>
+      <div className="row between small nutri-equiv">
+        <label className="muted">Equivale a
+          <select id="prot-fuente" aria-label="Tipo de proteína para la equivalencia" value={fuente.id} onChange={(e) => void guardar({ proteina: { ...(cfg.proteina ?? {}), fuente: e.target.value } })}>
+            {FUENTES_PROTEINA.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+          </select>
+        </label>
+        <span className="vaso-total">≈ <strong>{cantidadPara(fuente, pr.comida)}</strong>{obj ? <> de {cantidadPara(fuente, obj)}</> : null}</span>
       </div>
       {obj ? (
         <>
           <div className="barra"><i className={llega ? 'verde' : 'amarillo'} style={{ width: Math.round(pct * 100) + '%' }} /></div>
           <div className="muted small">
             {llega ? 'Llegas a lo que pide el día.' : <>Te faltan unos <strong>{fmtG(obj - pr.comida)} g</strong>.</>}{' '}
-            Meta: {coma(cfg.proteina!.g_kg!)} g de proteína efectiva por kilo de {coma(cfg.proteina!.peso_kg!)} kg = {obj} g, que son unos {fmtG(enAlimento(obj))} g de pollo o pescado (cada 100 g llevan unos 21 g de proteína).
+            Meta: {coma(cfg.proteina!.g_kg!)} g de proteína efectiva por kilo de {coma(cfg.proteina!.peso_kg!)} kg = {obj} g.
             {pr.sinDato.length > 0 && <> Sin contar: {pr.sinDato.join(', ').toLowerCase()}.</>}
           </div>
+          <Plegable id="equivalencias-proteina" title="Equivalencias de cada tipo de proteína">
+            <p className="muted small" style={{ marginTop: 0 }}>Cuánto alimento hace falta, en crudo, para tu meta del día y para lo que te falta hoy. Valores medios de tablas de composición.</p>
+            <div className="table-wrap">
+              <table className="table equiv-tabla">
+                <thead><tr><th>Alimento</th><th>Prot./100 g</th><th>Meta {obj} g</th><th>Falta {fmtG(falta)} g</th></tr></thead>
+                <tbody>
+                  {(['Carnes', 'Pescados y mariscos', 'Huevos y lácteos', 'Vegetales', 'Suplementos'] as const).map((gr) => (
+                    <Fragment key={gr}>
+                      <tr className="equiv-grupo"><th colSpan={4}>{gr}</th></tr>
+                      {FUENTES_PROTEINA.filter((f) => f.grupo === gr).map((f) => (
+                        <tr key={f.id} className={f.id === fuente.id ? 'sel' : ''}>
+                          <td>{f.nombre}</td>
+                          <td>{coma(f.por100)} g</td>
+                          <td>{cantidadPara(f, obj)}</td>
+                          <td>{falta > 0 ? cantidadPara(f, falta) : '—'}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Plegable>
         </>
       ) : <div className="muted small">Pon tu meta de proteína (gramos por kilo y peso deseado) en «Mis horarios y reglas».</div>}
 

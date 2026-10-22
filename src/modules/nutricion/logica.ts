@@ -51,7 +51,7 @@ export type NutriCfg = {
   /** Plato de Harvard que se sigue ahora: ½ verdura (¼ proteína, ¼ hidratos) o ½ hidratos (¼ verdura, ¼ proteína). */
   plato_modelo?: PlatoModelo | null
   /** Proteína mínima del día: gramos por kilo de peso deseado. Como las kilocalorías, es un suelo, nunca un tope. */
-  proteina?: { g_kg?: number | null; peso_kg?: number | null } | null
+  proteina?: { g_kg?: number | null; peso_kg?: number | null; fuente?: string | null } | null
 }
 
 /** Gramos de proteína que pide el día (g/kg × peso deseado), o `null` si falta alguno de los dos. */
