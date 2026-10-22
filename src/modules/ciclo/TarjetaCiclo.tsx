@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { addDays, diffDays, fmtDate } from '../../lib/dates'
-import { ListaEpisodios, MarcaEpisodio, SelectorMes, pintaDia, textoMarca } from './Calendario'
+import { LeyendaEpisodios, ListaEpisodios, MarcaEpisodio, NumDia, SelectorMes, pintaDia, textoMarca } from './Calendario'
 import { cuando } from './Ciclo'
 import { FASES, cicloDe, infoDia, nombreMes, rango, retraso, semanasDelMes, sumaMeses } from './logica'
 import { useCiclo } from './useCiclo'
@@ -56,18 +56,18 @@ export function TarjetaCiclo() {
           const m = epis.porDia[d]
           const etiqueta = `${fmtDate(d)}${p.txt ? ': ' + p.txt : ''}${m ? ', ' + textoMarca(m) : ''}`
           return d <= hoy
-            ? <button type="button" key={d} className={'ciclo-celda ' + p.cls} title={etiqueta} aria-label={etiqueta} onClick={() => abrir(d)}>{Number(d.slice(8))}<MarcaEpisodio m={m} /></button>
-            : <span key={d} className={'ciclo-celda ' + p.cls} title={etiqueta}>{Number(d.slice(8))}<MarcaEpisodio m={m} /></span>
+            ? <button type="button" key={d} className={'ciclo-celda ' + p.cls} title={etiqueta} aria-label={etiqueta} onClick={() => abrir(d)}><NumDia d={d} ovu={p.info?.ovulacion} confirmada={p.info?.ciclo.ovuConfirmada} /><MarcaEpisodio m={m} /></button>
+            : <span key={d} className={'ciclo-celda ' + p.cls} title={etiqueta}><NumDia d={d} ovu={p.info?.ovulacion} confirmada={p.info?.ciclo.ovuConfirmada} /><MarcaEpisodio m={m} /></span>
         })}
       </div>
       <div className="ciclo-leyenda" aria-hidden="true">
         <span><i className="ciclo-celda regla" /> Regla</span>
         <span><i className="ciclo-celda fertil" /> Fértil</span>
-        <span><i className="ciclo-celda ovu" /> Ovulación</span>
+        <span><i className="num ovu-oura">10</i> {c.ovuConfirmada ? 'Ovulación (Oura)' : 'Ovulación'}</span>
+        {!c.ovuConfirmada && <span><i className="num ovu-aprox">12</i> aprox.</span>}
         {critica && <span><i className="ciclo-celda critica" /> Crítica</span>}
-        {epis.lista.length > 0 && <span><i className="m-epi">6</i> Episodio (gravedad)</span>}
-        {conIngreso > 0 && <span><i className="m-epi ingreso">8</i> Ingreso</span>}
       </div>
+      <LeyendaEpisodios lista={epis.lista} />
       <dl className="ciclo-datos">
         <div><dt>{c.ovuConfirmada ? 'Ovulación (Oura)' : 'Ovulación aprox.'}</dt><dd>{fmtDate(c.ovulacion)} · {cuando(hoy, c.ovulacion)}</dd></div>
         {critica && <div><dt>Ventana crítica</dt><dd>{critica > hoy ? `desde ${fmtDate(critica)} · ${cuando(hoy, critica)}` : 'estás en ella'}</dd></div>}

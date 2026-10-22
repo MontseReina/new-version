@@ -157,8 +157,22 @@ export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia
   ).sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora))
 }
 
-/** Resumen de los episodios de un día: la gravedad más alta y si alguno acabó en ingreso. */
+/** Sigla de un tipo de episodio para el calendario: las iniciales de sus palabras, sin las de enlace ni lo
+ *  que va entre comillas. «Disautonomía nocturna» → DN; «Ansiedad «chunguera»» → A; «Taquicardia en reposo» → TR. */
+export function sigla(nombre: string) {
+  const w = nombre.replace(/[«"“][^»"”]*[»"”]/g, ' ').split(/[\s()/,-]+/).filter((x) => x && !ENLACE.has(x.toLowerCase()))
+  return (w.map((x) => x[0]).join('') || nombre.slice(0, 1)).toUpperCase().slice(0, 3)
+}
+const ENLACE = new Set(['de', 'del', 'en', 'el', 'la', 'los', 'las', 'y', 'con', 'sin', 'a', 'al', 'por', 'tras'])
+
+/** Resumen de los episodios de un día: sus siglas (sin repetir), la gravedad más alta y si alguno acabó en ingreso. */
 export function marcaDia(xs: Episodio[]) {
   const gs = xs.map((e) => e.gravedad).filter((g): g is number => g != null)
-  return { n: xs.length, gravedad: gs.length ? Math.max(...gs) : null, ingreso: xs.some((e) => e.urgencias) }
+  return {
+    n: xs.length,
+    siglas: [...new Set(xs.map((e) => sigla(e.nombre)))],
+    nombres: [...new Set(xs.map((e) => e.nombre))],
+    gravedad: gs.length ? Math.max(...gs) : null,
+    ingreso: xs.some((e) => e.urgencias),
+  }
 }

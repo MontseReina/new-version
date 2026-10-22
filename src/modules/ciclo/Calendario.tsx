@@ -1,5 +1,5 @@
 import { fmtDate } from '../../lib/dates'
-import type { Episodio, marcaDia } from '../sintomas/logica'
+import { sigla, type Episodio, type marcaDia } from '../sintomas/logica'
 import { infoDia, semanasDelMes, sumaMeses, type Mapa, type Modelo } from './logica'
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
@@ -29,14 +29,30 @@ export function SelectorMes({ mes, onMes, desde, id }: { mes: string; onMes: (m:
 
 export type MarcasDia = { [d: string]: ReturnType<typeof marcaDia> }
 
-/** Marca de episodio en la esquina del día: la gravedad más alta; rellena si hubo ingreso. */
+/** Episodios del día dentro del recuadro: la sigla de cada tipo (DN, DP, A…); en rojo relleno si hubo ingreso. */
 export function MarcaEpisodio({ m }: { m?: ReturnType<typeof marcaDia> }) {
   if (!m) return null
-  return <i className={'m-epi' + (m.ingreso ? ' ingreso' : '')} aria-hidden="true">{m.gravedad ?? '•'}</i>
+  return <i className={'m-epi' + (m.ingreso ? ' ingreso' : '')} aria-hidden="true">{m.siglas.join(' ')}</i>
+}
+/** Número del día; en la ovulación, dentro de un círculo negro (relleno si la confirma Oura). */
+export function NumDia({ d, ovu, confirmada }: { d: string; ovu?: boolean; confirmada?: boolean }) {
+  return <span className={'num' + (ovu ? (confirmada ? ' ovu-oura' : ' ovu-aprox') : '')}>{Number(d.slice(8))}</span>
 }
 /** Texto para lectores de pantalla. */
 export const textoMarca = (m?: ReturnType<typeof marcaDia>) =>
-  m ? `${m.n === 1 ? 'episodio' : m.n + ' episodios'}${m.gravedad != null ? ', gravedad ' + m.gravedad : ''}${m.ingreso ? ', con ingreso' : ''}` : ''
+  m ? `${m.nombres.join(', ')}${m.gravedad != null ? ', gravedad ' + m.gravedad : ''}${m.ingreso ? ', con ingreso' : ''}` : ''
+
+/** Leyenda de las siglas que aparecen («DN nocturna»…), del ingreso y de la ovulación. */
+export function LeyendaEpisodios({ lista }: { lista: Episodio[] }) {
+  const tipos = [...new Map(lista.map((e) => [sigla(e.nombre), e.nombre])).entries()]
+  if (!tipos.length) return null
+  return (
+    <div className="ciclo-leyenda epi-leyenda" aria-hidden="true">
+      {tipos.map(([s, n]) => <span key={s}><i className="m-epi">{s}</i> {n}</span>)}
+      {lista.some((e) => e.urgencias) && <span><i className="m-epi ingreso">DN</i> con ingreso</span>}
+    </div>
+  )
+}
 
 /** Una línea por episodio: «sáb, 18 oct · 21:30 · Ansiedad · gravedad 8 · ingreso». */
 export function ListaEpisodios({ lista, conFecha = true }: { lista: Episodio[]; conFecha?: boolean }) {
@@ -44,7 +60,6 @@ export function ListaEpisodios({ lista, conFecha = true }: { lista: Episodio[]; 
     <ul className="epi-lista">
       {lista.map((e, i) => (
         <li key={i}>
-          <MarcaEpisodio m={{ n: 1, gravedad: e.gravedad, ingreso: e.urgencias }} />
           <span>
             {conFecha && <>{fmtDate(e.dia)} · </>}{e.hora && <>{e.hora} · </>}<strong>{e.nombre}</strong>
             {e.gravedad != null && <> · gravedad {e.gravedad}/10</>}
@@ -66,7 +81,7 @@ export function pintaDia(mo: Modelo, m: Mapa, d: string) {
     reg?.regla ? 'regla ' + reg.regla : '',
     info?.reglaPrevista ? 'prevista' : '',
     info?.fertil ? 'fertil' : '',
-    info?.ovulacion ? 'ovu' : '',
+    info?.ovulacion ? 'ovu' + (info.ciclo.ovuConfirmada ? ' oura' : '') : '',
     info?.critica ? 'critica' : '',
     d === mo.hoy ? 'hoy' : '',
   ].filter(Boolean).join(' ')
@@ -87,12 +102,12 @@ export function Calendario({ mes, modelo, mapa, sel, onSel, epis }: { mes: strin
       {DOW.map((l) => <div key={l} className="ciclo-dow" aria-hidden="true">{l}</div>)}
       {semanasDelMes(mes).map((d, i) => {
         if (!d) return <div key={i} />
-        const { reg, cls, txt: t0 } = pintaDia(modelo, mapa, d)
+        const { reg, cls, txt: t0, info } = pintaDia(modelo, mapa, d)
         const txt = [t0, textoMarca(epis?.[d])].filter(Boolean).join(', ')
         const n = Number(d.slice(8))
         return (
           <button type="button" key={d} className={'ciclo-celda ' + cls + (d === sel ? ' sel' : '')} aria-pressed={d === sel} aria-label={`Día ${n}${txt ? ': ' + txt : ''}`} onClick={() => onSel(d)}>
-            <span>{n}</span>
+            <NumDia d={d} ovu={info?.ovulacion} confirmada={info?.ciclo.ovuConfirmada} />
             <MarcaEpisodio m={epis?.[d]} />
             <span className="marcas" aria-hidden="true">
               {reg?.manchado && <i className={'m-man ' + reg.manchado} />}
@@ -110,11 +125,10 @@ export function Leyenda({ critica, confirmada }: { critica: boolean; confirmada?
       <span><i className="ciclo-celda regla moderado" /> Regla</span>
       <span><i className="ciclo-celda prevista" /> Regla prevista</span>
       <span><i className="ciclo-celda fertil" /> Ventana fértil</span>
-      <span><i className="ciclo-celda ovu" /> {confirmada ? 'Ovulación' : 'Ovulación aprox.'}</span>
+      <span><i className="num ovu-oura">10</i> Ovulación (Oura)</span>
+      {!confirmada && <span><i className="num ovu-aprox">12</i> Ovulación aprox.</span>}
       {critica && <span><i className="ciclo-celda critica" /> Ventana crítica</span>}
       <span><i className="m-man rojo" /> Manchado</span>
-      <span><i className="m-epi">6</i> Episodio y su gravedad</span>
-      <span><i className="m-epi ingreso">8</i> Con ingreso</span>
     </div>
   )
 }
