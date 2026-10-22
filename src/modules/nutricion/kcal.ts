@@ -2,7 +2,7 @@
  *  que se tomó. Son un suelo que alcanzar, nunca un tope. La referencia del día es la cifra pautada por
  *  nutrición clínica (`kcal_min`) o, sin ella, lo previsto en el menú de ese día. */
 import { leerAlimentos, type Grupo, type Leido } from './alimentos'
-import { GRACIA_MIN, hecha, limite, platosDe, tomasDe, type Estado, type MenuHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia } from './logica'
+import { GRACIA_MIN, hecha, limite, modeloDe, platosDe, tomasDe, type Estado, type MenuHoy, type NutriCfg, type NutriDia, type PlatoModelo, type TomaDef, type TomaDia } from './logica'
 
 export const PARTE: { [k in Estado]: number } = { entera: 1, tres_cuartos: 0.75, media: 0.5, hecha: 1, no: 0 }
 /** Por debajo de este porcentaje de lo previsto se avisa de que va por debajo. */
@@ -34,9 +34,20 @@ export interface KcalDia {
 const FACTOR_PLATO = { veg: [0, 0.5, 1], prot: [0, 0.5, 1], hid: [0, 0.5, 1, 1.5] } as const
 const PARTE_DEL_PLATO: Partial<Record<Grupo, keyof typeof FACTOR_PLATO>> = { verdura: 'veg', proteina: 'prot', hidrato: 'hid' }
 
-/** Parte que se tomó de cada zona del plato dibujado (1 si no se ha marcado). */
-export function factoresPlato(x?: TomaDia) {
-  const f = (k: keyof typeof FACTOR_PLATO): number | null => { const n = x?.plato?.[k]; return n == null ? null : (FACTOR_PLATO[k] as readonly number[])[n] ?? 1 }
+/**
+ * Con el plato de ½ hidratos, la parte de hidratos que toca es el doble que en el plato clásico y la de verdura,
+ * la mitad. Las kilocalorías de los platos del menú están calculadas con sus recetas (plato clásico), así que lo
+ * marcado se multiplica por estas proporciones.
+ */
+const ESCALA_MODELO: { [m in PlatoModelo]: { veg: number; prot: number; hid: number } } = {
+  verdura: { veg: 1, prot: 1, hid: 1 },
+  hidratos: { veg: 0.5, prot: 1, hid: 2 },
+}
+
+/** Parte que se tomó de cada zona del plato dibujado (1 si no se ha marcado), según el plato que se sigue. */
+export function factoresPlato(x?: TomaDia, modelo: PlatoModelo = 'verdura') {
+  const esc = ESCALA_MODELO[modelo]
+  const f = (k: keyof typeof FACTOR_PLATO): number | null => { const n = x?.plato?.[k]; return n == null ? null : ((FACTOR_PLATO[k] as readonly number[])[n] ?? 1) * esc[k] }
   const veg = f('veg'), prot = f('prot'), hid = f('hid')
   const marcados = [veg, prot, hid].filter((v): v is number => v != null)
   // Aceite y salsas van con todo el plato: se cuentan en la proporción media de lo marcado.
@@ -48,7 +59,7 @@ export function factoresPlato(x?: TomaDia) {
 export function kcalConPlato(cfg: NutriCfg, id: string, x?: TomaDia): number | null {
   const p = cfg.platos?.[id]
   if (p?.kcal == null) return null
-  const f = factoresPlato(x)
+  const f = factoresPlato(x, modeloDe(cfg, x))
   if (!p.partes) return p.kcal * f.resto
   const veg = p.partes.veg ?? 0, prot = p.partes.prot ?? 0, hid = p.partes.hid ?? 0
   const resto = Math.max(0, 1 - veg - prot - hid)
@@ -65,14 +76,14 @@ export interface LeidoContado extends Leido {
 
 /** Kilocalorías de lo escrito en «Otro»: cada alimento por su ración casera (o por el número escrito) y por la
  *  cantidad marcada en el plato dibujado (verdura, proteína, hidratos) o, si no, en Entera, ¾ o Media. */
-export function kcalOtro(t: TomaDef, x?: TomaDia): { items: LeidoContado[]; sinReconocer: string[]; total: number } {
+export function kcalOtro(t: TomaDef, x?: TomaDia, modelo: PlatoModelo = 'verdura'): { items: LeidoContado[]; sinReconocer: string[]; total: number } {
   const { leidos, sinReconocer } = leerAlimentos(x?.otro ?? '', { plato: !!t.plato })
   const deToma = x?.estado && x.estado !== 'no' ? PARTE[x.estado] : 1
   const items = leidos.map((l): LeidoContado => {
     if (l.conNumero) return { ...l, factor: 1, segun: 'numero', kcalContadas: l.kcal }
     const parte = t.plato ? PARTE_DEL_PLATO[l.alimento.grupo] : undefined
     const nivel = parte ? x?.plato?.[parte] : null
-    const factor = parte && nivel != null ? FACTOR_PLATO[parte][nivel] ?? 1 : deToma
+    const factor = parte && nivel != null ? (FACTOR_PLATO[parte][nivel] ?? 1) * ESCALA_MODELO[modelo][parte] : deToma
     const segun = parte && nivel != null ? 'plato' : deToma !== 1 ? 'toma' : null
     return { ...l, factor, segun, kcalContadas: Math.round(l.kcal * factor) }
   })
@@ -99,7 +110,7 @@ export function kcalDia(cfg: NutriCfg, d: NutriDia, menu: MenuHoy, ahoraMin: num
     if (!x || x.estado === 'no' || !hecha(x)) continue
     if (x.otro?.trim()) {
       // «Otro» sustituye a lo del menú: cuenta lo que se reconoce de lo escrito.
-      const o = kcalOtro(t, x)
+      const o = kcalOtro(t, x, modeloDe(cfg, x))
       if (!o.items.length) { sinDato.push(t.nombre); fuera += delMenu ?? 0; continue }
       if (o.sinReconocer.length) enParte.push(t.nombre)
       comido += o.total

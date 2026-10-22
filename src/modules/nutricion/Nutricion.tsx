@@ -12,7 +12,7 @@ import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
-  aMin, aguaDe, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
+  aMin, aguaDe, modeloDe, PLATO_MODELOS, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
 import { fmtKcal, kcalConPlato, kcalDia, kcalOtro, RANGO_POR_DEFECTO } from './kcal'
@@ -100,6 +100,12 @@ export default function Nutricion() {
             <span className="vaso-total"><strong>{h.hechas}</strong> de {h.total} tomas</span>
           </div>
           <div className="muted small">{menu.porque}</div>
+          <div className="row plato-modelo" role="group" aria-label="Plato de Harvard que sigues">
+            <span className="small">Plato de Harvard</span>
+            <div className="seg sm">
+              {PLATO_MODELOS.map(([k, l]) => <button type="button" key={k} className={(c.plato_modelo ?? 'verdura') === k ? 'on' : ''} aria-pressed={(c.plato_modelo ?? 'verdura') === k} onClick={() => void saveCfg({ plato_modelo: k })}>{l}</button>)}
+            </div>
+          </div>
           <div className="barra" style={{ marginTop: '.4rem' }}><i className={lv} style={{ width: Math.round((h.hechas / h.total) * 100) + '%' }} /></div>
           <Kcal kc={kc} esHoy={date === hoy} />
         </div>
@@ -250,12 +256,12 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
           <input type="text" aria-label={`Otra cosa en ${t.nombre}`} placeholder="Lo que has tomado: salmón, patata, brócoli…" value={x?.otro ?? ''} onChange={(ev) => poner({ otro: ev.target.value || null })} />
         </label>
       )}
-      {e !== 'no' && x?.otro?.trim() && <OtroKcal o={kcalOtro(t, x)} conPlato={!!t.plato} />}
+      {e !== 'no' && x?.otro?.trim() && <OtroKcal o={kcalOtro(t, x, modeloDe(cfg, x))} conPlato={!!t.plato} />}
       <div className="seg" role="group" aria-label={`Cómo ha ido: ${t.nombre}`}>
         {(t.plato && e && e !== 'hecha' && e !== 'no' ? [...estadosDe(t), [e, e === 'media' ? 'Media' : e === 'tres_cuartos' ? '¾' : 'Entera'] as const] : estadosDe(t)).map(([k, l]) => <button type="button" key={k} className={(e === k ? 'on ' : '') + 'e-' + k} aria-pressed={e === k} aria-label={k === 'tres_cuartos' ? 'Tres cuartos' : l} onClick={() => marcar(k)}>{l}</button>)}
       </div>
       {t.plato && e !== 'no' && (
-        <Plato veg={x?.plato?.veg} prot={x?.plato?.prot} hid={x?.plato?.hid} onChange={(p) => poner({ plato: { ...(x?.plato ?? {}), ...p } })} />
+        <Plato modelo={modeloDe(cfg, x)} veg={x?.plato?.veg} prot={x?.plato?.prot} hid={x?.plato?.hid} onChange={(p) => poner({ plato: { ...(x?.plato ?? {}), ...p, modelo: modeloDe(cfg, x) } })} />
       )}
       {t.plato && e === 'hecha' && !x?.otro?.trim() && tocaba[0] && cfg.platos?.[tocaba[0].id]?.kcal != null && (
         <p className="small muted nutri-plato-kcal">

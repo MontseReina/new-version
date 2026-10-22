@@ -971,6 +971,8 @@ const MENUS = {
 	folicular: "Menú folicular",
 	luteo: "Menú lúteo"
 };
+/** Plato con el que se marcó una toma; si aún no se ha marcado, el que se sigue ahora. */
+const modeloDe = (cfg, x) => x?.plato?.modelo ?? cfg?.plato_modelo ?? "verdura";
 const aMin = (h) => {
 	const m = /^(\d{1,2}):(\d{2})$/.exec(h ?? "");
 	return m ? Number(m[1]) * 60 + Number(m[2]) : null;
@@ -1097,11 +1099,29 @@ const PARTE_DEL_PLATO = {
 	proteina: "prot",
 	hidrato: "hid"
 };
-/** Parte que se tomó de cada zona del plato dibujado (1 si no se ha marcado). */
-function factoresPlato(x) {
+/**
+* Con el plato de ½ hidratos, la parte de hidratos que toca es el doble que en el plato clásico y la de verdura,
+* la mitad. Las kilocalorías de los platos del menú están calculadas con sus recetas (plato clásico), así que lo
+* marcado se multiplica por estas proporciones.
+*/
+const ESCALA_MODELO = {
+	verdura: {
+		veg: 1,
+		prot: 1,
+		hid: 1
+	},
+	hidratos: {
+		veg: .5,
+		prot: 1,
+		hid: 2
+	}
+};
+/** Parte que se tomó de cada zona del plato dibujado (1 si no se ha marcado), según el plato que se sigue. */
+function factoresPlato(x, modelo = "verdura") {
+	const esc = ESCALA_MODELO[modelo];
 	const f = (k) => {
 		const n = x?.plato?.[k];
-		return n == null ? null : FACTOR_PLATO[k][n] ?? 1;
+		return n == null ? null : (FACTOR_PLATO[k][n] ?? 1) * esc[k];
 	};
 	const veg = f("veg"), prot = f("prot"), hid = f("hid");
 	const marcados = [
@@ -1121,7 +1141,7 @@ function factoresPlato(x) {
 function kcalConPlato(cfg, id, x) {
 	const p = cfg.platos?.[id];
 	if (p?.kcal == null) return null;
-	const f = factoresPlato(x);
+	const f = factoresPlato(x, modeloDe(cfg, x));
 	if (!p.partes) return p.kcal * f.resto;
 	const veg = p.partes.veg ?? 0, prot = p.partes.prot ?? 0, hid = p.partes.hid ?? 0;
 	const resto = Math.max(0, 1 - veg - prot - hid);
@@ -1129,7 +1149,7 @@ function kcalConPlato(cfg, id, x) {
 }
 /** Kilocalorías de lo escrito en «Otro»: cada alimento por su ración casera (o por el número escrito) y por la
 *  cantidad marcada en el plato dibujado (verdura, proteína, hidratos) o, si no, en Entera, ¾ o Media. */
-function kcalOtro(t, x) {
+function kcalOtro(t, x, modelo = "verdura") {
 	const { leidos, sinReconocer } = leerAlimentos(x?.otro ?? "", { plato: !!t.plato });
 	const deToma = x?.estado && x.estado !== "no" ? PARTE[x.estado] : 1;
 	const items = leidos.map((l) => {
@@ -1141,7 +1161,7 @@ function kcalOtro(t, x) {
 		};
 		const parte = t.plato ? PARTE_DEL_PLATO[l.alimento.grupo] : void 0;
 		const nivel = parte ? x?.plato?.[parte] : null;
-		const factor = parte && nivel != null ? FACTOR_PLATO[parte][nivel] ?? 1 : deToma;
+		const factor = parte && nivel != null ? (FACTOR_PLATO[parte][nivel] ?? 1) * ESCALA_MODELO[modelo][parte] : deToma;
 		const segun = parte && nivel != null ? "plato" : deToma !== 1 ? "toma" : null;
 		return {
 			...l,
@@ -1176,7 +1196,7 @@ function kcalDia(cfg, d, menu, ahoraMin) {
 		if (hecha(x) || x?.estado === "no" || ahoraMin == null || limite(t) != null && ahoraMin >= limite(t) + 30) hasta = hasta == null || delMenu == null ? null : hasta + delMenu;
 		if (!x || x.estado === "no" || !hecha(x)) continue;
 		if (x.otro?.trim()) {
-			const o = kcalOtro(t, x);
+			const o = kcalOtro(t, x, modeloDe(cfg, x));
 			if (!o.items.length) {
 				sinDato.push(t.nombre);
 				fuera += delMenu ?? 0;

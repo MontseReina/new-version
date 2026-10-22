@@ -48,6 +48,8 @@ export type NutriCfg = {
   platos?: { [id: string]: Plato }
   menus?: { [k in MenuId]?: Menu }
   avisos?: Aviso[]
+  /** Plato de Harvard que se sigue ahora: ½ verdura (¼ proteína, ¼ hidratos) o ½ hidratos (¼ verdura, ¼ proteína). */
+  plato_modelo?: PlatoModelo | null
 }
 
 /** `hecha` es el estado de las tomas con plato dibujado (comida y cena): la cantidad la dice el plato.
@@ -57,7 +59,12 @@ export const ESTADOS: [Estado, string][] = [['entera', 'Entera'], ['tres_cuartos
 export const ESTADOS_PLATO: [Estado, string][] = [['hecha', 'Hecha'], ['no', 'No']]
 export const estadosDe = (t: TomaDef) => (t.plato ? ESTADOS_PLATO : ESTADOS)
 /** Plato dibujado: cuánto había de cada parte. 0 nada · 1 poca · 2 la parte que toca · 3 (solo hidratos) más de la que toca. */
-export type PlatoDia = { veg?: number | null; prot?: number | null; hid?: number | null }
+export type PlatoDia = { veg?: number | null; prot?: number | null; hid?: number | null; modelo?: PlatoModelo | null }
+/** Plato de Harvard: 'verdura' = ½ verdura, ¼ proteína, ¼ hidratos; 'hidratos' = ½ hidratos, ¼ verdura, ¼ proteína. */
+export type PlatoModelo = 'verdura' | 'hidratos'
+export const PLATO_MODELOS: [PlatoModelo, string][] = [['verdura', '½ verduras'], ['hidratos', '½ hidratos']]
+/** Plato con el que se marcó una toma; si aún no se ha marcado, el que se sigue ahora. */
+export const modeloDe = (cfg: NutriCfg | null | undefined, x?: TomaDia): PlatoModelo => x?.plato?.modelo ?? cfg?.plato_modelo ?? 'verdura'
 
 export type TomaDia = {
   estado?: Estado | null

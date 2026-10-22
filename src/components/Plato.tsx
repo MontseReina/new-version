@@ -1,6 +1,7 @@
-/** Plato dibujado para valorar una comida, traído de Huma: mitad verdura, un cuarto proteína y un
- *  cuarto hidratos. Cada parte se toca para ir llenándola: sin marcar → poca → la que toca
- *  (hidratos: poco → un cuarto → más de un cuarto). Comer más hidrato no lleva ningún aviso. */
+/** Plato dibujado para valorar una comida, traído de Huma. Dos platos de Harvard: el clásico (mitad verdura,
+ *  un cuarto proteína y un cuarto hidratos) y el de mitad hidratos (un cuarto verdura y un cuarto proteína), para
+ *  subir de peso. Cada parte se toca para ir llenándola: sin marcar → poca → la que toca (hidratos: poco → la que
+ *  toca → más de la que toca). Comer más hidrato no lleva ningún aviso. */
 type Nivel = number | null | undefined
 
 const CX = 100
@@ -21,13 +22,22 @@ function sector(r: number, a0: number, a1: number) {
 type Clave = 'veg' | 'prot' | 'hid'
 interface Parte { key: Clave; label: string; emoji: string; target: string; color: string; a0: number; a1: number; levels: string[] }
 
-const PARTES: Parte[] = [
-  { key: 'veg', label: 'Verdura', emoji: '🥦', target: '½', color: 'var(--plato-verdura)', a0: 0, a1: 180, levels: ['nada', 'poca', '≈ ½ plato'] },
-  { key: 'prot', label: 'Proteína', emoji: '🐟', target: '¼', color: 'var(--plato-proteina)', a0: 180, a1: 270, levels: ['nada', 'poca', '≈ ¼ plato'] },
-  { key: 'hid', label: 'Hidratos', emoji: '🍠', target: '¼', color: 'var(--plato-hidrato)', a0: 270, a1: 360, levels: ['nada', 'poco', '≈ ¼ plato', 'más de ¼'] },
-]
+export type Modelo = 'verdura' | 'hidratos'
+const PARTES: { [m in Modelo]: Parte[] } = {
+  verdura: [
+    { key: 'veg', label: 'Verdura', emoji: '🥦', target: '½', color: 'var(--plato-verdura)', a0: 0, a1: 180, levels: ['nada', 'poca', '≈ ½ plato'] },
+    { key: 'prot', label: 'Proteína', emoji: '🐟', target: '¼', color: 'var(--plato-proteina)', a0: 180, a1: 270, levels: ['nada', 'poca', '≈ ¼ plato'] },
+    { key: 'hid', label: 'Hidratos', emoji: '🍠', target: '¼', color: 'var(--plato-hidrato)', a0: 270, a1: 360, levels: ['nada', 'poco', '≈ ¼ plato', 'más de ¼'] },
+  ],
+  hidratos: [
+    { key: 'hid', label: 'Hidratos', emoji: '🍠', target: '½', color: 'var(--plato-hidrato)', a0: 0, a1: 180, levels: ['nada', 'poco', '≈ ½ plato', 'más de ½'] },
+    { key: 'prot', label: 'Proteína', emoji: '🐟', target: '¼', color: 'var(--plato-proteina)', a0: 180, a1: 270, levels: ['nada', 'poca', '≈ ¼ plato'] },
+    { key: 'veg', label: 'Verdura', emoji: '🥦', target: '¼', color: 'var(--plato-verdura)', a0: 270, a1: 360, levels: ['nada', 'poca', '≈ ¼ plato'] },
+  ],
+}
 
-export function Plato({ veg, prot, hid, onChange }: { veg: Nivel; prot: Nivel; hid: Nivel; onChange: (patch: { [k in Clave]?: number }) => void }) {
+export function Plato({ veg, prot, hid, onChange, modelo = 'verdura' }: { veg: Nivel; prot: Nivel; hid: Nivel; onChange: (patch: { [k in Clave]?: number }) => void; modelo?: Modelo }) {
+  const partes = PARTES[modelo]
   const valores: Record<Clave, Nivel> = { veg, prot, hid }
   const siguiente = (p: Parte) => {
     const v = valores[p.key]
@@ -37,7 +47,7 @@ export function Plato({ veg, prot, hid, onChange }: { veg: Nivel; prot: Nivel; h
     <div className="plato">
       <svg viewBox="0 0 200 200" role="group" aria-label="Plato: toca cada parte para llenarla">
         <circle className="plato-borde" cx={CX} cy={CY} r={R + 9} />
-        {PARTES.map((p) => {
+        {partes.map((p) => {
           const v = valores[p.key]
           // Relleno: poca = hasta algo más de la mitad del radio; la que toca o más = entero.
           const fillR = v == null || v === 0 ? 0 : v === 1 ? R * 0.55 : R
@@ -48,14 +58,14 @@ export function Plato({ veg, prot, hid, onChange }: { veg: Nivel; prot: Nivel; h
               onClick={() => siguiente(p)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); siguiente(p) } }}>
               <path className="fondo" d={sector(R, p.a0, p.a1)} style={{ fill: p.color }} strokeDasharray={v == null ? '4 3' : undefined} />
               {fillR > 0 && <path d={sector(fillR, p.a0, p.a1)} style={{ fill: p.color }} fillOpacity={v === 1 ? 0.55 : 0.85} />}
-              <text x={lx} y={ly - 4} textAnchor="middle" fontSize={p.key === 'veg' ? 22 : 19}>{p.emoji}</text>
+              <text x={lx} y={ly - 4} textAnchor="middle" fontSize={p.a1 - p.a0 > 90 ? 22 : 19}>{p.emoji}</text>
               <text x={lx} y={ly + 15} textAnchor="middle" fontSize="11" fontWeight="700">{p.target}</text>
             </g>
           )
         })}
       </svg>
       <div className="plato-legend">
-        {PARTES.map((p) => {
+        {partes.map((p) => {
           const v = valores[p.key]
           return (
             <button type="button" key={p.key} className={'plato-chip' + (v != null && v > 0 ? ' on' : '')} onClick={() => siguiente(p)}>
