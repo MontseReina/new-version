@@ -240,9 +240,9 @@ export const normalizar = (t: string) =>
 const NUMEROS: { [k: string]: number } = {
   un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, medio: 0.5, media: 0.5, 'un poco de': 0.5, poco: 0.5, 'un par de': 2, par: 2,
 }
-const UNIDADES = 'rebanadas?|lonchas?|cucharadas?|cucharaditas?|cdas?|cdtas?|pu(?:ñ|n)ados?|vasos?|tazas?|piezas?|filetes?|trozos?|latas?|unidades?|uds?|raciones?|platos?|cuencos?|bolas?|onzas?|lomos?|rodajas?|tajadas?|porciones?|cacitos?|chorritos?|hojas?'
+const UNIDADES = 'rebanadas?|lonchas?|cucharadas?|cucharaditas?|cdas?|cdtas?|pu(?:ñ|n)ados?|vasos?|tazas?|piezas?|filetes?|trozos?|latas?|unidades?|uds?|raci(?:on|ones)|platos?|cuencos?|bolas?|onzas?|lomos?|rodajas?|tajadas?|porci(?:on|ones)|corazon(?:es)?|cacitos?|chorritos?|hojas?'
 const NUM = `(\\d+\\/\\d+|\\d+(?:[.,]\\d+)?|un par de|un poco de|un|una|uno|dos|tres|cuatro|cinco|seis|medio|media|poco|par)`
-const RE_CANT = new RegExp(`(?:^|\\s)${NUM}\\s+(?:(?:${UNIDADES})\\s+)?(?:de\\s+)?$`)
+const RE_CANT = new RegExp(`(?:^|\\s)${NUM}\\s+(?:(${UNIDADES})\\s+)?(?:de\\s+)?$`)
 
 const RE_UNIDAD = new RegExp(`^(?:${UNIDADES})$`)
 /** Palabras que no son alimentos y no hace falta reconocer. */
@@ -269,14 +269,37 @@ export interface Leido {
   /** Si se escribió un número (entonces la cantidad del plato no se aplica). */
   conNumero: boolean
   kcal: number
+  /** Si el número escrito cuenta piezas de una ración de varias («1 dátil», «3 lonchas de jamón»):
+   *  la cantidad tal como se dijo, para enseñarla. */
+  piezas?: string
   /** Posición en el texto normalizado. */
   ini: number
   fin: number
 }
 
+const sinPlural = (w: string) => w.replace(/(?:es|s)$/, '')
+/**
+ * Raciones caseras de varias piezas («2 dátiles», «2 lonchas (30 g)», «4 cucharadas (40 g)»): cuántas piezas
+ * tiene la ración y cómo se llama la pieza. Un número escrito con esa pieza («2 lonchas de jamón») o con el
+ * propio alimento cuando es la pieza («1 dátil», «3 croquetas») cuenta piezas, no raciones.
+ */
+function piezasDe(a: Alimento, unidad: string | undefined): { n: number; nombre: string } | null {
+  const m = /^(\d+)\s+([^\s(]+)/.exec(a.u)
+  if (!m || Number(m[1]) <= 1) return null
+  const pieza = sinPlural(normalizar(m[2]))
+  const vale = unidad
+    ? sinPlural(unidad) === pieza
+    : a.s.some((x) => sinPlural(normalizar(x).split(' ').pop() ?? '') === pieza)
+  return vale ? { n: Number(m[1]), nombre: m[2] } : null
+}
+/** «dátiles» → «dátil», «lonchas» → «loncha», «corazones» → «corazón». */
+const singular = (w: string) => (/ones$/.test(w) ? w.replace(/ones$/, 'ón') : /[^aeiou]es$/.test(w) && !/[rnl]es$/.test(w) ? w.slice(0, -1) : /(?:les|res|nes)$/.test(w) ? w.slice(0, -2) : w.replace(/s$/, ''))
+const fmtN = (n: number) => (Number.isInteger(n) ? String(n) : n === 0.5 ? '½' : n.toLocaleString('es-ES', { maximumFractionDigits: 2 }))
+
 /** Lee los alimentos de un texto libre. Devuelve lo reconocido y los trozos que no se han reconocido. */
 export function leerAlimentos(texto: string): { leidos: Leido[]; sinReconocer: string[] } {
-  const original = normalizar(texto ?? '')
+  // «1/3calabacín», «2huevos»: el número pegado a la palabra se separa.
+  const original = normalizar(texto ?? '').replace(/(\d)([a-zñ])/g, '$1 $2')
   let resto = original
   const hallados: { ini: number; fin: number; a: Alimento; txt: string }[] = []
   for (const p of PATRONES) {
@@ -293,17 +316,22 @@ export function leerAlimentos(texto: string): { leidos: Leido[]; sinReconocer: s
     // Número delante, dentro del mismo trozo: «2 huevos», «media manzana», «3 rebanadas de pan».
     const antes = original.slice(0, h.ini).split(/[,;+\-]|\.(?!\d)|\s(?:y|con|e)\s/).pop() ?? ''
     const c = RE_CANT.exec(antes)
-    let unidades: number, conNumero = false
+    let unidades: number, conNumero = false, piezas: string | undefined
     if (c) {
       const v = c[1].replace(',', '.')
       const fr = /^(\d+)\/(\d+)$/.exec(v)
       unidades = fr ? Number(fr[1]) / Math.max(1, Number(fr[2])) : NUMEROS[v] ?? Number(v)
       conNumero = true
+      const pz = piezasDe(h.a, c[2])
+      if (pz) {
+        piezas = `${fmtN(unidades)} ${unidades <= 1 ? singular(pz.nombre) : pz.nombre}`
+        unidades = unidades / pz.n
+      }
     } else {
       const plural = /s$/.test(h.txt) && !h.a.s.some((s) => normalizar(s) === h.txt)
       unidades = plural && h.a.np ? h.a.np : h.a.n ?? 1
     }
-    return { alimento: h.a, texto: h.txt, unidades, conNumero, kcal: Math.round(h.a.k * unidades), ini: h.ini, fin: h.fin }
+    return { alimento: h.a, texto: h.txt, unidades, conNumero, piezas, kcal: Math.round(h.a.k * unidades), ini: h.ini, fin: h.fin }
   })
   // «Tortilla de dos huevos», «revuelto de 3 huevos»: los huevos dicen el tamaño, no se suman aparte.
   // «Fruta granada»: la palabra «fruta» delante de una fruta concreta no se cuenta otra vez.
@@ -316,6 +344,8 @@ export function leerAlimentos(texto: string): { leidos: Leido[]; sinReconocer: s
       a.kcal = Math.round(a.alimento.k * a.unidades)
       leidos.splice(i, 1)
     } else if (a.alimento.id === 'fruta' && b.alimento.grupo === 'fruta' && entre === '') leidos.splice(i - 1, 1)
+    // «2 onzas de chocolate»: la pieza y el alimento son el mismo; cuenta una vez, con el número escrito.
+    else if (a.alimento.id === b.alimento.id && (entre === '' || entre === 'de')) leidos.splice(i, 1)
   }
   // Lo que no se ha reconocido: trozos separados por comas, «y», «con» o «+» que no son solo palabras de relleno.
   const sinReconocer = resto.split(/[,;+.\n\-\/]|\s(?:y|con|e)\s/).map((x) => x.trim().replace(/\s+/g, ' '))

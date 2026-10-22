@@ -297,7 +297,7 @@ function OtroKcal({ o, conPlato }: { o: ReturnType<typeof kcalOtro>; conPlato: b
           <li key={k}>
             <span>
               {i.alimento.nombre}
-              <span className="muted"> · {i.unidades !== 1 ? `${fraccion(i.unidades)} × ${i.alimento.u}` : i.alimento.u}
+              <span className="muted"> · {i.piezas ?? (i.unidades !== 1 ? `${fraccion(i.unidades)} × ${i.alimento.u}` : i.alimento.u)}
                 {i.factor !== 1 && <> · {fraccion(i.factor)} {i.segun === 'plato' ? 'según el plato' : 'según lo marcado'}</>}</span>
             </span>
             <span className="nowrap">{fmtKcal(i.kcalContadas)} kcal</span>
