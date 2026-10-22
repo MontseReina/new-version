@@ -12,7 +12,7 @@ import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
-  aMin, aguaDe, modeloDe, PLATO_MODELOS, protObjetivo, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
+  aMin, aguaDe, modeloDe, platoMarcado, PLATO_MODELOS, protObjetivo, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
 import { cantidadPara, FUENTE_POR_DEFECTO, FUENTES_PROTEINA } from './proteinas'
