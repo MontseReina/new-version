@@ -2,12 +2,11 @@ import { Link } from 'react-router-dom'
 import { fmtDate, todayStr } from '../lib/dates'
 import { TarjetaCiclo } from '../modules/ciclo/TarjetaCiclo'
 import { CalendarioHoy } from '../modules/calendario/Hoy'
-import { Portada } from '../modules/objetivos/Portada'
 import { PendientesHoy } from '../modules/pendientes/Hoy'
 import { AvisoSuplementos } from '../modules/suplementos/Resumen'
 import { pilares } from '../pilares'
 
-/** Inicio: el ciclo arriba, los objetivos de cumplimiento de la semana y los pilares. */
+/** Inicio: el ciclo arriba, avisos, pendientes y citas de hoy, y los pilares. Los objetivos de la semana están en Evaluaciones. */
 export function Inicio() {
   const hoy = todayStr()
   return (
@@ -16,7 +15,6 @@ export function Inicio() {
       <p className="muted" style={{ textTransform: 'capitalize' }}>{fmtDate(hoy)}</p>
       <TarjetaCiclo />
       <AvisoSuplementos day={hoy} />
-      <Portada />
 
       <PendientesHoy />
       <CalendarioHoy />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { importar, leerRegistros } from '../store/importar'
+import { FaltanOpciones, importar, leerRegistros } from '../store/importar'
 import { counts, exportAll } from '../store/repo'
 
 export function Datos() {
@@ -18,8 +18,10 @@ export function Datos() {
       setAviso(`Importación terminada: ${n} registros añadidos.`)
       setPegado('')
       counts().then(setN, () => {})
-    } catch {
-      setAviso('La importación se ha interrumpido. Revisa la conexión y vuelve a pulsar: no se duplica nada.')
+    } catch (e) {
+      setAviso(e instanceof FaltanOpciones
+        ? `No se ha importado nada: faltan en Signos y síntomas ${e.faltan.join('; ')}. Añádelas en «Editar grupos» y vuelve a pulsar.`
+        : 'La importación se ha interrumpido. Revisa la conexión y vuelve a pulsar: no se duplica nada.')
     }
     setBusy(false)
   }

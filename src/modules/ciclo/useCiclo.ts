@@ -4,8 +4,8 @@ import { listDaily } from '../../store/repo'
 import { useSettings } from '../../store/useSettings'
 import { crearModelo, type CicloCfg, type CicloDia, type Mapa } from './logica'
 
-/** Cuánto se mira hacia atrás para calcular la media y pintar el calendario. */
-const DIAS_ATRAS = 400
+/** Cuánto se mira hacia atrás para calcular la media y pintar el calendario (unos tres años). */
+const DIAS_ATRAS = 1100
 
 /**
  * Historial del ciclo y su previsión. Lo usan Ciclo, Inicio y, más adelante, las áreas que

@@ -1,6 +1,31 @@
 import { fmtDate } from '../../lib/dates'
 import type { Episodio, marcaDia } from '../sintomas/logica'
-import { infoDia, semanasDelMes, type Mapa, type Modelo } from './logica'
+import { infoDia, semanasDelMes, sumaMeses, type Mapa, type Modelo } from './logica'
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+
+/** Elegir el mes que se ve: flechas para el anterior y el siguiente, y mes y año a elegir.
+ *  Los años van desde `desde` (AAAA) hasta el año que viene. */
+export function SelectorMes({ mes, onMes, desde, id }: { mes: string; onMes: (m: string) => void; desde: number; id: string }) {
+  const [a, m] = [Number(mes.slice(0, 4)), Number(mes.slice(5, 7))]
+  const hasta = new Date().getFullYear() + 1
+  const anios: number[] = []
+  for (let x = Math.min(desde, a); x <= Math.max(hasta, a); x++) anios.push(x)
+  const poner = (an: number, me: number) => onMes(`${an}-${String(me).padStart(2, '0')}`)
+  return (
+    <div className="selector-mes">
+      <button type="button" className="btn sm ghost" aria-label="Mes anterior" onClick={() => onMes(sumaMeses(mes, -1))}>‹</button>
+      <select id={id + '-mes'} aria-label="Mes" value={m} onChange={(e) => poner(a, Number(e.target.value))}>
+        {MESES.map((n, i) => <option key={n} value={i + 1}>{mayus(n)}</option>)}
+      </select>
+      <select id={id + '-anio'} aria-label="Año" value={a} onChange={(e) => poner(Number(e.target.value), m)}>
+        {anios.map((x) => <option key={x} value={x}>{x}</option>)}
+      </select>
+      <button type="button" className="btn sm ghost" aria-label="Mes siguiente" onClick={() => onMes(sumaMeses(mes, 1))}>›</button>
+    </div>
+  )
+}
 
 export type MarcasDia = { [d: string]: ReturnType<typeof marcaDia> }
 

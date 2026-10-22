@@ -3,7 +3,7 @@ import { Empty, Field, Plegable } from '../../components/ui'
 import { addDays, diffDays, fmtDate } from '../../lib/dates'
 import { saveDaily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
-import { Calendario, Leyenda, ListaEpisodios } from './Calendario'
+import { Calendario, Leyenda, ListaEpisodios, SelectorMes } from './Calendario'
 import { FASES, FLUJOS, MANCHADOS, cicloDe, infoDia, nombreMes, rango, retraso, sumaMeses, type CicloDia, type Mapa } from './logica'
 import { useCiclo } from './useCiclo'
 import { useEpisodios } from './useEpisodios'
@@ -133,11 +133,7 @@ export default function Ciclo({ date, onDate, sintDia }: { date: string; onDate:
       </Plegable>
 
       <Plegable id="calendario-del-ciclo" title="Calendario del ciclo" abierto>
-        <div className="row between" style={{ marginBottom: '.4rem' }}>
-          <button type="button" className="btn sm ghost" aria-label="Mes anterior" onClick={() => setMes(sumaMeses(m, -1))}>‹</button>
-          <strong>{mayus(nombreMes(m))}</strong>
-          <button type="button" className="btn sm ghost" aria-label="Mes siguiente" onClick={() => setMes(sumaMeses(m, 1))}>›</button>
-        </div>
+        <SelectorMes id="ciclo-cal" mes={m} onMes={setMes} desde={Number((reglas[0]?.inicio ?? hoy).slice(0, 4))} />
         <Calendario mes={m} modelo={modelo} mapa={mapa} sel={vista} onSel={elegir} epis={epis.porDia} />
         <Leyenda critica={modelo.critica > 0} confirmada={modelo.ovus.length > 0} />
         <p className="small" style={{ marginTop: '.6rem' }}>

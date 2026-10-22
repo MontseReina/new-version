@@ -4,6 +4,7 @@
  */
 import type { ComponentType } from 'react'
 import Calendario from './modules/calendario/Calendario'
+import Evaluaciones from './modules/evaluaciones/Evaluaciones'
 import Pendientes from './modules/pendientes/Pendientes'
 import Preguntas from './modules/preguntas/Preguntas'
 
@@ -24,5 +25,5 @@ export const pilares: PilarDef[] = [
   { id: 'calendario', name: 'Calendario', ico: '📅', path: 'calendario', Page: Calendario },
   { id: 'pendientes', name: 'Pendientes', ico: '☑️', path: 'pendientes', Page: Pendientes },
   { id: 'preguntas', name: 'Preguntas', ico: '💬', path: 'preguntas', Page: Preguntas },
-  { id: 'evaluaciones', name: 'Evaluaciones', ico: '📊', path: 'evaluaciones' },
+  { id: 'evaluaciones', name: 'Evaluaciones', ico: '📊', path: 'evaluaciones', Page: Evaluaciones },
 ]

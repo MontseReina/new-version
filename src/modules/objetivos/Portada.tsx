@@ -19,7 +19,7 @@ const color = (x: number) => ({ ok: 'verde', parcial: 'amarillo', no: 'rojo' })[
 type Semana = { nutri: Map<string, NutriDia>; hidra: Map<string, HidraDia>; supl: Map<string, SuplDia>; descanso: Map<string, DescansoDia> }
 const mapa = <T,>(r: { day: string; value: T }[]) => new Map(r.map((x) => [x.day, x.value]))
 
-/** Portada de Inicio: los objetivos de cumplimiento de la semana (de lunes a domingo), con un recuadro por día. */
+/** Objetivos de la semana (pilar Evaluaciones): los objetivos de cumplimiento de la semana (de lunes a domingo), con un recuadro por día. */
 export function Portada() {
   const hoy = todayStr()
   const [ahoraMin, setAhoraMin] = useState(() => aMin(nowHM()) ?? 0)
