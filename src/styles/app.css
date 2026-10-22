@@ -500,3 +500,10 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .plato-modelo { gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .4rem; }
 .nutri-balance .barra { margin: .35rem 0 .3rem; }
 .nutri-balance .vaso-total { font-variant-numeric: tabular-nums; }
+.nutri-equiv { gap: .4rem; flex-wrap: wrap; align-items: center; }
+.nutri-equiv label { display: inline-flex; align-items: center; gap: .35rem; flex-wrap: wrap; min-width: 0; }
+.nutri-equiv select { width: auto; max-width: 15rem; padding: .2rem .35rem; font: inherit; font-size: .85rem; }
+.nutri-balance details.section { margin-top: .6rem; }
+.equiv-tabla td, .equiv-tabla th { font-size: .82rem; font-variant-numeric: tabular-nums; }
+.equiv-tabla tr.equiv-grupo th { background: var(--bg); text-align: left; color: var(--muted); font-weight: 700; }
+.equiv-tabla tr.sel td { background: var(--primary-soft); }
