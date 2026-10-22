@@ -15,6 +15,8 @@ export interface Alimento {
   u: string
   /** Kilocalorías de una unidad. */
   k: number
+  /** Gramos de proteína de una unidad (se rellena con PROTEINA). */
+  p?: number
   /** Unidades que se cuentan sin número. */
   n?: number
   /** Unidades que se cuentan si se escribe en plural sin número. */
@@ -231,6 +233,33 @@ PURE.s = [...PURE.s, ...PURES.flatMap((w) => [`pure de ${w}`, `crema de ${w}`])]
 
 export const ALIMENTOS: Alimento[] = [...VERDURAS, ...PROTEINAS, ...LACTEOS, ...HIDRATOS, ...FRUTAS, ...GRASAS, ...DULCES, ...PLATOS, ...BEBIDAS]
 
+/** Gramos de proteína por unidad casera (tablas de composición españolas, redondeadas). Sirven para estimar. */
+const PROTEINA: { [id: string]: number } = {
+  brocoli: 4, coliflor: 3, col: 2, col_china: 2, kale: 4, coles_bruselas: 3, espinacas: 3, acelgas: 3,
+  judias_verdes: 3, calabacin: 2, berenjena: 2, calabaza: 2, zanahoria: 1, pimiento: 1, tomate: 1, tomate_frito: 1,
+  cherry: 0.5, cebolla: 0.5, puerro: 1.5, alcachofa: 4, esparragos: 2, setas: 3, hojas: 1, ensalada: 2,
+  pepino: 0.5, apio: 0.3, remolacha: 1.5, hinojo: 1, verduras: 4, salteado: 4, pisto: 3, pure: 3,
+  sopa: 3, caldo: 4, pollo: 30, pollo_muslo: 28, codorniz: 25, bacon: 4, pavo: 29, pavo_fiambre: 9,
+  jamon: 9, jamon_york: 6, ternera: 29, carne_picada: 23, hamburguesa: 20, cerdo: 26, cordero: 23, conejo: 31,
+  salmon: 30, salmon_ahumado: 9, atun: 35, atun_lata: 15, sardinas: 30, caballa: 28, boquerones: 27, anchoas: 5,
+  merluza: 26, lubina: 28, dorada: 30, trucha: 30, marisco: 20, mejillones: 18, calamar: 23, huevo: 6,
+  huevos_revueltos: 6, tortilla: 13, tofu: 15, tempeh: 19, proteina_polvo: 20, yogur: 4.5, yogur_coco: 1, yogur_griego: 5,
+  kefir: 7, cuajada: 7, queso: 7.5, queso_fresco: 8, queso_crema: 2, requeson: 5.5, parmesano: 3.5, leche: 8,
+  bebida_vegetal: 1, leche_coco_lata: 2, nata: 0.6, patata: 3, patatas_fritas: 3.5, boniato: 2.4, arroz: 4, quinoa: 6,
+  pasta: 7.5, cereal_cocido: 5, pan: 2.5, tostada: 2.5, tortitas_arroz: 0.7, avena: 5, yuca: 2, crema_arroz: 1.4,
+  crackers: 3, maiz: 3, legumbres: 16, harina: 4, manzana: 0.4, pera: 0.5, platano: 1.3, naranja: 1.5,
+  mandarina: 0.5, kiwi: 0.8, uvas: 0.7, caqui: 0.8, granada: 1.5, fresas: 1, frutos_rojos: 0.5, melocoton: 1,
+  ciruela: 0.6, pina: 0.8, mango: 1, melon: 1.5, higos: 0.8, datiles: 1, pasas: 0.5, fruta: 0.8,
+  zumo: 1, limon: 0, aceite: 0, mct: 0, mantequilla: 0, aguacate: 1.6, aceitunas: 0.3, frutos_secos: 4,
+  cacahuetes: 5, crema_fs: 3.5, semillas: 2, coco: 0.7, mayonesa: 0.2, hummus: 4, miel: 0, azucar: 0,
+  mermelada: 0, chocolate: 2, nibs: 0.7, galletas: 2, bizcocho: 4, muffin: 4, bolleria: 5, tarta: 4,
+  helado: 4, pudding_chia: 6, natillas: 4, tortitas: 7, barrita: 6, bunuelo: 2, rollito: 6, tortilla_patata: 9,
+  paella: 18, lentejas: 20, croquetas: 7, empanadilla: 6, pizza: 20, sandwich: 15, ensaladilla: 7, gazpacho: 2,
+  lasana: 20, batido: 20, sushi: 15, pan_tomate: 3, huevos_rotos: 18, cafe_leche: 5, sin_kcal: 0, refresco: 0,
+  alcohol: 1,
+}
+for (const a of ALIMENTOS) a.p = PROTEINA[a.id] ?? 0
+
 // ---------- Lectura del texto ----------
 
 /** Minúsculas y sin tildes (la ñ se queda). */
@@ -269,6 +298,8 @@ export interface Leido {
   /** Si se escribió un número (entonces la cantidad del plato no se aplica). */
   conNumero: boolean
   kcal: number
+  /** Gramos de proteína estimados. */
+  prot: number
   /** Si el número escrito cuenta piezas de una ración de varias («1 dátil», «3 lonchas de jamón»):
    *  la cantidad tal como se dijo, para enseñarla. */
   piezas?: string
@@ -344,7 +375,7 @@ export function leerAlimentos(texto: string, opciones: { plato?: boolean } = {})
       const plural = /s$/.test(h.txt) && !h.a.s.some((s) => normalizar(s) === h.txt)
       unidades = plural && h.a.np ? h.a.np : h.a.n ?? 1
     }
-    return { alimento: h.a, texto: h.txt, unidades, conNumero, piezas, kcal: Math.round(h.a.k * unidades), ini: h.ini, fin: h.fin }
+    return { alimento: h.a, texto: h.txt, unidades, conNumero, piezas, kcal: Math.round(h.a.k * unidades), prot: (h.a.p ?? 0) * unidades, ini: h.ini, fin: h.fin }
   })
   // «Tortilla de dos huevos», «revuelto de 3 huevos»: los huevos dicen el tamaño, no se suman aparte.
   // «Fruta granada»: la palabra «fruta» delante de una fruta concreta no se cuenta otra vez.
@@ -355,6 +386,7 @@ export function leerAlimentos(texto: string, opciones: { plato?: boolean } = {})
       a.unidades = a.alimento.id === 'tortilla' ? n / 2 : n
       a.conNumero = true
       a.kcal = Math.round(a.alimento.k * a.unidades)
+      a.prot = (a.alimento.p ?? 0) * a.unidades
       leidos.splice(i, 1)
     } else if (a.alimento.id === 'fruta' && b.alimento.grupo === 'fruta' && entre === '') leidos.splice(i - 1, 1)
     // «2 onzas de chocolate»: la pieza y el alimento son el mismo; cuenta una vez, con el número escrito.
