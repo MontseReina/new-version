@@ -94,7 +94,7 @@ export default function Nutricion() {
       )}
 
       {date === hoy && <Reloj cfg={c} ayer={ayer} dia={d} />}
-      <Balance cfg={c} pr={pr} kc={kc} esHoy={date === hoy} guardar={saveCfg} />
+      <Balance cfg={c} pr={pr} kc={kc} esHoy={date === hoy} />
 
       <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>
         <div>
@@ -160,6 +160,7 @@ export default function Nutricion() {
         </Plegable>
       ))}
 
+      <Equivalencias cfg={c} pr={pr} guardar={saveCfg} />
       <Plegable id="nutri-ajustes" title="Mis horarios y reglas">
         <h3>Hora prevista de cada toma</h3>
         {defs.map((t, i) => (
@@ -201,11 +202,8 @@ const coma = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 2
 
 /** Lo que llevas del día, debajo de los relojes: proteína frente a la que pide el día (g/kg × peso deseado) y,
  *  debajo, las kilocalorías frente a la referencia. Las dos son un suelo que alcanzar, nunca un tope. */
-function Balance({ cfg, pr, kc, esHoy, guardar }: { cfg: NutriCfg; pr: ReturnType<typeof protDia>; kc: ReturnType<typeof kcalDia>; esHoy: boolean; guardar: (p: Partial<NutriCfg>) => Promise<void> }) {
+function Balance({ cfg, pr, kc, esHoy }: { cfg: NutriCfg; pr: ReturnType<typeof protDia>; kc: ReturnType<typeof kcalDia>; esHoy: boolean }) {
   const obj = protObjetivo(cfg)
-  // Tipo de proteína en el que se enseña la equivalencia en alimento (se recuerda en la cuenta).
-  const fuente = FUENTES_PROTEINA.find((f) => f.id === cfg.proteina?.fuente) ?? FUENTES_PROTEINA.find((f) => f.id === FUENTE_POR_DEFECTO)!
-  const falta = obj ? Math.max(0, obj - pr.comida) : 0
   const pct = obj ? Math.min(1, pr.comida / obj) : 0
   const llega = obj != null && pr.comida >= obj
   const refK = kc.referencia == null ? null : esHoy ? kc.referenciaHasta : kc.referencia
@@ -213,48 +211,17 @@ function Balance({ cfg, pr, kc, esHoy, guardar }: { cfg: NutriCfg; pr: ReturnTyp
   return (
     <div className="card nutri-balance">
       <div className="row between">
-        <strong>Proteína del día</strong>
-        <span className="vaso-total"><strong>{fmtG(pr.comida)} g</strong>{obj ? <> de {obj} g</> : null} <span className="muted small">efectiva</span></span>
-      </div>
-      <div className="row between small nutri-equiv">
-        <label className="muted">Equivale a
-          <select id="prot-fuente" aria-label="Tipo de proteína para la equivalencia" value={fuente.id} onChange={(e) => void guardar({ proteina: { ...(cfg.proteina ?? {}), fuente: e.target.value } })}>
-            {FUENTES_PROTEINA.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-          </select>
-        </label>
-        <span className="vaso-total">≈ <strong>{cantidadPara(fuente, pr.comida)}</strong>{obj ? <> de {cantidadPara(fuente, obj)}</> : null}</span>
+        <strong>Proteína efectiva</strong>
+        <span className="vaso-total"><strong>{fmtG(pr.comida)} g</strong>{obj ? <> de {obj} g</> : null}</span>
       </div>
       {obj ? (
         <>
           <div className="barra"><i className={llega ? 'verde' : 'amarillo'} style={{ width: Math.round(pct * 100) + '%' }} /></div>
           <div className="muted small">
-            {llega ? 'Llegas a lo que pide el día.' : <>Te faltan unos <strong>{fmtG(obj - pr.comida)} g</strong>.</>}{' '}
-            Meta: {coma(cfg.proteina!.g_kg!)} g de proteína efectiva por kilo de {coma(cfg.proteina!.peso_kg!)} kg = {obj} g.
+            {llega ? 'Llegas a la proteína del día.' : <>Te faltan unos <strong>{fmtG(obj - pr.comida)} g</strong> de proteína.</>}
+            {' '}Meta: {coma(cfg.proteina!.g_kg!)} g por kilo de {coma(cfg.proteina!.peso_kg!)} kg.
             {pr.sinDato.length > 0 && <> Sin contar: {pr.sinDato.join(', ').toLowerCase()}.</>}
           </div>
-          <Plegable id="equivalencias-proteina" title="Equivalencias de cada tipo de proteína">
-            <p className="muted small" style={{ marginTop: 0 }}>Cuánto alimento hace falta, en crudo, para tu meta del día y para lo que te falta hoy. Valores medios de tablas de composición.</p>
-            <div className="table-wrap">
-              <table className="table equiv-tabla">
-                <thead><tr><th>Alimento</th><th>Prot./100 g</th><th>Meta {obj} g</th><th>Falta {fmtG(falta)} g</th></tr></thead>
-                <tbody>
-                  {(['Carnes', 'Pescados y mariscos', 'Huevos y lácteos', 'Vegetales', 'Suplementos'] as const).map((gr) => (
-                    <Fragment key={gr}>
-                      <tr className="equiv-grupo"><th colSpan={4}>{gr}</th></tr>
-                      {FUENTES_PROTEINA.filter((f) => f.grupo === gr).map((f) => (
-                        <tr key={f.id} className={f.id === fuente.id ? 'sel' : ''}>
-                          <td>{f.nombre}</td>
-                          <td>{coma(f.por100)} g</td>
-                          <td>{cantidadPara(f, obj)}</td>
-                          <td>{falta > 0 ? cantidadPara(f, falta) : '—'}</td>
-                        </tr>
-                      ))}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Plegable>
         </>
       ) : <div className="muted small">Pon tu meta de proteína (gramos por kilo y peso deseado) en «Mis horarios y reglas».</div>}
 
@@ -269,6 +236,48 @@ function Balance({ cfg, pr, kc, esHoy, guardar }: { cfg: NutriCfg; pr: ReturnTyp
         </>
       )}
     </div>
+  )
+}
+
+/** Calculadora de equivalencias de proteína: cuánto alimento hace falta para la meta y para lo que falta hoy,
+ *  en el tipo de proteína elegido y en todos. Va abajo, antes de «Mis horarios y reglas». */
+function Equivalencias({ cfg, pr, guardar }: { cfg: NutriCfg; pr: ReturnType<typeof protDia>; guardar: (p: Partial<NutriCfg>) => Promise<void> }) {
+  const obj = protObjetivo(cfg)
+  if (!obj) return null
+  const fuente = FUENTES_PROTEINA.find((f) => f.id === cfg.proteina?.fuente) ?? FUENTES_PROTEINA.find((f) => f.id === FUENTE_POR_DEFECTO)!
+  const falta = Math.max(0, obj - pr.comida)
+  return (
+    <Plegable id="equivalencias-proteina" title="Equivalencias de proteína">
+      <div className="row between small nutri-equiv">
+        <label className="muted">En
+          <select id="prot-fuente" aria-label="Tipo de proteína para la equivalencia" value={fuente.id} onChange={(e) => void guardar({ proteina: { ...(cfg.proteina ?? {}), fuente: e.target.value } })}>
+            {FUENTES_PROTEINA.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+          </select>
+        </label>
+        <span>llevas ≈ <strong>{cantidadPara(fuente, pr.comida)}</strong> de {cantidadPara(fuente, obj)}</span>
+      </div>
+      <p className="muted small">Cuánto alimento hace falta, en crudo, para tu meta del día y para lo que te falta hoy. Valores medios de tablas de composición.</p>
+      <div className="table-wrap">
+        <table className="table equiv-tabla">
+          <thead><tr><th>Alimento</th><th>Prot./100 g</th><th>Meta {obj} g</th><th>Falta {fmtG(falta)} g</th></tr></thead>
+          <tbody>
+            {(['Carnes', 'Pescados y mariscos', 'Huevos y lácteos', 'Vegetales', 'Suplementos'] as const).map((gr) => (
+              <Fragment key={gr}>
+                <tr className="equiv-grupo"><th colSpan={4}>{gr}</th></tr>
+                {FUENTES_PROTEINA.filter((f) => f.grupo === gr).map((f) => (
+                  <tr key={f.id} className={f.id === fuente.id ? 'sel' : ''}>
+                    <td>{f.nombre}</td>
+                    <td>{coma(f.por100)} g</td>
+                    <td>{cantidadPara(f, obj)}</td>
+                    <td>{falta > 0 ? cantidadPara(f, falta) : '—'}</td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Plegable>
   )
 }
 

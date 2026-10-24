@@ -14,6 +14,14 @@ function load(): Promise<Obj> {
   return loading
 }
 
+// Al volver a la app (otra pestaña, el móvil desbloqueado) se releen: otra copia abierta puede haberlos cambiado.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !cache) return
+    getSettings().then((s) => { cache = s; subs.forEach((f) => f(s)) }, () => { /* sin conexión: se queda la copia */ })
+  })
+}
+
 /** Devuelve la sección `key` de los ajustes y una función para cambiarla. `null` mientras carga. */
 export function useSettings<T extends Obj>(key: string): [T | null, (patch: Partial<T>) => Promise<void>] {
   const [all, setAll] = useState<Obj | null>(cache)
@@ -23,11 +31,16 @@ export function useSettings<T extends Obj>(key: string): [T | null, (patch: Part
     return () => { subs.delete(setAll) }
   }, [])
   const patch = async (p: Partial<T>) => {
-    const base = cache ?? {}
-    const next = { ...base, [key]: { ...((base[key] as Obj | undefined) ?? {}), ...p } as Json }
-    cache = next
-    subs.forEach((f) => f(next))
-    await saveSettings(next)
+    const con = (base: Obj): Obj => ({ ...base, [key]: { ...((base[key] as Obj | undefined) ?? {}), ...p } as Json })
+    // Se ve al momento con la copia que hay…
+    cache = con(cache ?? {})
+    subs.forEach((f) => f(cache!))
+    // …pero se guarda sobre lo último que hay en la base de datos, cambiando solo lo tocado. Así una pestaña que
+    // lleva tiempo abierta no borra lo que se guardó desde otra (pasó con la proteína de los platos).
+    let fresco: Obj | null = null
+    try { fresco = await getSettings() } catch { /* sin conexión: se guarda sobre la copia */ }
+    if (fresco) { cache = con(fresco); subs.forEach((f) => f(cache!)) }
+    await saveSettings(cache!)
   }
   return [all ? (((all[key] as Obj | undefined) ?? {}) as T) : null, patch]
 }
