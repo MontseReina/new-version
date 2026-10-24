@@ -63,8 +63,8 @@ export function TarjetaCiclo() {
       <div className="ciclo-leyenda" aria-hidden="true">
         <span><i className="ciclo-celda regla" /> Regla</span>
         <span><i className="ciclo-celda fertil" /> Fértil</span>
-        <span><i className="num ovu-oura">10</i> {c.ovuConfirmada ? 'Ovulación (Oura)' : 'Ovulación'}</span>
-        {!c.ovuConfirmada && <span><i className="num ovu-aprox">12</i> aprox.</span>}
+        <span><i className="m-ovu oura" /> Ovulación (Oura)</span>
+        <span><i className="m-ovu" /> Ovulación aprox.</span>
         {critica && <span><i className="ciclo-celda critica" /> Crítica</span>}
       </div>
       <LeyendaEpisodios lista={epis.lista} />

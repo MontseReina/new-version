@@ -482,12 +482,12 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .m-epi { display: inline-block; max-width: 100%; padding: 0 3px; border-radius: 4px; border: 1px solid var(--red); background: var(--card); color: var(--red); font-size: .56rem; font-style: normal; font-weight: 800; line-height: 1.25; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
 .m-epi.ingreso { background: var(--red); color: var(--card); }
 .ciclo-ley .m-epi, .ciclo-leyenda .m-epi { flex: none; font-size: .62rem; }
-/* Ovulación: el número dentro de un círculo negro, relleno si la marca Oura y solo el borde si es aproximada. */
-.num { display: inline-flex; align-items: center; justify-content: center; }
-.num.ovu-oura, .num.ovu-aprox { width: 1.6em; height: 1.6em; border-radius: 50%; box-sizing: border-box; font-style: normal; font-weight: 700; }
-.num.ovu-oura { background: var(--text); color: var(--card); }
-.num.ovu-aprox { border: 2px solid var(--text); color: var(--text); }
-.ciclo-leyenda .num, .ciclo-ley .num { font-size: .62rem; }
+/* Ovulación: un punto negro junto al número; relleno si la marca Oura y solo el borde si es aproximada. */
+.num { display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+.m-ovu { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--text); box-sizing: border-box; flex: none; }
+.m-ovu.oura { background: var(--text); }
+.ciclo-celda.ovu .m-ovu { border-color: var(--ink-deep); }
+.ciclo-celda.ovu .m-ovu.oura { background: var(--ink-deep); }
 .epi-titulo { font-size: .95rem; margin: .9rem 0 .3rem; }
 .epi-lista { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: .3rem; font-size: .85rem; }
 .epi-lista li { display: flex; align-items: flex-start; gap: .45rem; }

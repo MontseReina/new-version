@@ -34,9 +34,14 @@ export function MarcaEpisodio({ m }: { m?: ReturnType<typeof marcaDia> }) {
   if (!m) return null
   return <i className={'m-epi' + (m.ingreso ? ' ingreso' : '')} aria-hidden="true">{m.siglas.join(' ')}</i>
 }
-/** Número del día; en la ovulación, dentro de un círculo negro (relleno si la confirma Oura). */
+/** Número del día; en la ovulación, un punto negro al lado (relleno si la marca Oura; solo el borde si es aproximada). */
 export function NumDia({ d, ovu, confirmada }: { d: string; ovu?: boolean; confirmada?: boolean }) {
-  return <span className={'num' + (ovu ? (confirmada ? ' ovu-oura' : ' ovu-aprox') : '')}>{Number(d.slice(8))}</span>
+  return (
+    <span className="num">
+      {Number(d.slice(8))}
+      {ovu && <i className={'m-ovu' + (confirmada ? ' oura' : '')} aria-hidden="true" />}
+    </span>
+  )
 }
 /** Texto para lectores de pantalla. */
 export const textoMarca = (m?: ReturnType<typeof marcaDia>) =>
@@ -125,8 +130,8 @@ export function Leyenda({ critica, confirmada }: { critica: boolean; confirmada?
       <span><i className="ciclo-celda regla moderado" /> Regla</span>
       <span><i className="ciclo-celda prevista" /> Regla prevista</span>
       <span><i className="ciclo-celda fertil" /> Ventana fértil</span>
-      <span><i className="num ovu-oura">10</i> Ovulación (Oura)</span>
-      {!confirmada && <span><i className="num ovu-aprox">12</i> Ovulación aprox.</span>}
+      <span><i className="m-ovu oura" /> Ovulación (Oura)</span>
+      {!confirmada && <span><i className="m-ovu" /> Ovulación aprox.</span>}
       {critica && <span><i className="ciclo-celda critica" /> Ventana crítica</span>}
       <span><i className="m-man rojo" /> Manchado</span>
     </div>
