@@ -7,7 +7,7 @@ import { useSettings } from '../../store/useSettings'
 import Ciclo from '../ciclo/Ciclo'
 import { Bristol } from './Bristol'
 import { Editor } from './Editor'
-import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, cumplimiento, gruposDe, nivel, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintCfg, type SintDia } from './logica'
+import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, cumplimiento, episodiosOpcion, gruposDe, nivel, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintCfg, type SintDia } from './logica'
 
 const DIEZ = Array.from({ length: 10 }, (_, i) => i + 1)
 const ahora = () => new Date().toTimeString().slice(0, 5)
@@ -28,12 +28,20 @@ export default function Sintomas() {
     if (g.tipo !== 'detalle') { set({ sel }); return }
     // Al marcar se propone la hora actual (si es el registro de hoy); al desmarcar se borra su detalle.
     const dg = { ...(d.det?.[g.id] ?? {}) }
-    if (sel[g.id].includes(id)) dg[id] = date === todayStr() ? { hora: ahora() } : {}
+    if (sel[g.id].includes(id)) dg[id] = [nuevoEpisodio()]
     else delete dg[id]
     set({ sel, det: { ...(d.det ?? {}), [g.id]: dg } })
   }
-  const detalle = (g: Grupo, id: string, patch: Detalle) =>
-    set({ det: { ...(d.det ?? {}), [g.id]: { ...(d.det?.[g.id] ?? {}), [id]: { ...(d.det?.[g.id]?.[id] ?? {}), ...patch } } } })
+  const nuevoEpisodio = (): Detalle => (date === todayStr() ? { hora: ahora() } : {})
+  /** Episodios de una opción marcada (al menos uno). */
+  const episodios = (g: Grupo, id: string) => {
+    const xs = episodiosOpcion(d.det?.[g.id]?.[id])
+    return xs.length ? xs : [{}]
+  }
+  const ponerEpisodios = (g: Grupo, id: string, xs: Detalle[]) =>
+    set({ det: { ...(d.det ?? {}), [g.id]: { ...(d.det?.[g.id] ?? {}), [id]: xs } } })
+  const detalle = (g: Grupo, id: string, i: number, patch: Detalle) =>
+    ponerEpisodios(g, id, episodios(g, id).map((x, k) => (k === i ? { ...x, ...patch } : x)))
 
   const heces = d.heces ?? []
   const ponerDepo = (i: number, patch: Deposicion) => set({ heces: heces.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
@@ -131,22 +139,39 @@ export default function Sintomas() {
             </div>
             {tieneEscala(g) && <div style={{ marginTop: '.6rem' }}>{escala(g)}</div>}
             {g.tipo === 'detalle' && (g.opciones ?? []).filter((o) => marcadas.includes(o.id)).map((o) => {
-              const x = d.det?.[g.id]?.[o.id] ?? {}
+              const xs = episodios(g, o.id)
+              const varios = xs.length > 1
               return (
                 <div className="depo" key={o.id}>
-                  <strong className="small">{o.nombre}</strong>
-                  <div className="row" style={{ marginTop: '.3rem' }}>
-                    <label className="row small" style={{ gap: '.4rem' }}>
-                      <span className="muted">Hora</span>
-                      <input type="time" aria-label={`Hora de ${o.nombre}`} style={{ width: '7.5rem' }} value={x.hora ?? ''} onChange={(e) => detalle(g, o.id, { hora: e.target.value || null })} />
-                    </label>
-                    <button type="button" className={'chip alerta ' + (x.urgencias ? 'on' : '')} aria-pressed={!!x.urgencias} onClick={() => detalle(g, o.id, { urgencias: !x.urgencias })}>🚑 Ingreso en urgencias</button>
-                  </div>
-                  <div className="escala-fila">
-                    <span>Gravedad</span>
-                    <div className="seg escala fina diez" role="group" aria-label={`Gravedad de ${o.nombre}, de 1 a 10`}>
-                      {DIEZ.map((n) => <button type="button" key={n} className={x.gravedad === n ? 'on' : ''} aria-pressed={x.gravedad === n} onClick={() => detalle(g, o.id, { gravedad: x.gravedad === n ? null : n })}>{n}</button>)}
-                    </div>
+                  <strong className="small">{o.nombre}{varios && ` · ${xs.length} episodios`}</strong>
+                  {xs.map((x, i) => {
+                    const quien = varios ? `${o.nombre}, episodio ${i + 1}` : o.nombre
+                    return (
+                      <div className={varios ? 'epi-bloque' : ''} key={i}>
+                        {varios && (
+                          <div className="row between">
+                            <span className="small muted">Episodio {i + 1}</span>
+                            <button type="button" className="linkbtn" onClick={() => ponerEpisodios(g, o.id, xs.filter((_, k) => k !== i))}>Quitar</button>
+                          </div>
+                        )}
+                        <div className="row" style={{ marginTop: '.3rem' }}>
+                          <label className="row small" style={{ gap: '.4rem' }}>
+                            <span className="muted">Hora</span>
+                            <input type="time" aria-label={`Hora de ${quien}`} style={{ width: '7.5rem' }} value={x.hora ?? ''} onChange={(e) => detalle(g, o.id, i, { hora: e.target.value || null })} />
+                          </label>
+                          <button type="button" className={'chip alerta ' + (x.urgencias ? 'on' : '')} aria-pressed={!!x.urgencias} onClick={() => detalle(g, o.id, i, { urgencias: !x.urgencias })}>🚑 Ingreso en urgencias</button>
+                        </div>
+                        <div className="escala-fila">
+                          <span>Gravedad</span>
+                          <div className="seg escala fina diez" role="group" aria-label={`Gravedad de ${quien}, de 1 a 10`}>
+                            {DIEZ.map((n) => <button type="button" key={n} className={x.gravedad === n ? 'on' : ''} aria-pressed={x.gravedad === n} onClick={() => detalle(g, o.id, i, { gravedad: x.gravedad === n ? null : n })}>{n}</button>)}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="row" style={{ marginTop: '.5rem' }}>
+                    <button type="button" className="btn sm secondary" onClick={() => ponerEpisodios(g, o.id, [...xs, nuevoEpisodio()])}>+ Añadir otro episodio</button>
                   </div>
                 </div>
               )
