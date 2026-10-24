@@ -65,7 +65,8 @@ export function apartadosDelDia(x: DatosDia, date: string, ahoraMin: number | nu
     const claves = delDia(x.suplCfg?.lista ?? [], date).flatMap((p) => momentosDe(p).map((m) => ({ k: clave(p, m), m })))
     const sin = claves.filter(({ k }) => !t[k])
     if (claves.length && sin.length) {
-      const momentos = [...new Set(sin.map(({ m }) => NOMBRE_MOMENTO[m] ?? 'a demanda'))]
+      const orden = (m: string) => { const i = MOMENTOS.findIndex(([k]) => k === m); return i < 0 ? 99 : i }
+      const momentos = [...new Set([...sin].sort((a, b) => orden(a.m) - orden(b.m)).map(({ m }) => NOMBRE_MOMENTO[m] ?? 'a demanda'))]
       out.push({ ...base, completo: false, faltan: sin.length, falta: `${claves.length - sin.length} de ${claves.length} tomas marcadas · faltan ${enumera(momentos.map(minus))}` })
     } else if (claves.length) out.push(hecho(base))
   }
