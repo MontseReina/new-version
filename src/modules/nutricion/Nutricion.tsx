@@ -12,7 +12,7 @@ import { useCiclo } from '../ciclo/useCiclo'
 import type { HidraDia } from '../hidratacion/logica'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
-  aMin, aguaDe, modeloDe, platoMarcado, PLATO_MODELOS, protObjetivo, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
+  aMin, aHora, aguaDe, modeloDe, platoMarcado, PLATO_MODELOS, protObjetivo, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
   type Estado, type MenuId, type PlatoHoy, type NutriCfg, type NutriDia, type TomaDef, type TomaDia,
 } from './logica'
 import { cantidadPara, FUENTE_POR_DEFECTO, FUENTES_PROTEINA } from './proteinas'
@@ -362,7 +362,7 @@ function Ficha({ t, x, cfg, hidra, tocaba, pendiente, esHoy, marcar, poner }: {
       )}
       {e !== 'no' && (
         <div className="nutri-horas">
-          <Hora label={t.principal ? 'Empiezo' : 'Hora'} nombre={t.nombre} value={x?.ini} esHoy={esHoy} onChange={(v) => poner({ ini: v })} />
+          <Hora label={t.principal ? 'Empiezo' : 'Hora'} nombre={t.nombre} value={x?.ini} esHoy={esHoy} onChange={(v) => poner({ ini: v, ...(t.principal ? finAuto(x, v) : {}) })} />
           {t.principal && <Hora label="Termino" nombre={t.nombre} value={x?.fin} esHoy={esHoy} onChange={(v) => poner({ fin: v })} />}
         </div>
       )}
@@ -405,6 +405,17 @@ function OtroKcal({ o, conPlato }: { o: ReturnType<typeof kcalOtro>; conPlato: b
       {conPlato && <div className="muted">Verdura, proteína e hidratos cuentan la cantidad que marques en el plato.</div>}
     </div>
   )
+}
+
+/** Minutos que se suman al inicio de una toma principal para proponer su final. */
+const DURACION_TOMA_MIN = 30
+const masMedia = (h: string | null | undefined) => { const m = aMin(h); return m == null ? null : aHora((m + DURACION_TOMA_MIN) % 1440) }
+/** Al poner la hora de inicio, el final se pone solo media hora después, si estaba vacío o seguía siendo el
+ *  que se propuso para el inicio anterior. Un final escrito a mano no se toca. */
+function finAuto(x: TomaDia | undefined, ini: string | null): Partial<TomaDia> {
+  if (!ini) return {}
+  if (x?.fin && x.fin !== masMedia(x.ini)) return {}
+  return { fin: masMedia(ini) }
 }
 
 function Hora({ label, nombre, value, esHoy, onChange }: { label: string; nombre: string; value?: string | null; esHoy: boolean; onChange: (v: string | null) => void }) {
