@@ -4,7 +4,7 @@
 export type Opcion = { id: string; nombre: string }
 /**
  * 'una': se elige una opción · 'varias': las que hagan falta · 'detalle': varias, y cada una
- * marcada pide hora, gravedad y si hubo ingreso en urgencias · 'hambre', 'heces', 'micciones':
+ * marcada pide hora, gravedad y si hubo ingreso en urgencias, con uno o más episodios al día · 'hambre', 'heces', 'micciones':
  * bloques fijos · 'texto': texto libre · 'escala': un número de 0 a 10.
  */
 export type TipoGrupo = 'una' | 'varias' | 'detalle' | 'escala' | 'hambre' | 'heces' | 'micciones' | 'texto'
@@ -26,6 +26,12 @@ export type Grupo = {
 export type SintCfg = { grupos?: Grupo[] }
 
 export type Detalle = { hora?: string | null; gravedad?: number | null; urgencias?: boolean | null }
+/** Episodios de una opción en un día. Hasta la 0.13.5 se guardaba uno solo (objeto); desde la 0.13.6, una lista. */
+export type DetOpcion = Detalle | Detalle[]
+/** Lee los episodios de una opción, se guardaran con la forma antigua o con la nueva. */
+export function episodiosOpcion(x: DetOpcion | null | undefined): Detalle[] {
+  return x == null ? [] : Array.isArray(x) ? x : [x]
+}
 export type Deposicion = { bristol?: number | null; color?: string | null; restos?: boolean | null; flotan?: boolean | null; brillo?: boolean | null; sangre?: boolean | null }
 export const COMIDAS = [['de', 'Desayuno'], ['co', 'Comida'], ['ce', 'Cena']] as const
 export type Comida = (typeof COMIDAS)[number][0]
@@ -33,8 +39,9 @@ export type Comida = (typeof COMIDAS)[number][0]
 export type SintDia = {
   /** Opciones marcadas de cada grupo, por id. */
   sel?: { [grupo: string]: string[] }
-  /** Hora, gravedad y urgencias de cada opción marcada en los grupos 'detalle'. */
-  det?: { [grupo: string]: { [opcion: string]: Detalle } }
+  /** Hora, gravedad y urgencias de cada episodio de las opciones marcadas en los grupos 'detalle'
+   *  (una misma opción puede repetirse en el día: después de comer y en la cena, por ejemplo). */
+  det?: { [grupo: string]: { [opcion: string]: DetOpcion } }
   /** Hambre de 0 a 10 antes de desayuno, comida y cena. */
   hambre?: { [k in Comida]?: number | null }
   sin_hambre?: boolean | null
@@ -150,9 +157,11 @@ export type Episodio = { dia: string; hora: string; grupo: string; nombre: strin
 /** Episodios anotados (opciones marcadas en los grupos 'detalle', como Disautonomía), en orden. */
 export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia }[]): Episodio[] {
   return grupos.filter((g) => g.tipo === 'detalle').flatMap((g) =>
-    dias.flatMap((d) => (d.value.sel?.[g.id] ?? []).map((id) => {
-      const det = d.value.det?.[g.id]?.[id] ?? {}
-      return { dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre: g.opciones?.find((o) => o.id === id)?.nombre ?? id, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias }
+    dias.flatMap((d) => (d.value.sel?.[g.id] ?? []).flatMap((id) => {
+      const xs = episodiosOpcion(d.value.det?.[g.id]?.[id])
+      const nombre = g.opciones?.find((o) => o.id === id)?.nombre ?? id
+      // Una opción marcada sin detalle cuenta como un episodio.
+      return (xs.length ? xs : [{} as Detalle]).map((det) => ({ dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias }))
     })),
   ).sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora))
 }

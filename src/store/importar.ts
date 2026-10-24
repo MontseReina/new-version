@@ -10,6 +10,7 @@ export interface Registro { modulo: string; dia: string; valor: Obj }
  * En los registros de 'sintomas', los episodios y la nota pueden ir por nombre (como se ven en la
  * app), para cargar históricos sin conocer los identificadores de cada cuenta:
  * { episodios: [{ grupo: 'Disautonomía', opcion: 'Disautonomía nocturna', hora, gravedad, urgencias }],
+ *   (la misma opción puede ir varias veces: cada una es un episodio del día)
  *   marcar: [{ grupo: 'Dolor', opcion: 'Ovulación' }], nota: 'texto' }.
  * Se traducen a `sel`, `det` y `texto` con los grupos de la usuaria. La nota va al primer grupo de texto libre.
  */
@@ -22,13 +23,15 @@ function traducir(valor: Obj, grupos: Grupo[], faltan: Set<string>): Obj {
   const out: Obj = { ...resto }
   const sel: { [g: string]: string[] } = {}
   if (Array.isArray(episodios)) {
-    const det: { [g: string]: { [o: string]: Obj } } = {}
+    const det: { [g: string]: { [o: string]: Json } } = {}
     for (const e of episodios as EpiPorNombre[]) {
       const g = grupos.find((x) => x.tipo === 'detalle' && (mismo(x.nombre, String(e.grupo)) || x.id === e.grupo))
       const o = g?.opciones?.find((x) => mismo(x.nombre, String(e.opcion)) || x.id === e.opcion)
       if (!g || !o) { faltan.add(`${String(e.grupo)} → ${String(e.opcion)}`); continue }
       sel[g.id] = [...new Set([...(sel[g.id] ?? []), o.id])]
-      det[g.id] = { ...(det[g.id] ?? {}), [o.id]: { hora: e.hora ?? null, gravedad: e.gravedad ?? null, urgencias: e.urgencias ?? null } }
+      // Varios episodios de la misma opción en el mismo día se guardan todos, en una lista.
+      const previos = (det[g.id]?.[o.id] ?? []) as Json[]
+      det[g.id] = { ...(det[g.id] ?? {}), [o.id]: [...previos, { hora: e.hora ?? null, gravedad: e.gravedad ?? null, urgencias: e.urgencias ?? null }] }
     }
     out.det = det
   }
@@ -75,6 +78,18 @@ export function fusionar(actual: Json | undefined, nuevo: Json, esTexto = false)
   return actual
 }
 
+/** Pasa los episodios guardados con la forma antigua (un objeto por opción) a lista, para que lo
+ *  importado se sume a ellos en lugar de quedarse fuera. */
+function detEnListas(dia: Obj | null | undefined): Obj {
+  if (!dia || !esObj(dia.det)) return dia ?? {}
+  const det: Obj = {}
+  for (const [g, ops] of Object.entries(dia.det)) {
+    if (!esObj(ops)) { det[g] = ops; continue }
+    det[g] = Object.fromEntries(Object.entries(ops).map(([o, x]) => [o, x == null ? [] : Array.isArray(x) ? x : [x]]))
+  }
+  return { ...dia, det }
+}
+
 /** Lee un texto de importación. `null` si no vale. */
 export function leerRegistros(texto: string): Registro[] | null {
   let x: unknown
@@ -100,7 +115,7 @@ export async function importar(registros: Registro[], avance?: (hechos: number) 
   let n = 0
   for (const r of registros) {
     const actual = await getDaily<Obj>(r.modulo, r.dia)
-    await saveDaily(r.modulo, r.dia, fusionar(actual ?? {}, r.valor) as Obj)
+    await saveDaily(r.modulo, r.dia, fusionar(r.modulo === 'sintomas' ? detEnListas(actual) : actual ?? {}, r.valor) as Obj)
     avance?.(++n)
   }
   return n
