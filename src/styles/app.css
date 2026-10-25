@@ -587,3 +587,15 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .bio-ed-nota { margin-top: .3rem; font-size: .85rem; }
 .bio-ed-borrar { margin-top: .8rem; }
 .bio-chip-ico { padding: .2rem; }
+
+/* Bloque con sus prácticas a la vista (0.2 de la demostración) */
+.bio-bloque { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: .65rem; overflow: hidden; }
+.bio-bloque > .bio-card { border: none; border-radius: 0; margin: 0; }
+.bio-lista { border-top: 1px solid var(--line); padding: .15rem .75rem .35rem; }
+.bio-lista .bio-sep { padding: .55rem 0 .15rem; font-size: .72rem; }
+.bio-fila { display: flex; align-items: center; gap: .6rem; min-height: 2.75rem; border-bottom: 1px solid var(--line); }
+.bio-fila:last-child { border-bottom: none; }
+.bio-fila .tri { min-width: 2.1rem; height: 2.1rem; font-size: .85rem; flex: none; }
+.bio-fila span { font-size: .92rem; line-height: 1.3; min-width: 0; }
+.bio-fila.si span { color: var(--muted); text-decoration: line-through; }
+.bio-fila.np span { color: var(--muted); }

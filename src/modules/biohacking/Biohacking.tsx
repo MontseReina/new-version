@@ -46,14 +46,14 @@ export default function Biohacking() {
   return (
     <div className="bio">
       {errorGuardar}
-      <Agenda cfg={cfg} date={date} dia={d} rev={rev} irA={irA} estado={estado} abrir={(id) => setVista({ v: 'bloque', id })} editar={() => setVista({ v: 'editar' })} />
+      <Agenda cfg={cfg} date={date} dia={d} marcar={marcar} rev={rev} irA={irA} estado={estado} abrir={(id) => setVista({ v: 'bloque', id })} editar={() => setVista({ v: 'editar' })} />
     </div>
   )
 }
 
 // ---------------------------------------------------------------- Agenda
-function Agenda({ cfg, date, dia, rev, irA, estado, abrir, editar }: {
-  cfg: BioCfg | null; date: string; dia: BioDia; rev: number; irA: (d: string) => void; estado: string; abrir: (id: string) => void; editar: () => void
+function Agenda({ cfg, date, dia, marcar, rev, irA, estado, abrir, editar }: {
+  cfg: BioCfg | null; date: string; dia: BioDia; marcar: (c: { [id: string]: Marca | null }) => void; rev: number; irA: (d: string) => void; estado: string; abrir: (id: string) => void; editar: () => void
 }) {
   const hoy = todayStr()
   const lunes = weekStart(date)
@@ -68,6 +68,7 @@ function Agenda({ cfg, date, dia, rev, irA, estado, abrir, editar }: {
     return () => { vivo = false }
   }, [lunes, rev])
   const diaDe = (x: string) => (x === date ? dia : dias[x])
+  const marcas = dia.marcas ?? {}
 
   const bs = bloquesDel(cfg, date)
   const otros = otrosDias(cfg, date)
@@ -117,11 +118,24 @@ function Agenda({ cfg, date, dia, rev, irA, estado, abrir, editar }: {
             const dist = distintivo(e)
             const sub = [`${e.total} ${e.total === 1 ? 'práctica' : 'prácticas'}`, b.minutos ? `${b.minutos} min` : '', b.dias?.length ? diasTxt(b.dias) : ''].filter(Boolean).join(' · ')
             return (
-              <button type="button" key={b.id} className="bio-card" onClick={() => abrir(b.id)}>
-                <span className={'bio-ico ' + (b.ico ?? 'otro')} aria-hidden="true">{ICONO[b.ico ?? 'otro'] ?? ICONO.otro}</span>
-                <span className="bio-txt"><strong>{b.nombre}</strong><span>{sub}</span></span>
-                <span className={'bio-badge' + (dist.ok ? ' ok' : '')}>{dist.txt}</span>
-              </button>
+              <div key={b.id} className="bio-bloque">
+                <button type="button" className="bio-card" onClick={() => abrir(b.id)}>
+                  <span className={'bio-ico ' + (b.ico ?? 'otro')} aria-hidden="true">{ICONO[b.ico ?? 'otro'] ?? ICONO.otro}</span>
+                  <span className="bio-txt"><strong>{b.nombre}</strong><span>{sub}</span></span>
+                  <span className={'bio-badge' + (dist.ok ? ' ok' : '')}>{dist.txt}</span>
+                </button>
+                {/* Las prácticas del bloque a la vista, para marcarlas sin entrar. */}
+                <div className="bio-lista">
+                  {b.practicas.filter((p) => p.nombre.trim()).map((p) => p.sep ? (
+                    <div key={p.id} className="bio-sep">{p.nombre}</div>
+                  ) : (
+                    <div key={p.id} className={'bio-fila ' + (marcas[p.id] ?? '')}>
+                      <TriButton value={(marcas[p.id] ?? null) as TriState} label={p.nombre} onChange={(v) => marcar({ [p.id]: v as Marca | null })} />
+                      <span>{p.nombre}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )
           })}
         </div>
@@ -133,7 +147,7 @@ function Agenda({ cfg, date, dia, rev, irA, estado, abrir, editar }: {
           {otros.map((b) => <p key={b.id} className="small muted">{b.nombre} · {diasTxt(b.dias)}</p>)}
         </div>
       )}
-      {bs.length > 0 && <p className="muted small">Un toque ✓ hecho · dos ✗ no hecho · tres NP no precisa. Lo que quede sin marcar cuenta como no hecho.</p>}
+      {bs.length > 0 && <p className="muted small">Un toque ✓ hecho · dos ✗ no hecho · tres NP no precisa. Toca el título de un bloque para abrir su temporizador. Lo que quede sin marcar cuenta como no hecho.</p>}
     </div>
   )
 }
