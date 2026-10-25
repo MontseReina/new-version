@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import Biohacking from './biohacking/Biohacking'
 import Hidratacion from './hidratacion/Hidratacion'
 import Introspeccion from './introspeccion/Introspeccion'
 import { ResumenHidratacion } from './hidratacion/Resumen'
@@ -32,6 +33,6 @@ export const modules: ModuleDef[] = [
   { id: 'nutricion', name: 'Nutrición', ico: '🥣', path: 'nutricion', Page: Nutricion, Resumen: ResumenNutricion },
   { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion },
   { id: 'ejercicio', name: 'Ejercicio', ico: '🏃', path: 'ejercicio' },
-  { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking' },
+  { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking', Page: Biohacking },
   { id: 'introspeccion', name: 'Trabajo introspectivo', ico: '💛', path: 'introspeccion', Page: Introspeccion },
 ]

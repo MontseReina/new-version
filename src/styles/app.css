@@ -531,3 +531,59 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .hoy-fila.hecha strong { font-weight: 600; color: var(--text); }
 .marca { flex-shrink: 0; min-width: 1.6rem; height: 1.6rem; padding: 0 .4rem; border-radius: 999px; background: var(--primary); color: var(--card); font-size: .9rem; font-weight: 800; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .marca.hecha { background: var(--primary-soft); color: var(--ink-deep); }
+
+/* ---------- Biohacking (como el Ejercicio de Huma) ---------- */
+.bio-semana-nav { display: flex; align-items: center; justify-content: space-between; margin: .2rem 0 .4rem; }
+.bio-semana { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .3rem; margin-bottom: .3rem; }
+.bio-dia { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; min-height: 4.4rem; padding: .3rem 0; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink-deep); cursor: pointer; }
+.bio-dia .l { font-size: .75rem; font-weight: 600; }
+.bio-dia .n { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.bio-dia .pts { display: flex; gap: 3px; height: 7px; }
+.bio-dia.hoy { border-color: var(--ink-deep); }
+.bio-dia.on { background: var(--ink-deep); border-color: var(--ink-deep); color: var(--bg); }
+.bio-dia:disabled { opacity: .4; cursor: default; }
+.bio-dia .pts i, .bio-leyenda i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+i.completo { background: var(--green); } i.parcial { background: var(--amber); } i.nada { background: transparent; border: 1.5px solid var(--red); }
+.bio-dia.on i.completo { background: var(--primary-soft); }
+.bio-leyenda { margin: 0 0 .5rem; display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+.bio-leyenda i { margin-left: .4rem; }
+.bio-dia-txt { margin: 0 0 .2rem; }
+.bio-momento { margin: .9rem 0 .4rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+.bio-card { display: flex; align-items: center; gap: .75rem; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: .8rem .75rem; margin-bottom: .55rem; cursor: pointer; min-height: 4rem; }
+.bio-ico { width: 2.5rem; height: 2.5rem; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg); background: var(--bio-otro); }
+.bio-ico.sm { width: 1.9rem; height: 1.9rem; }
+.bio-ico.sm svg { width: 16px; height: 16px; }
+.bio-ico.vago { background: var(--bio-vago); } .bio-ico.estira { background: var(--bio-estira); } .bio-ico.luz { background: var(--bio-luz); }
+.bio-ico.sol { background: var(--bio-sol); } .bio-ico.piel { background: var(--bio-piel); } .bio-ico.boca { background: var(--bio-boca); }
+.bio-ico.sales { background: var(--bio-sales); } .bio-ico.ricino { background: var(--bio-ricino); }
+.bio-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.bio-txt strong { font-size: 1rem; line-height: 1.25; }
+.bio-txt span { font-size: .85rem; color: var(--muted); line-height: 1.3; }
+.bio-badge { flex: none; font-size: .78rem; font-weight: 800; border-radius: 999px; padding: .2rem .55rem; background: var(--bio-falta); color: var(--bio-falta-texto); }
+.bio-badge.ok { background: var(--bio-ok); color: var(--bio-ok-texto); }
+.bio-otros { margin: .4rem 0 .6rem; }
+.bio-otros p { margin: .1rem 0; }
+.bio-head { margin-bottom: .6rem; }
+.bio-head h1 { margin: 0; }
+.bio-back { width: 2.75rem; height: 2.75rem; margin-left: -.6rem; border: none; background: transparent; font-size: 1.4rem; cursor: pointer; color: var(--ink-deep); }
+.bio-fecha { font-size: .85rem; font-weight: 700; color: var(--muted); }
+.bio-sep { font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: .7rem .2rem .2rem; border-bottom: 1px solid var(--line); }
+.bio-sep:first-child { padding-top: 0; }
+.bio .tri-row { align-items: center; min-height: 3.2rem; }
+.bio-pie { display: flex; flex-direction: column; gap: .5rem; margin: .6rem 0; }
+.bio-pie .btn { min-height: 3rem; border-radius: 999px; font-weight: 800; }
+.bio-timer { text-align: center; }
+.bio-timer .barra { margin: .4rem 0 .7rem; }
+.bio-timer .row { justify-content: center; }
+.bio-reloj { font-size: 2.4rem; font-weight: 800; letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--ink-deep); }
+.bio-reloj.fin { color: var(--green); }
+.bio-add { width: 100%; min-height: 3rem; border-radius: 14px; border: 1.5px dashed var(--primary); background: var(--card); color: var(--primary); font-weight: 800; cursor: pointer; margin-bottom: .7rem; }
+.bio-ed-tit { display: flex; align-items: center; gap: .6rem; border: none; background: none; padding: 0; cursor: pointer; text-align: left; flex: 1; min-width: 0; }
+.bio-ed-cuerpo { margin-top: .6rem; border-top: 1px solid var(--line); padding-top: .4rem; }
+.bio-ed-p { padding: .35rem 0; border-bottom: 1px solid var(--line); }
+.bio-ed-p .row { flex-wrap: nowrap; gap: .3rem; }
+.bio-ed-p .row input { flex: 1; min-width: 0; }
+.bio-ed-p.sep input { font-weight: 800; text-transform: uppercase; font-size: .85rem; }
+.bio-ed-nota { margin-top: .3rem; font-size: .85rem; }
+.bio-ed-borrar { margin-top: .8rem; }
+.bio-chip-ico { padding: .2rem; }

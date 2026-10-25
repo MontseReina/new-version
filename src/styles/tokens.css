@@ -17,5 +17,18 @@
   --plato-verdura: #6f8f3a;  /* partes del plato dibujado, como en Huma */
   --plato-proteina: #b8683f;
   --plato-hidrato: #c99a2e;
+  --bio-vago: #6FA3A6;     /* bloques de Biohacking (iconos de las tarjetas) */
+  --bio-estira: #6E7650;
+  --bio-luz: #A8473A;
+  --bio-sol: #C99A2E;
+  --bio-piel: #B98A6A;
+  --bio-boca: #7E8DA8;
+  --bio-sales: #8C9AA3;
+  --bio-ricino: #7A6A3B;
+  --bio-otro: #9AA08A;
+  --bio-falta: #F6E6DA;    /* distintivo «Falta» / «2/4» */
+  --bio-falta-texto: #8A4B22;
+  --bio-ok: #E1ECD9;       /* distintivo ✓ */
+  --bio-ok-texto: #2F4A2A;
   --radius: 12px;
   --font-title: 'Cormorant Garamond', 'Aire Bold Pro', Georgia, serif;

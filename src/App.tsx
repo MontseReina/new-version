@@ -4,6 +4,7 @@ import { Login } from './auth/Login'
 import { Layout } from './components/Layout'
 import { supabase } from './lib/supabase'
 import { modules } from './modules'
+import CargarBiohacking from './modules/biohacking/Cargar'
 import CargarIntrospeccion from './modules/introspeccion/Cargar'
 import CargarVida from './modules/vida/Cargar'
 import Vida from './modules/vida/Vida'
@@ -31,6 +32,7 @@ function Rutas() {
         {pilares.map((p) => <Route key={p.id} path={p.path} element={p.Page ? <p.Page /> : <EnPreparacion name={p.name} />} />)}
         <Route path="cargar/nutricion/:datos" element={<CargarNutricion />} />
         <Route path="cargar/nutricion-ajuste/:datos" element={<CargarAjusteNutricion />} />
+        <Route path="cargar/biohacking/:datos" element={<CargarBiohacking />} />
         <Route path="cargar/introspeccion/:datos" element={<CargarIntrospeccion />} />
         <Route path="cargar/vida/:datos" element={<CargarVida />} />
         <Route path="vida" element={<Vida />} />
