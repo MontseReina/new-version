@@ -394,6 +394,59 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 
 /* Trabajo introspectivo: diario de tres páginas, agradecimientos, semana y ejercicios (0.10.0) */
 .intro-h { margin: 0 0 .5rem; font-size: 1.25rem; }
+/* Trabajo introspectivo (0.16): cabecera de la semana con sus objetivos y tarjetas con antetítulo */
+.intro { --i-diario: var(--intro-diario); --i-gracias: var(--intro-gracias); --i-expresadas: var(--intro-expresadas); --i-ejercicio: var(--intro-ejercicio); }
+.intro-kicker { display: block; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.intro-card { padding: 1rem 1rem .9rem; border-radius: 16px; position: relative; overflow: hidden; }
+.intro-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--line); }
+.intro-card.diario::before { background: var(--i-diario); }
+.intro-card.ejercicio::before { background: var(--i-ejercicio); }
+.intro-card.gracias::before { background: var(--i-gracias); }
+.intro-card-cab { margin-bottom: .5rem; align-items: flex-start; }
+.intro-card-cab .intro-h { margin: .1rem 0 0; font-size: 1.4rem; line-height: 1.2; }
+.intro-card.ejercicio { background: color-mix(in srgb, var(--i-ejercicio) 7%, var(--card)); }
+.intro-semana { border-radius: 16px; padding: .8rem .8rem .7rem; }
+.intro-sem-cab { display: flex; align-items: center; justify-content: space-between; gap: .4rem; }
+.intro-sem-titulo { text-align: center; line-height: 1.25; }
+.intro-sem-titulo strong { font-family: var(--font-title); font-size: 1.3rem; font-weight: 600; }
+.intro-sem-total { text-align: center; margin: .1rem 0 .6rem; color: var(--muted); font-size: .9rem; }
+.intro-sem-total b { font-family: var(--font-title); font-size: 1.45rem; color: var(--ink-deep); margin-right: .15rem; }
+.intro-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .3rem; margin-bottom: .8rem; }
+.intro-dia { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-height: 4.4rem; padding: .3rem 0; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink-deep); cursor: pointer; }
+.intro-dia .l { font-size: .72rem; font-weight: 700; }
+.intro-dia .n { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.intro-dia .pts { display: grid; grid-template-columns: repeat(2, 6px); gap: 2px; }
+.intro-dia .pts i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.intro-dia .pts i.si.diario { background: var(--i-diario); }
+.intro-dia .pts i.si.gracias { background: var(--i-gracias); }
+.intro-dia .pts i.si.expresadas { background: var(--i-expresadas); }
+.intro-dia .pts i.si.ejercicio { background: var(--i-ejercicio); }
+.intro-dia.hoy { border-color: var(--ink-deep); }
+.intro-dia.on { background: var(--ink-deep); border-color: var(--ink-deep); color: var(--bg); }
+.intro-dia.on .pts i:not(.si) { background: rgba(255,255,255,.22); }
+.intro-dia.on .pts i.si.diario { background: var(--primary-soft); }
+.intro-dia:disabled { opacity: .4; cursor: default; }
+.intro-metas { display: grid; grid-template-columns: max-content minmax(3rem, 1fr) max-content; align-items: center; gap: .55rem .7rem; padding: .7rem .2rem .3rem; border-top: 1px solid var(--line); }
+.intro-meta { display: contents; }
+.intro-meta-nom { display: flex; align-items: center; gap: .45rem; font-size: .9rem; font-weight: 600; }
+.intro-meta-nom i { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--line); }
+.intro-meta.diario { --c: var(--i-diario); } .intro-meta.gracias { --c: var(--i-gracias); }
+.intro-meta.expresadas { --c: var(--i-expresadas); } .intro-meta.ejercicio { --c: var(--i-ejercicio); }
+.intro-meta-nom i { background: var(--c); }
+.intro-meta-barra { display: flex; gap: 3px; height: 10px; }
+.intro-meta-barra span { flex: 1; border-radius: 3px; background: color-mix(in srgb, var(--c) 16%, var(--card)); }
+.intro-meta-barra span.si { background: var(--c); }
+.intro-meta-barra.vacia { border-bottom: 1px dashed var(--line); height: 5px; }
+.intro-meta-num { text-align: right; font-size: .85rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.intro-meta-num b { color: var(--text); font-size: 1rem; }
+.intro-meta-ok { display: inline-flex; align-items: center; justify-content: center; width: 1.15rem; height: 1.15rem; margin-left: .3rem; border-radius: 50%; background: var(--bio-ok); color: var(--bio-ok-texto); font-size: .7rem; font-weight: 800; vertical-align: 1px; }
+.intro-meta-ok.vacio { visibility: hidden; }
+.intro-meta.sin .intro-meta-nom { color: var(--muted); font-weight: 400; }
+.intro-sem-pie { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .5rem .2rem 0; }
+.intro-sem-pie .linkbtn { font-size: .82rem; color: var(--primary); margin: 0; }
+.intro-metas-ed { border-top: 1px solid var(--line); margin-top: .5rem; padding-top: .5rem; }
+.intro-metas-fila { padding: .25rem 0; flex-wrap: nowrap; }
+@media (max-width: 420px) { .intro-metas { column-gap: .5rem; } .intro-meta-nom { font-size: .86rem; } }
 .intro-diario { min-height: 46vh; line-height: 1.65; font-size: 1.02rem; padding: .8rem; }
 .intro-paginas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: .5rem 0 .25rem; }
 .intro-paginas span { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
@@ -403,14 +456,6 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .intro-gracia:last-of-type { border-bottom: none; }
 .intro-gracia .chips { margin-top: .4rem; }
 .intro-gracia .chip { font-size: .8rem; padding: .3rem .6rem; }
-.intro-sem { display: grid; grid-template-columns: minmax(5.2rem, auto) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; margin-bottom: .6rem; }
-.intro-sem-tit { font-size: .8rem; color: var(--muted); }
-.intro-dow { text-align: center; font-size: .72rem; color: var(--muted); }
-.intro-dow.hoy { color: var(--text); font-weight: 700; }
-.intro-celda { height: 1.7rem; border-radius: 6px; border: 1.5px solid transparent; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: .82rem; font-weight: 700; color: var(--primary); text-decoration: none; }
-.intro-celda.on { background: var(--primary-soft); border-color: var(--primary); }
-.intro-celda.futuro { background: transparent; border-color: var(--line); pointer-events: none; }
-.intro-celda.hoy { border-color: var(--ink-deep); }
 .intro-veces { flex: none; font-size: .8rem; color: var(--muted); text-align: right; white-space: nowrap; }
 .intro-veces b { font-family: var(--font-title); font-size: 1.5rem; color: var(--text); margin-right: .25rem; }
 .intro-bloque h3 { color: var(--text); margin-bottom: 0; }

@@ -30,5 +30,9 @@
   --bio-falta-texto: #8A4B22;
   --bio-ok: #E1ECD9;       /* distintivo ✓ */
   --bio-ok-texto: #2F4A2A;
+  --intro-diario: #3D4126;  /* hábitos de Trabajo introspectivo: puntos y barras de la semana */
+  --intro-gracias: #C99A2E;
+  --intro-expresadas: #A8473A;
+  --intro-ejercicio: #6FA3A6;
   --radius: 12px;
   --font-title: 'Cormorant Garamond', 'Aire Bold Pro', Georgia, serif;

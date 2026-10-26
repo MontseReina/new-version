@@ -27,7 +27,10 @@ export type IntroDia = {
 export type Bloque = { id: string; nombre: string; sobre?: string }
 export type Ejercicio = { id: string; bloque?: string; titulo: string; texto?: string }
 export type Patron = { id: string; texto: string; tipo?: string; veces?: number; de?: number; ejercicio?: string }
+/** Objetivo semanal de cada hábito. 0 = sin objetivo esa semana. */
+export type Metas = { diario?: number; gracias?: number; expresadas?: number; ejercicio?: number }
 export type IntroCfg = {
+  metas?: Metas
   bloques?: Bloque[]
   ejercicios?: Ejercicio[]
   /** Ejercicio que se está trabajando ahora: uno cada vez. */
@@ -68,6 +71,25 @@ export function resumen(dias: { day: string; value: IntroDia }[]) {
     if (hechosDe(d)) conEjercicio++
   }
   return { conDiario, completos, gracias, dichas, conEjercicio }
+}
+
+/** Hábitos de la semana, en el orden en que se enseñan. El diario cuenta con una línea: lo mínimo cuenta como hecho. */
+export const HABITOS = [
+  { k: 'diario', nombre: 'Diario', unidad: 'días', max: 7, def: 4, hecho: (d: IntroDia) => (palabras(d.diario) > 0 ? 1 : 0) },
+  { k: 'gracias', nombre: 'Agradecimientos', unidad: 'días', max: 7, def: 5, hecho: (d: IntroDia) => (escritas(d) > 0 ? 1 : 0) },
+  { k: 'expresadas', nombre: 'Expresados', unidad: 'veces', max: 21, def: 2, hecho: (d: IntroDia) => expresadas(d) },
+  { k: 'ejercicio', nombre: 'Ejercicio', unidad: 'días', max: 7, def: 4, hecho: (d: IntroDia) => (hechosDe(d) ? 1 : 0) },
+] as const
+export type Habito = (typeof HABITOS)[number]['k']
+export const metaDe = (cfg: IntroCfg | null, k: Habito) => cfg?.metas?.[k] ?? HABITOS.find((h) => h.k === k)!.def
+
+/** Cómo va cada objetivo en la semana: lo hecho, la meta y si se ha alcanzado. */
+export function progresoSemana(cfg: IntroCfg | null, dias: IntroDia[]) {
+  return HABITOS.map((h) => {
+    const hecho = dias.reduce((s, d) => s + h.hecho(d), 0)
+    const meta = metaDe(cfg, h.k)
+    return { ...h, hecho, meta, logrado: meta > 0 && hecho >= meta }
+  })
 }
 
 /**

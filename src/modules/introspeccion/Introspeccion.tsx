@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
 import { Plegable } from '../../components/ui'
 import { addDays, todayStr, weekStart } from '../../lib/dates'
@@ -9,12 +9,11 @@ import { useSettings } from '../../store/useSettings'
 import { Ejercicios } from './Ejercicios'
 import { Informe } from './Informe'
 import { Pestanas } from './Pestanas'
+import { Semana } from './Semana'
 import {
-  EXPRESIONES, PAGINAS, PALABRAS_PAGINA, ejercicioActivo, escritas, expresadas, graciasDe, hechosDe, paginas, palabras, resumen,
+  EXPRESIONES, PAGINAS, PALABRAS_PAGINA, ejercicioActivo, graciasDe, paginas, palabras,
   type Gracia, type IntroCfg, type IntroDia,
 } from './logica'
-
-const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 /** Trabajo introspectivo: diario de la mañana, ejercicio de ahora y agradecimientos de la noche. */
 export default function Introspeccion() {
@@ -60,33 +59,25 @@ export default function Introspeccion() {
     listDaily<IntroDia>('introspeccion', lunes, addDays(lunes, 6)).then((r) => alive && setSemana(r), () => {})
     return () => { alive = false }
   }, [lunes, rev])
-  const dias = Array.from({ length: 7 }, (_, i) => addDays(lunes, i))
   const porDia = new Map(semana.map((r) => [r.day, r.value]))
   if (state !== 'cargando') porDia.set(date, d)
-  const sem = resumen(dias.filter((x) => porDia.has(x)).map((x) => ({ day: x, value: porDia.get(x)! })))
-  const fila = (titulo: string, marca: (v: IntroDia) => string) => (
-    <>
-      <span className="intro-sem-tit">{titulo}</span>
-      {dias.map((x) => {
-        const v = porDia.get(x)
-        const m = v ? marca(v) : ''
-        return <Link key={x} to={`/introspeccion/${x}`} className={'intro-celda' + (m ? ' on' : '') + (x === hoy ? ' hoy' : '') + (x > hoy ? ' futuro' : '')} aria-label={`${titulo}, ${x}`}>{m}</Link>
-      })}
-    </>
-  )
 
   return (
-    <div>
+    <div className="intro">
       <h1>Trabajo introspectivo</h1>
       <Pestanas />
+      <Semana cfg={cfg} saveCfg={saveCfg} date={date} lunes={lunes} porDia={porDia} base="/introspeccion" />
       <DateNav date={date} base="/introspeccion" sub={estado} />
       {state === 'error' && (
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
 
-      <div className="card">
-        <div className="row between">
-          <h2 className="intro-h">Mañana · Diario de tres páginas</h2>
+      <div className="card intro-card diario">
+        <div className="row between intro-card-cab">
+          <div>
+            <span className="intro-kicker">Mañana</span>
+            <h2 className="intro-h">Diario de tres páginas</h2>
+          </div>
           {n > 0 && <button type="button" className="btn sm ghost" onClick={() => setVer(!abierto)}>{abierto ? 'Plegar' : 'Ver lo escrito'}</button>}
         </div>
         {abierto ? (
@@ -103,14 +94,15 @@ export default function Introspeccion() {
         </p>
       </div>
 
-      <div className="card">
-        <h2 className="intro-h">Ejercicio de ahora</h2>
+      <div className="card intro-card ejercicio">
+        <div className="intro-card-cab">
+          <span className="intro-kicker">Ejercicio de ahora{bloque ? ` · ${bloque.nombre}` : ''}</span>
+          {activo && <h2 className="intro-h">{activo.titulo}</h2>}
+        </div>
         {!cfg ? <p className="muted">Cargando…</p> : !activo ? (
           <p className="muted">No hay ningún ejercicio elegido. Elige uno en «Mis ejercicios», más abajo.</p>
         ) : (
           <>
-            {bloque && <span className="tag">{bloque.nombre}</span>}
-            <p><strong>{activo.titulo}</strong></p>
             {activo.texto && <p className="intro-texto">{activo.texto}</p>}
             <button type="button" className={'midia-check' + (hecho ? ' on' : '')} aria-pressed={!!hecho} disabled={state === 'cargando'} onClick={tocarHecho}>
               <span className="midia-caja" aria-hidden="true">{hecho ? '✓' : ''}</span>
@@ -126,8 +118,11 @@ export default function Introspeccion() {
         )}
       </div>
 
-      <div className="card">
-        <h2 className="intro-h">Noche · Tres agradecimientos</h2>
+      <div className="card intro-card gracias">
+        <div className="intro-card-cab">
+          <span className="intro-kicker">Noche</span>
+          <h2 className="intro-h">Tres agradecimientos</h2>
+        </div>
         {gracias.map((g, i) => (
           <div className="intro-gracia" key={i}>
             <input type="text" aria-label={`Agradecimiento ${i + 1}`} placeholder={`${i + 1}. Hoy agradezco…`} disabled={state === 'cargando'}
@@ -144,20 +139,6 @@ export default function Introspeccion() {
         ))}
         <p className="muted small">Si el agradecimiento es a una persona, marca cómo se lo has hecho llegar. Si no lo es, déjalo sin marcar.</p>
       </div>
-
-      <Plegable id="intro-semana" title="Esta semana" abierto>
-        <div className="intro-sem">
-          <span />
-          {dias.map((x, i) => <span key={x} className={'intro-dow' + (x === hoy ? ' hoy' : '')}>{DOW[i]}</span>)}
-          {fila('Diario', (v) => (paginas(v.diario) >= PAGINAS ? '✓' : palabras(v.diario) ? '·' : ''))}
-          {fila('Gracias', (v) => (escritas(v) ? String(escritas(v)) : ''))}
-          {fila('Expresadas', (v) => (expresadas(v) ? String(expresadas(v)) : ''))}
-          {fila('Ejercicio', (v) => (hechosDe(v) ? '✓' : ''))}
-        </div>
-        <p className="muted small">
-          Diario {sem.conDiario} días ({sem.completos} con las tres páginas) · {sem.gracias} agradecimientos, {sem.dichas} expresados · ejercicio {sem.conEjercicio} días.
-        </p>
-      </Plegable>
 
       <Plegable id="intro-patrones" title="Lo que se repite">
         {(cfg?.patrones ?? []).length === 0 ? (
