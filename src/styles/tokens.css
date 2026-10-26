@@ -34,5 +34,11 @@
   --intro-gracias: #C99A2E;
   --intro-expresadas: #A8473A;
   --intro-ejercicio: #6FA3A6;
+  --bloque-1: #6FA3A6;   /* Renuncia a la lucha: calma */
+  --bloque-1-suave: #EAF2F2;
+  --bloque-2: #6E7650;   /* Renuncia al control: soltar */
+  --bloque-2-suave: #EEF0E6;
+  --bloque-3: #C99A2E;   /* Vive: luz y placer */
+  --bloque-3-suave: #FBF1DC;
   --radius: 12px;
   --font-title: 'Cormorant Garamond', 'Aire Bold Pro', Georgia, serif;

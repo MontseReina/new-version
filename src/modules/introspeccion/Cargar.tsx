@@ -49,7 +49,13 @@ export default function CargarIntrospeccion() {
           {nuevo.ejercicios && (
             <>
               <h3>Ejercicios</h3>
-              {nuevo.ejercicios.map((e) => <div key={e.id} className="small">• {e.titulo}</div>)}
+              {nuevo.ejercicios.map((e) => <div key={e.id} className="small">• {e.emoji ? e.emoji + ' ' : ''}{e.titulo}</div>)}
+            </>
+          )}
+          {nuevo.retirar && (
+            <>
+              <h3>Se retiran</h3>
+              {nuevo.retirar.map((id) => <div key={id} className="small">• {(cfg?.ejercicios ?? []).find((e) => e.id === id)?.titulo ?? id}</div>)}
             </>
           )}
           {nuevo.activo && titulo(nuevo.activo) && <p className="small">Ejercicio de ahora: <strong>{titulo(nuevo.activo)}</strong></p>}

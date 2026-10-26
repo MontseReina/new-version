@@ -6,7 +6,8 @@ import { addDays, todayStr, weekStart } from '../../lib/dates'
 import { listDaily, type Daily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { Ejercicios } from './Ejercicios'
+import { AnadirEjercicio, Ejercicios } from './Ejercicios'
+import { Ficha, emojiBloque, tonoBloque } from './Ficha'
 import { Informe } from './Informe'
 import { Pestanas } from './Pestanas'
 import { Semana } from './Semana'
@@ -42,7 +43,8 @@ export default function Introspeccion() {
   }
 
   const activo = ejercicioActivo(cfg)
-  const bloque = (cfg?.bloques ?? []).find((b) => b.id === activo?.bloque)
+  const iBloque = (cfg?.bloques ?? []).findIndex((b) => b.id === activo?.bloque)
+  const bloque = iBloque >= 0 ? cfg!.bloques![iBloque] : undefined
   const hecho = activo ? d.hechos?.[activo.id] : undefined
   const tocarHecho = () => {
     if (!activo) return
@@ -94,16 +96,19 @@ export default function Introspeccion() {
         </p>
       </div>
 
-      <div className="card intro-card ejercicio">
-        <div className="intro-card-cab">
-          <span className="intro-kicker">Ejercicio de ahora{bloque ? ` · ${bloque.nombre}` : ''}</span>
-          {activo && <h2 className="intro-h">{activo.titulo}</h2>}
+      <div className={'card intro-card ejercicio ' + (iBloque >= 0 ? tonoBloque(iBloque) : '')}>
+        <div className="intro-card-cab ficha-ahora-cab">
+          {activo && <span className="ficha-emoji grande" aria-hidden="true">{activo.emoji ?? emojiBloque(bloque, iBloque)}</span>}
+          <div>
+            <span className="intro-kicker">Ejercicio de ahora{bloque ? ` · ${bloque.nombre}` : ''}</span>
+            {activo && <h2 className="intro-h">{activo.titulo}</h2>}
+          </div>
         </div>
         {!cfg ? <p className="muted">Cargando…</p> : !activo ? (
-          <p className="muted">No hay ningún ejercicio elegido. Elige uno en «Mis ejercicios», más abajo.</p>
+          <p className="muted">No hay ningún ejercicio elegido. Elige uno en «Mis ejercicios», justo debajo.</p>
         ) : (
           <>
-            {activo.texto && <p className="intro-texto">{activo.texto}</p>}
+            <Ficha e={activo} />
             <button type="button" className={'midia-check' + (hecho ? ' on' : '')} aria-pressed={!!hecho} disabled={state === 'cargando'} onClick={tocarHecho}>
               <span className="midia-caja" aria-hidden="true">{hecho ? '✓' : ''}</span>
               {date === hoy ? 'Lo he hecho hoy' : 'Lo hice este día'}
@@ -116,6 +121,14 @@ export default function Introspeccion() {
             )}
           </>
         )}
+      </div>
+
+      <div className="card intro-card mis">
+        <div className="intro-card-cab">
+          <span className="intro-kicker">Por bloques</span>
+          <h2 className="intro-h">Mis ejercicios</h2>
+        </div>
+        {cfg ? <Ejercicios cfg={cfg} saveCfg={saveCfg} /> : <p className="muted">Cargando…</p>}
       </div>
 
       <div className="card intro-card gracias">
@@ -138,6 +151,17 @@ export default function Introspeccion() {
           </div>
         ))}
         <p className="muted small">Si el agradecimiento es a una persona, marca cómo se lo has hecho llegar. Si no lo es, déjalo sin marcar.</p>
+        <div className="intro-cierre">
+          <span className="ficha-sub">🌙 Cierre del día · opcional, una línea</span>
+          <label className="field">
+            <span>🌱 Hoy avancé en… aunque mi cuerpo…</span>
+            <input type="text" disabled={state === 'cargando'} value={d.avance ?? ''} onChange={(e) => set({ avance: e.target.value })} />
+          </label>
+          <label className="field">
+            <span>🎾 Hoy hice algo porque quise, sin «tengo que»:</span>
+            <input type="text" disabled={state === 'cargando'} value={d.quise ?? ''} onChange={(e) => set({ quise: e.target.value })} />
+          </label>
+        </div>
       </div>
 
       <Plegable id="intro-patrones" title="Lo que se repite">
@@ -168,12 +192,12 @@ export default function Introspeccion() {
         )}
       </Plegable>
 
-      <Plegable id="intro-ejercicios" title="Mis ejercicios">
-        {cfg ? <Ejercicios cfg={cfg} saveCfg={saveCfg} /> : <p className="muted">Cargando…</p>}
-      </Plegable>
-
       <Plegable id="intro-informe" title="Informe mensual">
         <Informe cfg={cfg} saveCfg={saveCfg} hasta={date} />
+      </Plegable>
+
+      <Plegable id="intro-anadir" title="➕ Añadir un ejercicio">
+        {cfg ? <AnadirEjercicio cfg={cfg} saveCfg={saveCfg} /> : <p className="muted">Cargando…</p>}
       </Plegable>
     </div>
   )

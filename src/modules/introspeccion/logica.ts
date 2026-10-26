@@ -22,10 +22,17 @@ export type IntroDia = {
   diario?: string
   gracias?: Gracia[]
   hechos?: { [ejercicio: string]: Hecho }
+  /** Cierre del día: una prueba de que avanzo y algo hecho porque quise. */
+  avance?: string
+  quise?: string
 }
 
-export type Bloque = { id: string; nombre: string; sobre?: string }
-export type Ejercicio = { id: string; bloque?: string; titulo: string; texto?: string }
+export type Bloque = { id: string; nombre: string; sobre?: string; emoji?: string }
+/** Ficha de un ejercicio, como las de terapia: para qué sirve, paso a paso y de dónde sale. */
+export type Ejercicio = {
+  id: string; bloque?: string; titulo: string; texto?: string
+  emoji?: string; para?: string; pasos?: string[]; minutos?: number; cuando?: string; truco?: string; responde?: string; fuente?: string
+}
 export type Patron = { id: string; texto: string; tipo?: string; veces?: number; de?: number; ejercicio?: string }
 /** Objetivo semanal de cada hábito. 0 = sin objetivo esa semana. */
 export type Metas = { diario?: number; gracias?: number; expresadas?: number; ejercicio?: number }
@@ -38,6 +45,8 @@ export type IntroCfg = {
   patrones?: Patron[]
   /** Periodo que cubren los patrones, tal como llega del informe. */
   periodo?: string
+  /** Solo al cargar un informe: ids de ejercicios que se retiran. No se guarda. */
+  retirar?: string[]
 }
 
 export const palabras = (t?: string | null) => (t?.trim() ? t.trim().split(/\s+/).length : 0)
@@ -129,6 +138,11 @@ export function textoInforme(
         out.push(`${i + 1}. ${x.texto!.trim()} — ${como.length ? 'expresado: ' + como.join(', ') : 'sin expresar'}`)
       })
     }
+    if (d.avance?.trim() || d.quise?.trim()) {
+      out.push('', '### Cierre del día')
+      if (d.avance?.trim()) out.push(`- Hoy avancé en: ${d.avance.trim()}`)
+      if (d.quise?.trim()) out.push(`- Hice porque quise: ${d.quise.trim()}`)
+    }
     const h = Object.entries(d.hechos ?? {})
     if (h.length) {
       out.push('', '### Ejercicio')
@@ -152,11 +166,17 @@ export function leerInforme(texto: string): IntroCfg | null {
   if (!esObj(raiz)) return null
   const out: IntroCfg = {}
   if (Array.isArray(raiz.bloques)) {
-    out.bloques = raiz.bloques.filter(esObj).map((b) => ({ id: txt(b.id) ?? '', nombre: txt(b.nombre) ?? '', ...(txt(b.sobre) ? { sobre: txt(b.sobre) } : {}) })).filter((b) => b.id && b.nombre)
+    out.bloques = raiz.bloques.filter(esObj).map((b) => ({ id: txt(b.id) ?? '', nombre: txt(b.nombre) ?? '', ...(txt(b.sobre) ? { sobre: txt(b.sobre) } : {}), ...(txt(b.emoji) ? { emoji: txt(b.emoji) } : {}) })).filter((b) => b.id && b.nombre)
   }
   if (Array.isArray(raiz.ejercicios)) {
     out.ejercicios = raiz.ejercicios.filter(esObj)
-      .map((e) => ({ id: txt(e.id) ?? '', titulo: txt(e.titulo) ?? '', ...(txt(e.bloque) ? { bloque: txt(e.bloque) } : {}), ...(txt(e.texto) ? { texto: txt(e.texto) } : {}) }))
+      .map((e) => {
+        const x: Ejercicio = { id: txt(e.id) ?? '', titulo: txt(e.titulo) ?? '' }
+        for (const k of ['bloque', 'texto', 'emoji', 'para', 'cuando', 'truco', 'responde', 'fuente'] as const) if (txt(e[k])) x[k] = txt(e[k])
+        if (typeof e.minutos === 'number') x.minutos = e.minutos
+        if (Array.isArray(e.pasos)) { const p = e.pasos.map(txt).filter((v): v is string => !!v); if (p.length) x.pasos = p }
+        return x
+      })
       .filter((e) => e.id && e.titulo)
   }
   if (Array.isArray(raiz.patrones)) {
@@ -168,6 +188,7 @@ export function leerInforme(texto: string): IntroCfg | null {
       ...(txt(p.ejercicio) ? { ejercicio: txt(p.ejercicio) } : {}),
     })).filter((p) => p.texto)
   }
+  if (Array.isArray(raiz.retirar)) { const r = raiz.retirar.map(txt).filter((v): v is string => !!v); if (r.length) out.retirar = r }
   if (txt(raiz.activo)) out.activo = txt(raiz.activo)
   if (txt(raiz.periodo)) out.periodo = txt(raiz.periodo)
   return Object.keys(out).length ? out : null
@@ -182,10 +203,15 @@ const porId = <T extends { id: string }>(actual: T[] | undefined, nuevo: T[]) =>
  * bloques y los ejercicios se suman a los que ya hay (el mismo id actualiza el que estaba).
  */
 export function aplicarInforme(actual: IntroCfg | null, nuevo: IntroCfg): Partial<IntroCfg> {
+  const { retirar, ...resto } = nuevo
+  const fuera = new Set(retirar ?? [])
+  const ejercicios = nuevo.ejercicios || fuera.size ? porId(actual?.ejercicios, nuevo.ejercicios ?? []).filter((e) => !fuera.has(e.id)) : undefined
+  const activo = nuevo.activo ?? (actual?.activo && fuera.has(actual.activo) ? null : undefined)
   return {
-    ...nuevo,
+    ...resto,
     ...(nuevo.bloques ? { bloques: porId(actual?.bloques, nuevo.bloques) } : {}),
-    ...(nuevo.ejercicios ? { ejercicios: porId(actual?.ejercicios, nuevo.ejercicios) } : {}),
+    ...(ejercicios ? { ejercicios } : {}),
+    ...(activo !== undefined ? { activo } : {}),
   }
 }
 /** Qué trae un informe, en una frase. */
@@ -193,6 +219,7 @@ export function resumenInforme(nuevo: IntroCfg): string {
   return [
     nuevo.patrones ? `lo que se repite (${nuevo.patrones.length})` : '',
     nuevo.ejercicios ? `ejercicios (${nuevo.ejercicios.length})` : '',
+    nuevo.retirar ? `retira ${nuevo.retirar.length}` : '',
     nuevo.bloques ? `bloques (${nuevo.bloques.length})` : '',
     nuevo.activo ? 'el ejercicio de ahora' : '',
   ].filter(Boolean).join(', ') || 'el periodo'
