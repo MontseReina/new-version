@@ -46,7 +46,12 @@ export default function Introspeccion() {
     if (resto[id]) delete resto[id]; else resto[id] = {}
     set({ hechos: resto })
   }
-  const notaHecho = (id: string, nota: string) => set({ hechos: { ...(d.hechos ?? {}), [id]: { nota } } })
+  const responder = (id: string, i: number, texto: string) => {
+    const h = d.hechos?.[id] ?? {}
+    const resp = [...(h.resp ?? [])]
+    resp[i] = texto
+    set({ hechos: { ...(d.hechos ?? {}), [id]: { ...h, resp } } })
+  }
 
   // Semana de lunes a domingo del día que se está viendo.
   const lunes = weekStart(date)
@@ -97,8 +102,8 @@ export default function Introspeccion() {
           <h2 className="intro-h">Mis ejercicios</h2>
         </div>
         {cfg ? (
-          <Ejercicios cfg={cfg} saveCfg={saveCfg} hechos={d.hechos ?? {}} esHoy={date === hoy} bloqueado={state === 'cargando'}
-            tocarHecho={tocarHecho} notaHecho={notaHecho} />
+          <Ejercicios cfg={cfg} saveCfg={saveCfg} hechos={d.hechos ?? {}} date={date} esHoy={date === hoy} bloqueado={state === 'cargando'}
+            semana={[...porDia].map(([day, value]) => ({ day, value }))} tocarHecho={tocarHecho} responder={responder} />
         ) : <p className="muted">Cargando…</p>}
       </div>
 
@@ -122,17 +127,6 @@ export default function Introspeccion() {
           </div>
         ))}
         <p className="muted small">Si el agradecimiento es a una persona, marca cómo se lo has hecho llegar. Si no lo es, déjalo sin marcar.</p>
-        <div className="intro-cierre">
-          <span className="ficha-sub">🌙 Cierre del día · opcional, una línea</span>
-          <label className="field">
-            <span>🌱 Hoy avancé en… aunque mi cuerpo…</span>
-            <input type="text" disabled={state === 'cargando'} value={d.avance ?? ''} onChange={(e) => set({ avance: e.target.value })} />
-          </label>
-          <label className="field">
-            <span>🎾 Hoy hice algo porque quise, sin «tengo que»:</span>
-            <input type="text" disabled={state === 'cargando'} value={d.quise ?? ''} onChange={(e) => set({ quise: e.target.value })} />
-          </label>
-        </div>
       </div>
 
       <Plegable id="intro-patrones" title="Lo que se repite">

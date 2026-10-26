@@ -16,8 +16,8 @@ export const EXPRESIONES = [
 ] as const
 
 export type Gracia = { texto?: string; como?: string[] }
-/** Ejercicios hechos en el día: por id, con lo que se notó. */
-export type Hecho = { nota?: string }
+/** Ejercicios hechos en el día: por id, con las respuestas a las preguntas de su diario (y la nota antigua). */
+export type Hecho = { nota?: string; resp?: string[] }
 export type IntroDia = {
   diario?: string
   gracias?: Gracia[]
@@ -32,6 +32,21 @@ export type Bloque = { id: string; nombre: string; sobre?: string; emoji?: strin
 export type Ejercicio = {
   id: string; bloque?: string; titulo: string; texto?: string
   emoji?: string; para?: string; pasos?: string[]; minutos?: number; cuando?: string; truco?: string; responde?: string; fuente?: string
+  /** Lo que hay que hacer, en una frase. */
+  frase?: string
+  /** Preguntas del diario del ejercicio. */
+  preguntas?: string[]
+}
+
+/** Preguntas del diario de un ejercicio; sin preguntas propias, una genérica. */
+export const preguntasDe = (e: Ejercicio | undefined) => (e?.preguntas?.length ? e.preguntas : ['¿Qué hice y qué noté?'])
+/** Pares pregunta-respuesta escritos en un día para un ejercicio (incluye la nota antigua). */
+export function entradaDe(e: Ejercicio | undefined, h: Hecho | undefined): [string, string][] {
+  if (!h) return []
+  const ps = preguntasDe(e)
+  const out: [string, string][] = (h.resp ?? []).map((r, i): [string, string] => [ps[i] ?? 'Nota', r?.trim() ?? '']).filter(([, r]) => r)
+  if (h.nota?.trim()) out.push(['Qué noté', h.nota.trim()])
+  return out
 }
 export type Patron = { id: string; texto: string; tipo?: string; veces?: number; de?: number; ejercicio?: string }
 /** Objetivo semanal de cada hábito. 0 = sin objetivo esa semana. */
@@ -143,10 +158,23 @@ export function textoInforme(
       if (d.avance?.trim()) out.push(`- Hoy avancé en: ${d.avance.trim()}`)
       if (d.quise?.trim()) out.push(`- Hice porque quise: ${d.quise.trim()}`)
     }
-    const h = Object.entries(d.hechos ?? {})
-    if (h.length) {
-      out.push('', '### Ejercicio')
-      for (const [id, v] of h) out.push(`- ${titulo(id)}${v.nota?.trim() ? ' — qué noté: ' + v.nota.trim() : ''}`)
+    const h = Object.keys(d.hechos ?? {})
+    if (h.length) out.push('', '### Ejercicios hechos', ...h.map((id) => `- ${titulo(id)}`))
+  }
+  // El diario de cada ejercicio, junto y por fechas: para ver qué se mueve y dónde sigue el atasco.
+  const ids = [...new Set(dias.flatMap(({ value: d }) => Object.keys(d.hechos ?? {})))]
+  if (ids.length) {
+    out.push('', '## Diario de los ejercicios')
+    for (const id of ids) {
+      const e = (cfg?.ejercicios ?? []).find((x) => x.id === id)
+      const veces = dias.filter(({ value: d }) => d.hechos?.[id])
+      out.push('', `### ${titulo(id)} · ${veces.length} ${veces.length === 1 ? 'día' : 'días'}`)
+      for (const { day, value: d } of veces) {
+        const c = ciclo(day)
+        const ent = entradaDe(e, d.hechos![id])
+        out.push(`- ${fmtDate(day)}${c ? ' · ' + c : ''}${ent.length ? '' : ': hecho, sin escribir'}`)
+        for (const [q, r] of ent) out.push(`  - ${q} ${r}`)
+      }
     }
   }
   return out.join('\n') + '\n'
@@ -172,9 +200,10 @@ export function leerInforme(texto: string): IntroCfg | null {
     out.ejercicios = raiz.ejercicios.filter(esObj)
       .map((e) => {
         const x: Ejercicio = { id: txt(e.id) ?? '', titulo: txt(e.titulo) ?? '' }
-        for (const k of ['bloque', 'texto', 'emoji', 'para', 'cuando', 'truco', 'responde', 'fuente'] as const) if (txt(e[k])) x[k] = txt(e[k])
+        for (const k of ['bloque', 'texto', 'emoji', 'para', 'cuando', 'truco', 'responde', 'fuente', 'frase'] as const) if (txt(e[k])) x[k] = txt(e[k])
         if (typeof e.minutos === 'number') x.minutos = e.minutos
         if (Array.isArray(e.pasos)) { const p = e.pasos.map(txt).filter((v): v is string => !!v); if (p.length) x.pasos = p }
+        if (Array.isArray(e.preguntas)) { const p = e.preguntas.map(txt).filter((v): v is string => !!v); if (p.length) x.preguntas = p }
         return x
       })
       .filter((e) => e.id && e.titulo)

@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { Ficha, emojiBloque, tonoBloque } from './Ficha'
-import { nuevoId, type Ejercicio, type Hecho, type IntroCfg } from './logica'
+import { fmtDate } from '../../lib/dates'
+import { entradaDe, nuevoId, preguntasDe, type Ejercicio, type Hecho, type IntroCfg, type IntroDia } from './logica'
 
 /** Mis ejercicios: una sección por bloque, cada ejercicio como ficha que se abre con un toque.
- *  El de ahora va abierto de entrada; cada ficha abierta lleva su «Lo he hecho hoy». */
-export function Ejercicios({ cfg, saveCfg, hechos, esHoy, bloqueado, tocarHecho, notaHecho }: {
+ *  El de ahora va abierto de entrada. Cada ficha abierta lleva su diario: unas preguntas propias que,
+ *  al contestar cualquiera, marcan el ejercicio como hecho ese día; debajo, lo escrito el resto de la semana. */
+export function Ejercicios({ cfg, saveCfg, hechos, date, esHoy, bloqueado, semana, tocarHecho, responder }: {
   cfg: IntroCfg; saveCfg: (p: Partial<IntroCfg>) => Promise<void>
-  hechos: { [id: string]: Hecho }; esHoy: boolean; bloqueado: boolean
-  tocarHecho: (id: string) => void; notaHecho: (id: string, nota: string) => void
+  hechos: { [id: string]: Hecho }; date: string; esHoy: boolean; bloqueado: boolean
+  semana: { day: string; value: IntroDia }[]
+  tocarHecho: (id: string) => void; responder: (id: string, i: number, texto: string) => void
 }) {
   const bloques = cfg.bloques ?? []
   const lista = cfg.ejercicios ?? []
@@ -49,7 +52,7 @@ export function Ejercicios({ cfg, saveCfg, hechos, esHoy, bloqueado, tocarHecho,
                   <span className="ficha-emoji" aria-hidden="true">{e.emoji ?? g.emoji}</span>
                   <span className="ficha-tit">
                     <strong>{e.titulo}</strong>
-                    {!open && e.para && <span className="ficha-resumen">{e.para}</span>}
+                    {!open && (e.frase ?? e.para) && <span className="ficha-resumen">{e.frase ?? e.para}</span>}
                   </span>
                   {hechos[e.id] && <span className="ficha-hecho" aria-label="hecho este día">✓</span>}
                   {ahora && <span className="ficha-ahora">Ahora</span>}
@@ -58,16 +61,38 @@ export function Ejercicios({ cfg, saveCfg, hechos, esHoy, bloqueado, tocarHecho,
                 {open && (
                   <div className="ficha-dentro">
                     <Ficha e={e} />
-                    <button type="button" className={'midia-check' + (hechos[e.id] ? ' on' : '')} aria-pressed={!!hechos[e.id]} disabled={bloqueado} onClick={() => tocarHecho(e.id)}>
-                      <span className="midia-caja" aria-hidden="true">{hechos[e.id] ? '✓' : ''}</span>
-                      {esHoy ? 'Lo he hecho hoy' : 'Lo hice este día'}
-                    </button>
-                    {hechos[e.id] && (
-                      <label className="field">
-                        <span>Qué noté</span>
-                        <input type="text" value={hechos[e.id].nota ?? ''} onChange={(ev) => notaHecho(e.id, ev.target.value)} />
-                      </label>
-                    )}
+                    <div className="ficha-diario">
+                      <span className="ficha-sub">📝 Mi diario de este ejercicio · {esHoy ? 'hoy' : fmtDate(date)}</span>
+                      {preguntasDe(e).map((q, i) => (
+                        <label key={i} className="field">
+                          <span>{q}</span>
+                          <textarea rows={2} disabled={bloqueado} value={hechos[e.id]?.resp?.[i] ?? ''} onChange={(ev) => responder(e.id, i, ev.target.value)} />
+                        </label>
+                      ))}
+                      {hechos[e.id]?.nota && <p className="muted small">Nota anterior: {hechos[e.id].nota}</p>}
+                      <button type="button" className={'midia-check sm' + (hechos[e.id] ? ' on' : '')} aria-pressed={!!hechos[e.id]} disabled={bloqueado} onClick={() => tocarHecho(e.id)}>
+                        <span className="midia-caja" aria-hidden="true">{hechos[e.id] ? '✓' : ''}</span>
+                        {hechos[e.id] ? (esHoy ? 'Hecho hoy' : 'Hecho este día') : 'Lo hice, sin escribir'}
+                      </button>
+                    </div>
+                    {(() => {
+                      const otros = semana.filter((x) => x.day !== date && x.value.hechos?.[e.id]).sort((x, y) => (x.day < y.day ? 1 : -1))
+                      if (!otros.length) return null
+                      return (
+                        <div className="ficha-semana">
+                          <span className="ficha-sub">🗓️ Esta semana en este ejercicio</span>
+                          {otros.map((x) => {
+                            const ent = entradaDe(e, x.value.hechos![e.id])
+                            return (
+                              <div key={x.day} className="ficha-entrada">
+                                <b>{fmtDate(x.day)}</b>
+                                {ent.length ? ent.map(([q, r], k) => <p key={k}><span className="muted">{q}</span> {r}</p>) : <p className="muted">Hecho, sin escribir.</p>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })()}
                     <div className="row ficha-acciones">
                       {ahora
                         ? <span className="muted small">Es tu ejercicio de ahora.</span>

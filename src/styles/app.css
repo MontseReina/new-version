@@ -490,8 +490,19 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .ficha-dentro { padding: 0 .8rem .8rem; border-top: 1px solid var(--line); padding-top: .7rem; }
 .ficha-acciones { gap: .5rem; }
 .ficha-acciones .linkbtn { margin: 0; }
-.intro-cierre { margin-top: .8rem; padding: .7rem .8rem .3rem; border-radius: 12px; background: var(--bg); border: 1px dashed var(--line); }
-.intro-cierre label.field > span { color: var(--ink-deep); font-size: .88rem; }
+/* Ficha en una frase y diario del ejercicio (0.17) */
+.ficha-frase { font-size: 1.08rem; font-weight: 700; line-height: 1.4; color: var(--ink-deep); margin: 0; }
+.ficha-para-linea { font-size: .88rem; color: var(--muted); line-height: 1.45; margin: 0; }
+.ficha-ver { align-self: flex-start; background: none; border: none; padding: .1rem 0; color: var(--b, var(--primary)); font-weight: 700; font-size: .88rem; cursor: pointer; }
+.ficha-mas { display: flex; flex-direction: column; gap: .65rem; padding-top: .2rem; }
+.ficha-diario { background: var(--b-suave, var(--bg)); border-radius: 12px; padding: .7rem .8rem .5rem; margin-bottom: .6rem; }
+.ficha-diario label.field > span { color: var(--ink-deep); font-size: .9rem; font-weight: 600; }
+.ficha-diario textarea { min-height: 2.8rem; background: var(--card); }
+.midia-check.sm { padding: .45rem .6rem; font-size: .88rem; }
+.ficha-semana { border-top: 1px solid var(--line); padding-top: .6rem; margin-bottom: .6rem; }
+.ficha-entrada { padding: .4rem 0; border-bottom: 1px dashed var(--line); font-size: .88rem; }
+.ficha-entrada:last-child { border-bottom: none; }
+.ficha-entrada p { margin: .15rem 0 0; line-height: 1.45; }
 @media (max-width: 420px) { .intro-metas { column-gap: .5rem; } .intro-meta-nom { font-size: .86rem; } }
 .intro-diario { min-height: 46vh; line-height: 1.65; font-size: 1.02rem; padding: .8rem; }
 .intro-paginas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: .5rem 0 .25rem; }
