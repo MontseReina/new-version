@@ -701,3 +701,23 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .bio-fila span { font-size: .92rem; line-height: 1.3; min-width: 0; }
 .bio-fila.si span { color: var(--muted); text-decoration: line-through; }
 .bio-fila.np span { color: var(--muted); }
+
+/* Evaluaciones · Lo que pruebo */
+.pruebo .selector-mes { margin-bottom: .6rem; }
+.pruebo-ep { display: grid; gap: .25rem; margin: 0 0 .8rem; padding: .6rem .7rem; border-radius: 10px; background: var(--bg); font-size: .9rem; }
+.pruebo-ep div { display: flex; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.pruebo-ep dt { color: var(--muted); }
+.pruebo-ep dd { margin: 0; font-variant-numeric: tabular-nums; }
+.pruebo-dif.baja { color: var(--green); font-weight: 600; }
+.pruebo-dif.sube { color: var(--red); font-weight: 600; }
+.pruebo-lista { list-style: none; margin: 0 0 .7rem; padding: 0; display: grid; gap: .6rem; }
+.pruebo-ficha { border: 1px solid var(--line); border-radius: 10px; padding: .6rem .7rem; display: grid; gap: .35rem; }
+.pruebo-ficha.ayuda { border-color: var(--green); }
+.pruebo-ficha.no { border-color: color-mix(in srgb, var(--red) 45%, var(--line)); }
+.pruebo-que { line-height: 1.35; }
+.pruebo-val button { font-size: .8rem; padding: .35rem .45rem; }
+.pruebo-val button.on.ayuda { background: color-mix(in srgb, var(--green) 14%, var(--card)); border-color: var(--green); color: var(--green); }
+.pruebo-val button.on.dudoso { background: color-mix(in srgb, var(--amber) 16%, var(--card)); border-color: var(--amber); color: #7a5600; }
+.pruebo-val button.on.no { background: color-mix(in srgb, var(--red) 10%, var(--card)); border-color: var(--red); color: var(--red); }
+.pruebo-nota { margin: 0; white-space: pre-wrap; }
+.pruebo-form { display: grid; gap: .2rem; border: 1px solid var(--primary-soft); border-radius: 10px; padding: .7rem; background: var(--card); }

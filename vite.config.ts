@@ -60,6 +60,7 @@ export default defineConfig({
     'import.meta.env.VITE_DEMO': JSON.stringify(demo ? '1' : ''),
     'import.meta.env.VITE_DEMO_SETTINGS': JSON.stringify(demo ? (process.env.DEMO_SETTINGS || '') : ''),
     'import.meta.env.VITE_DEMO_DAILY': JSON.stringify(demo ? (process.env.DEMO_DAILY || '') : ''),
+    'import.meta.env.VITE_DEMO_ENTRIES': JSON.stringify(demo ? (process.env.DEMO_ENTRIES || '') : ''),
     'import.meta.env.VITE_DEMO_START': JSON.stringify(demo ? (process.env.DEMO_START || '') : ''),
     ...(demo ? { 'import.meta.env.VITE_SUPABASE_URL': '""', 'import.meta.env.VITE_SUPABASE_ANON_KEY': '""' } : {}),
   },
