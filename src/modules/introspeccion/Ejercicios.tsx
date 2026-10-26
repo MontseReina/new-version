@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import { Ficha, emojiBloque, tonoBloque } from './Ficha'
-import { nuevoId, type Ejercicio, type IntroCfg } from './logica'
+import { nuevoId, type Ejercicio, type Hecho, type IntroCfg } from './logica'
 
-/** Mis ejercicios: una sección por bloque, cada ejercicio como ficha plegada que se abre con un toque. */
-export function Ejercicios({ cfg, saveCfg }: { cfg: IntroCfg; saveCfg: (p: Partial<IntroCfg>) => Promise<void> }) {
+/** Mis ejercicios: una sección por bloque, cada ejercicio como ficha que se abre con un toque.
+ *  El de ahora va abierto de entrada; cada ficha abierta lleva su «Lo he hecho hoy». */
+export function Ejercicios({ cfg, saveCfg, hechos, esHoy, bloqueado, tocarHecho, notaHecho }: {
+  cfg: IntroCfg; saveCfg: (p: Partial<IntroCfg>) => Promise<void>
+  hechos: { [id: string]: Hecho }; esHoy: boolean; bloqueado: boolean
+  tocarHecho: (id: string) => void; notaHecho: (id: string, nota: string) => void
+}) {
   const bloques = cfg.bloques ?? []
   const lista = cfg.ejercicios ?? []
-  const [abierta, setAbierta] = useState<string | null>(null)
+  const [elegida, setAbierta] = useState<string | null | undefined>(undefined)
+  const abierta = elegida === undefined ? cfg.activo ?? null : elegida
   const [quitar, setQuitar] = useState<string | null>(null)
 
   const borrar = (id: string) => {
@@ -45,12 +51,23 @@ export function Ejercicios({ cfg, saveCfg }: { cfg: IntroCfg; saveCfg: (p: Parti
                     <strong>{e.titulo}</strong>
                     {!open && e.para && <span className="ficha-resumen">{e.para}</span>}
                   </span>
+                  {hechos[e.id] && <span className="ficha-hecho" aria-label="hecho este día">✓</span>}
                   {ahora && <span className="ficha-ahora">Ahora</span>}
                   <span className="ficha-flecha" aria-hidden="true">{open ? '▾' : '▸'}</span>
                 </button>
                 {open && (
                   <div className="ficha-dentro">
                     <Ficha e={e} />
+                    <button type="button" className={'midia-check' + (hechos[e.id] ? ' on' : '')} aria-pressed={!!hechos[e.id]} disabled={bloqueado} onClick={() => tocarHecho(e.id)}>
+                      <span className="midia-caja" aria-hidden="true">{hechos[e.id] ? '✓' : ''}</span>
+                      {esHoy ? 'Lo he hecho hoy' : 'Lo hice este día'}
+                    </button>
+                    {hechos[e.id] && (
+                      <label className="field">
+                        <span>Qué noté</span>
+                        <input type="text" value={hechos[e.id].nota ?? ''} onChange={(ev) => notaHecho(e.id, ev.target.value)} />
+                      </label>
+                    )}
                     <div className="row ficha-acciones">
                       {ahora
                         ? <span className="muted small">Es tu ejercicio de ahora.</span>

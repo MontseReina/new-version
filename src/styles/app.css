@@ -486,6 +486,7 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .ficha-resumen { font-size: .8rem; color: var(--muted); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ficha-ahora { flex: none; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #fff; background: var(--b); border-radius: 999px; padding: .15rem .5rem; }
 .ficha-flecha { flex: none; color: var(--muted); }
+.ficha-hecho { flex: none; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--bio-ok); color: var(--bio-ok-texto); font-size: .8rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
 .ficha-dentro { padding: 0 .8rem .8rem; border-top: 1px solid var(--line); padding-top: .7rem; }
 .ficha-acciones { gap: .5rem; }
 .ficha-acciones .linkbtn { margin: 0; }

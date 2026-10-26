@@ -7,12 +7,11 @@ import { listDaily, type Daily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
 import { AnadirEjercicio, Ejercicios } from './Ejercicios'
-import { Ficha, emojiBloque, tonoBloque } from './Ficha'
 import { Informe } from './Informe'
 import { Pestanas } from './Pestanas'
 import { Semana } from './Semana'
 import {
-  EXPRESIONES, PAGINAS, PALABRAS_PAGINA, ejercicioActivo, graciasDe, paginas, palabras,
+  EXPRESIONES, PAGINAS, PALABRAS_PAGINA, graciasDe, paginas, palabras,
   type Gracia, type IntroCfg, type IntroDia,
 } from './logica'
 
@@ -42,16 +41,12 @@ export default function Introspeccion() {
     setGracia(i, { como: como.includes(k) ? como.filter((x) => x !== k) : [...como, k] })
   }
 
-  const activo = ejercicioActivo(cfg)
-  const iBloque = (cfg?.bloques ?? []).findIndex((b) => b.id === activo?.bloque)
-  const bloque = iBloque >= 0 ? cfg!.bloques![iBloque] : undefined
-  const hecho = activo ? d.hechos?.[activo.id] : undefined
-  const tocarHecho = () => {
-    if (!activo) return
+  const tocarHecho = (id: string) => {
     const resto = { ...(d.hechos ?? {}) }
-    if (hecho) delete resto[activo.id]; else resto[activo.id] = {}
+    if (resto[id]) delete resto[id]; else resto[id] = {}
     set({ hechos: resto })
   }
+  const notaHecho = (id: string, nota: string) => set({ hechos: { ...(d.hechos ?? {}), [id]: { nota } } })
 
   // Semana de lunes a domingo del día que se está viendo.
   const lunes = weekStart(date)
@@ -96,39 +91,15 @@ export default function Introspeccion() {
         </p>
       </div>
 
-      <div className={'card intro-card ejercicio ' + (iBloque >= 0 ? tonoBloque(iBloque) : '')}>
-        <div className="intro-card-cab ficha-ahora-cab">
-          {activo && <span className="ficha-emoji grande" aria-hidden="true">{activo.emoji ?? emojiBloque(bloque, iBloque)}</span>}
-          <div>
-            <span className="intro-kicker">Ejercicio de ahora{bloque ? ` · ${bloque.nombre}` : ''}</span>
-            {activo && <h2 className="intro-h">{activo.titulo}</h2>}
-          </div>
-        </div>
-        {!cfg ? <p className="muted">Cargando…</p> : !activo ? (
-          <p className="muted">No hay ningún ejercicio elegido. Elige uno en «Mis ejercicios», justo debajo.</p>
-        ) : (
-          <>
-            <Ficha e={activo} />
-            <button type="button" className={'midia-check' + (hecho ? ' on' : '')} aria-pressed={!!hecho} disabled={state === 'cargando'} onClick={tocarHecho}>
-              <span className="midia-caja" aria-hidden="true">{hecho ? '✓' : ''}</span>
-              {date === hoy ? 'Lo he hecho hoy' : 'Lo hice este día'}
-            </button>
-            {hecho && (
-              <label className="field">
-                <span>Qué noté</span>
-                <input type="text" value={hecho.nota ?? ''} onChange={(e) => set({ hechos: { ...(d.hechos ?? {}), [activo.id]: { nota: e.target.value } } })} />
-              </label>
-            )}
-          </>
-        )}
-      </div>
-
       <div className="card intro-card mis">
         <div className="intro-card-cab">
-          <span className="intro-kicker">Por bloques</span>
+          <span className="intro-kicker">El de ahora va abierto</span>
           <h2 className="intro-h">Mis ejercicios</h2>
         </div>
-        {cfg ? <Ejercicios cfg={cfg} saveCfg={saveCfg} /> : <p className="muted">Cargando…</p>}
+        {cfg ? (
+          <Ejercicios cfg={cfg} saveCfg={saveCfg} hechos={d.hechos ?? {}} esHoy={date === hoy} bloqueado={state === 'cargando'}
+            tocarHecho={tocarHecho} notaHecho={notaHecho} />
+        ) : <p className="muted">Cargando…</p>}
       </div>
 
       <div className="card intro-card gracias">
