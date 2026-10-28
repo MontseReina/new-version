@@ -33,6 +33,8 @@ export type Producto = {
   cada_dias?: number
   /** Fecha desde la que deja de aparecer. No se borra: el historial se conserva. */
   retirado?: string
+  /** Por qué se dejó de tomar (cajón «Suplementos out»). */
+  motivo_retirada?: string
   /** Administración en fechas concretas, puestas a mano (sueroterapia, inyecciones…).
    *  Si existe la lista, aunque esté vacía, el producto no cuenta en las tomas diarias. */
   fechas?: string[]
@@ -100,6 +102,9 @@ export const terapia = (l: Producto[], date: string) => l.filter((p) => sinRetir
 /** Lo diario que ya está dado de alta pero empieza más adelante: por fecha de inicio. */
 export const futuros = (l: Producto[], date: string) =>
   porMomento(l.filter((p) => sinRetirar(p, date) && !esPeriodico(p) && !esAgendado(p) && !!p.inicio && p.inicio > date)).sort((a, b) => a.inicio!.localeCompare(b.inicio!))
+/** «Suplementos out»: lo retirado hasta esa fecha, lo último retirado primero. */
+export const retirados = (l: Producto[], date: string) =>
+  l.filter((p) => !!p.retirado && p.retirado <= date).sort((a, b) => b.retirado!.localeCompare(a.retirado!) || a.nombre.localeCompare(b.nombre))
 export const periodicos = (l: Producto[], date: string) => l.filter((p) => sinRetirar(p, date) && esPeriodico(p) && !enTerapia(p))
 /** Con cuántos días de antelación se avisa de la terapia endovenosa. */
 export const AVISO_DIAS = 7

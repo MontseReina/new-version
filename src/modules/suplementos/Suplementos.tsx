@@ -5,7 +5,7 @@ import { Empty, Field, Plegable, Section, TriButton, type TriState } from '../..
 import { addDays, fmtDate, todayStr } from '../../lib/dates'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { AVISO_DIAS, DIAS, MOMENTOS, VIAS, avisosDe, cambiosDe, clave, conCambio, delDia, diasDesde, enDias, esAgendado, futuros, momentosTxt, mismaPauta, momentosDe, periodicos, proximaDe, terapia, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
+import { AVISO_DIAS, DIAS, MOMENTOS, VIAS, avisosDe, cambiosDe, clave, conCambio, delDia, diasDesde, enDias, enFecha, esAgendado, futuros, momentosTxt, mismaPauta, momentosDe, periodicos, proximaDe, retirados, terapia, type Producto, type SuplCfg, type SuplDia, type Toma } from './logica'
 import { useUltimas } from './useUltimas'
 
 const nuevoId = () => Math.random().toString(36).slice(2, 10)
@@ -23,9 +23,11 @@ export default function Suplementos() {
   const ter = terapia(lista, date)
   const fut = futuros(lista, date)
   const cambios = cambiosDe(lista, date)
+  const out = retirados(lista, date)
   const resaltar = new Map(cambios.filter((x) => x.tipo !== 'termina').map((x) => [x.p.id, x.tipo === 'empieza' ? 'Empieza hoy' : 'Cambia hoy']))
   const [editando, setEditando] = useState<Producto | 'nuevo' | null>(null)
   const [retirando, setRetirando] = useState<string | null>(null)
+  const [motivo, setMotivo] = useState('')
 
   const marcar = (k: string, v: TriState) => {
     const t = { ...tomas }
@@ -51,9 +53,13 @@ export default function Suplementos() {
     void saveCfg({ lista: lista.map((x) => (x.id === p.id ? { ...x, fechas: [...new Set(fechas)].sort() } : x)) })
   const [fechaNueva, setFechaNueva] = useState<{ [id: string]: string }>({})
   const retirar = (p: Producto) => {
-    void saveCfg({ lista: lista.map((x) => (x.id === p.id ? { ...x, retirado: date } : x)) })
+    const m = motivo.trim()
+    void saveCfg({ lista: lista.map((x) => (x.id === p.id ? { ...x, retirado: date, ...(m ? { motivo_retirada: m } : {}) } : x)) })
     setRetirando(null)
+    setMotivo('')
   }
+  const ponerMotivo = (p: Producto, m: string) =>
+    void saveCfg({ lista: lista.map((x) => { if (x.id !== p.id) return x; const { motivo_retirada: _, ...resto } = x; return m.trim() ? { ...resto, motivo_retirada: m.trim() } : resto }) })
 
   // Últimas veces de lo que no es diario (se mira hasta 90 días atrás).
   const { historia, ultimas, listo } = useUltimas(lista, d, date, rev)
@@ -78,9 +84,13 @@ export default function Suplementos() {
   const estado = state === 'cargando' ? 'Cargando…' : state === 'guardando' ? 'Guardando…' : state === 'error' ? 'Sin guardar' : 'Guardado'
   const retirarLink = (p: Producto) =>
     retirando === p.id ? (
-      <span className="small">¿Retirar de la pauta? <button type="button" className="linkbtn" onClick={() => retirar(p)}>Sí, retirar</button> · <button type="button" className="linkbtn" onClick={() => setRetirando(null)}>No</button></span>
+      <div className="retirar-caja small">
+        <div>¿Retirar de la pauta? Pasará a «Suplementos out».</div>
+        <input type="text" aria-label={`Motivo para dejar ${p.nombre}`} placeholder="Motivo (opcional)" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+        <span><button type="button" className="linkbtn" onClick={() => retirar(p)}>Sí, retirar</button> · <button type="button" className="linkbtn" onClick={() => { setRetirando(null); setMotivo('') }}>No</button></span>
+      </div>
     ) : (
-      <span className="small"><button type="button" className="linkbtn" onClick={() => setEditando(original(p))}>Modificar</button> · <button type="button" className="linkbtn" onClick={() => setRetirando(p.id)}>Retirar</button></span>
+      <span className="small"><button type="button" className="linkbtn" onClick={() => setEditando(original(p))}>Modificar</button> · <button type="button" className="linkbtn" onClick={() => { setRetirando(p.id); setMotivo('') }}>Retirar</button></span>
     )
   /** El producto tal como está hoy en la lista (la tabla puede enseñar la pauta de un día pasado). */
   const original = (p: Producto) => lista.find((x) => x.id === p.id) ?? p
@@ -105,7 +115,7 @@ export default function Suplementos() {
         return <div className="notice" key={p.id}><strong>Toca: {p.nombre}.</strong> {e.u ? `La última fue hace ${e.dias} días.` : 'Aún no hay ninguna registrada.'} {p.nota}</div>
       })}
 
-      {cfg && hoy.length + fut.length + per.length + ter.length === 0 && (
+      {cfg && hoy.length + fut.length + per.length + ter.length + out.length === 0 && (
         <div className="card"><Empty>Aún no hay suplementos. Añade el primero con «+ Producto».</Empty></div>
       )}
 
@@ -225,6 +235,44 @@ export default function Suplementos() {
           })}
         </Section>
       )}
+
+      {out.length > 0 && (
+        <Plegable id="supl-out" title={`Suplementos out (${out.length})`}>
+          <p className="muted small">Lo que has dejado de tomar, con el porqué. Lo último retirado va primero.</p>
+          {out.map((p) => <Retirado key={p.id} p={p} date={date} guardar={(m) => ponerMotivo(p, m)} />)}
+        </Plegable>
+      )}
+    </div>
+  )
+}
+
+/** Una fila de «Suplementos out»: qué era, desde cuándo no se toma y el motivo, que se puede escribir o cambiar. */
+function Retirado({ p, date, guardar }: { p: Producto; date: string; guardar: (m: string) => void }) {
+  const [abierto, setAbierto] = useState(false)
+  const [texto, setTexto] = useState(p.motivo_retirada ?? '')
+  const ultima = enFecha(p, addDays(p.retirado!, -1))
+  const hace = diasDesde(date, p.retirado!) ?? 0
+  const pauta = [ultima.dosis, p.marca, esAgendado(p) || p.cada_dias ? (p.cada_dias ? `cada ${p.cada_dias} días` : 'en fechas') : momentosTxt(ultima)].filter(Boolean).join(' · ')
+  return (
+    <div className="supl-out">
+      <div className="row between">
+        <strong>{p.nombre}</strong>
+        <span className="muted small">Desde el {fmtDate(p.retirado!)}{hace > 0 ? ` (hace ${hace} ${hace === 1 ? 'día' : 'días'})` : ' (hoy)'}</span>
+      </div>
+      {pauta && <div className="muted small">Lo tomabas: {pauta}</div>}
+      {abierto ? (
+        <form onSubmit={(e) => { e.preventDefault(); guardar(texto); setAbierto(false) }}>
+          <textarea aria-label={`Motivo para dejar ${p.nombre}`} placeholder="Por qué lo dejas: efecto que notaste, indicación médica, fin de la pauta…" value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus />
+          <div className="row">
+            <button type="submit" className="btn sm">Guardar</button>
+            <button type="button" className="btn sm ghost" onClick={() => { setTexto(p.motivo_retirada ?? ''); setAbierto(false) }}>Cancelar</button>
+          </div>
+        </form>
+      ) : p.motivo_retirada ? (
+        <p className="supl-out-motivo small"><span className="muted">Motivo:</span> {p.motivo_retirada} <button type="button" className="linkbtn" onClick={() => { setTexto(p.motivo_retirada ?? ''); setAbierto(true) }}>Modificar</button></p>
+      ) : (
+        <button type="button" className="linkbtn small" onClick={() => setAbierto(true)}>+ Escribir el motivo</button>
+      )}
     </div>
   )
 }
@@ -244,7 +292,7 @@ function Formulario({ producto, guardar, cancelar }: { producto: Producto | null
   const ok = p.nombre.trim().length > 0
   const limpiar = (): Producto => {
     const out: Producto = { id: p.id, nombre: p.nombre.trim() }
-    for (const k of ['marca', 'composicion', 'dosis', 'pautado_por', 'nota', 'via', 'inicio', 'retirado'] as const) { const v = p[k]?.trim(); if (v) out[k] = v }
+    for (const k of ['marca', 'composicion', 'dosis', 'pautado_por', 'nota', 'via', 'inicio', 'retirado', 'motivo_retirada'] as const) { const v = p[k]?.trim(); if (v) out[k] = v }
     if (modo === 'diario') {
       if (p.momentos?.length) out.momentos = MOMENTOS.map(([k]) => k as string).filter((k) => p.momentos!.includes(k))
       if (p.dias?.length) out.dias = [...p.dias].sort()
