@@ -10,6 +10,8 @@ import {
 } from './graficos'
 import { detallesDisposicion, observacionDisposicion, subidaTemperatura, valoracionVfc30, valoracionVfcNoche } from './analisis'
 import { FACTORES_DISPOSICION, FACTORES_SUENO, NIVELES, RESUMEN_ESTRES, type OuraDia } from './tipos'
+import { useOura } from './conexion'
+import { TarjetaOura } from './Tarjeta'
 
 /** Días que se ven en las gráficas y con los que se calcula tu media. */
 const DIAS = 30
@@ -60,17 +62,33 @@ export default function Oura() {
   const [filas, setFilas] = useState<{ day: string; value: OuraDia }[] | null>(null)
   const [aviso, setAviso] = useState('')
 
+  const o = useOura()
+
+  // Se vuelve a leer cada vez que la sincronización trae datos nuevos.
   useEffect(() => {
     let alive = true
     listDaily<OuraDia>('oura', addDays(hoy, -DIAS - 30), hoy).then((r) => alive && setFilas(r), () => alive && setFilas([]))
     return () => { alive = false }
-  }, [hoy])
+  }, [hoy, o.vuelta])
 
   const { modelo, mapa } = useCiclo()
   const info = useMemo(() => infoDia(modelo, mapa, date), [modelo, mapa, date])
   const faseDe = (day: string) => infoDia(modelo, mapa, day)?.fase ?? null
 
   if (!filas) return <div><h1>Oura Ring</h1><p className="muted">Cargando…</p></div>
+  if (!DEMO && !filas.length) {
+    return (
+      <div className="oura">
+        <h1>Oura Ring</h1>
+        <TarjetaOura o={o} onDemo={() => {}} />
+        <p className="card muted">
+          {o.conectado
+            ? (o.sincronizando ? 'Trayendo tus datos de Oura…' : 'Aún no han llegado datos de Oura. Abre la app de Oura en el móvil para que el anillo se sincronice y pulsa «Sincronizar ahora».')
+            : 'Cuando conectes tu anillo, aquí verás cada día tu noche, la disposición, la temperatura, el corazón, el estrés, la actividad y la respiración, con lo que significa cada dato.'}
+        </p>
+      </div>
+    )
+  }
 
   const porDia = Object.fromEntries(filas.map((r) => [r.day, r.value]))
   const d: OuraDia = porDia[date] ?? {}
@@ -119,16 +137,7 @@ export default function Oura() {
     <div className="oura">
       <h1>Oura Ring</h1>
 
-      <div className="card tight row between">
-        <div>
-          <strong>Conectado</strong> <span className="tag verde">Oura Gen3</span>
-          <div className="muted small">Última sincronización: hoy, 10:30 · se actualiza al abrir la app, a las 10:30 y a las 22:00</div>
-        </div>
-        <div className="row">
-          <button className="btn sm" onClick={demoAviso}>Sincronizar ahora</button>
-          <button className="btn sm ghost" onClick={demoAviso}>Desconectar</button>
-        </div>
-      </div>
+      <TarjetaOura o={o} onDemo={demoAviso} />
       {DEMO && <p className="muted small">Demostración con datos inventados, no son los tuyos.</p>}
       {aviso && <div className="toast">{aviso}</div>}
 

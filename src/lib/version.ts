@@ -1,4 +1,4 @@
 /** Versión de la app. Subirla en cada publicación; vite.config.ts la copia a version.json. */
-export const APP_VERSION = '0.19.2'
+export const APP_VERSION = '0.20.0'
 /** Versión del esquema de datos (supabase/schema.sql). Sube cuando cambian las tablas. */
 export const SCHEMA_VERSION = 3
