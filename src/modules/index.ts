@@ -4,6 +4,7 @@ import Hidratacion from './hidratacion/Hidratacion'
 import Introspeccion from './introspeccion/Introspeccion'
 import { ResumenHidratacion } from './hidratacion/Resumen'
 import Nutricion from './nutricion/Nutricion'
+import Oura from './oura/Oura'
 import { ResumenNutricion } from './nutricion/Resumen'
 import Disautonomia from './sintomas/Disautonomia'
 import Sintomas from './sintomas/Sintomas'
@@ -26,17 +27,19 @@ export interface ModuleDef {
   Page?: ComponentType
   /** Estado del objetivo de hoy, para Inicio. */
   Resumen?: ComponentType<{ day: string }>
-  /** Fuera de la barra de áreas: su pantalla sigue abierta por su ruta (Hidratación vive dentro de Disautonomía). */
+  /** Fuera de la barra de áreas: su pantalla sigue abierta por su ruta (Hidratación vive dentro de Disautonomía;
+   *  Biohacking y Trabajo introspectivo se abren desde Pilares). */
   oculto?: boolean
 }
 
 export const modules: ModuleDef[] = [
   { id: 'disautonomia', name: 'Disautonomía', ico: '🫀', path: 'disautonomia', Page: Disautonomia },
   { id: 'sintomas', name: 'Ciclo menstrual', ico: '🌸', path: 'sintomas', Page: Sintomas, Resumen: ResumenSintomas },
+  { id: 'oura', name: 'Oura Ring', ico: '💍', path: 'oura', Page: Oura },
   { id: 'suplementos', name: 'Suplementos', ico: '💊', path: 'suplementos', Page: Suplementos, Resumen: ResumenSuplementos },
   { id: 'nutricion', name: 'Nutrición', ico: '🥣', path: 'nutricion', Page: Nutricion, Resumen: ResumenNutricion },
   { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion, oculto: true },
   { id: 'ejercicio', name: 'Ejercicio', ico: '🏃', path: 'ejercicio' },
-  { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking', Page: Biohacking },
-  { id: 'introspeccion', name: 'Trabajo introspectivo', ico: '💛', path: 'introspeccion', Page: Introspeccion },
+  { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking', Page: Biohacking, oculto: true },
+  { id: 'introspeccion', name: 'Trabajo introspectivo', ico: '💛', path: 'introspeccion', Page: Introspeccion, oculto: true },
 ]

@@ -78,7 +78,7 @@ function Formulario({ inicial, onClose }: { inicial: Pendiente; onClose: () => v
   const [confirmar, setConfirmar] = useState(false)
   const [fallo, setFallo] = useState('')
   const set = <K extends keyof Pendiente>(k: K, v: Pendiente[K]) => setP((x) => ({ ...x, [k]: v }))
-  const areas = [...modules.map((m) => m.name), ...pilares.filter((x) => x.id !== 'pendientes').map((x) => x.name)]
+  const areas = [...modules.map((m) => m.name), ...pilares.filter((x) => x.id !== 'pendientes' && !x.enModulos).map((x) => x.name)]
   const hacer = async (f: () => Promise<void>) => {
     setGuardando(true); setFallo('')
     try { await f(); onClose() } catch (e) { setFallo((e as Error).message); setGuardando(false) }

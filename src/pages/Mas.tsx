@@ -7,7 +7,7 @@ export function Mas() {
       <h1>Pilares</h1>
       <div className="card">
         {pilares.map((p) => (
-          <Link key={p.id} to={'/' + p.path} className="objetivo"><span className="ico">{p.ico}</span><strong>{p.name}</strong><span className="estado">{p.Page ? '' : 'En preparación'}</span></Link>
+          <Link key={p.id} to={'/' + p.path} className="objetivo"><span className="ico">{p.ico}</span><strong>{p.name}</strong><span className="estado">{p.Page || p.enModulos ? '' : 'En preparación'}</span></Link>
         ))}
       </div>
       <h2>La app</h2>

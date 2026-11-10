@@ -11,7 +11,7 @@ import {
 } from './store'
 
 /** Áreas y pilares de la app, para clasificar cada pregunta (el «Pilar…» de Huma). */
-export const temas = () => [...modules.map((m) => m.name), ...pilares.filter((x) => x.id !== 'preguntas').map((x) => x.name), 'Otro']
+export const temas = () => [...modules.map((m) => m.name), ...pilares.filter((x) => x.id !== 'preguntas' && !x.enModulos).map((x) => x.name), 'Otro']
 
 /** Pilar Preguntas: lo que se quiere preguntar a cada especialista y lo que ha respondido. */
 export default function Preguntas() {
