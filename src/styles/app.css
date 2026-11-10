@@ -734,5 +734,5 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .medida-ta input { min-width: 0; }
 .medida-avisos { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
 .medida-aviso { font-size: .78rem; padding: .15rem .5rem; border-radius: 999px; border: 1px solid var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
-.dis-dia { display: flex; flex-wrap: wrap; gap: .4rem .9rem; }
-.dis-dia strong { font-size: 1.15rem; }
+.medida-no { padding: .55rem .6rem; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+.medida-campos .linkbtn { margin-top: .2rem; }

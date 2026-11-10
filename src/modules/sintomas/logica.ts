@@ -58,8 +58,16 @@ export type Medida = {
   /** Saturación de oxígeno, %. */
   spo2?: number | null
   posicion?: Posicion | null
+  /** Habitual (los controles de cada día), durante un episodio o postprandial. */
+  tipo?: TipoMedida | null
+  /** Constantes que se intentaron y no se pudieron medir. */
+  no_medible?: CampoMedida[] | null
+  /** Nota libre (solo días anteriores a la 0.19.0). */
   nota?: string | null
 }
+export type CampoMedida = 'fc' | 'ta' | 'glucosa' | 'spo2'
+export type TipoMedida = 'habitual' | 'episodio' | 'postprandial'
+export const TIPOS_MEDIDA: [TipoMedida, string][] = [['habitual', 'Medición habitual'], ['episodio', 'Durante el episodio'], ['postprandial', 'Postprandial']]
 export type Posicion = 'tumbada' | 'sentada' | 'de_pie'
 export const POSICIONES: [Posicion, string][] = [['tumbada', 'Tumbada'], ['sentada', 'Sentada'], ['de_pie', 'De pie']]
 /** Valores fuera de los rangos de referencia generales del adulto, para resaltarlos (no son un diagnóstico). */
@@ -76,11 +84,13 @@ export function avisosMedida(m: Medida): string[] {
 }
 /** Constantes de una toma en una línea: «FC 108 lpm · TA 97/79 mmHg · Glucosa 85 mg/dl · SatO₂ 98 % · de pie». */
 export function lineaMedida(m: Medida) {
+  const no = (c: CampoMedida) => (m.no_medible ?? []).includes(c)
   const partes = [
-    m.fc != null && `FC ${m.fc} lpm`,
-    (m.pas != null || m.pad != null) && `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg`,
-    m.glucosa != null && `Glucosa ${m.glucosa} mg/dl`,
-    m.spo2 != null && `SatO₂ ${m.spo2} %`,
+    m.tipo && TIPOS_MEDIDA.find(([k]) => k === m.tipo)?.[1],
+    m.fc != null ? `FC ${m.fc} lpm` : no('fc') && 'FC no medible',
+    m.pas != null || m.pad != null ? `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg` : no('ta') && 'TA no medible',
+    m.glucosa != null ? `Glucosa ${m.glucosa} mg/dl` : no('glucosa') && 'glucosa no medible',
+    m.spo2 != null ? `SatO₂ ${m.spo2} %` : no('spo2') && 'SatO₂ no medible',
     m.posicion && POSICIONES.find(([k]) => k === m.posicion)?.[1].toLowerCase(),
   ].filter(Boolean)
   return partes.join(' · ')
