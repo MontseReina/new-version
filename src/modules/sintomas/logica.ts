@@ -224,13 +224,16 @@ export function leerGrupos(texto: string): Grupo[] | null {
   return out
 }
 
+/** Nombre legible de una opción que ya no está en los grupos (se quitó): «taquicardia_en_reposo» → «Taquicardia en reposo». */
+export const nombreDeId = (id: string) => { const t = id.replace(/_\d+$/, '').replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1) }
+
 export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; gravedad: number | null; urgencias: boolean; acciones: string[]; hice: string }
 /** Episodios anotados (opciones marcadas en los grupos 'detalle', como Disautonomía), en orden. */
 export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia }[]): Episodio[] {
   return grupos.filter((g) => g.tipo === 'detalle').flatMap((g) =>
     dias.flatMap((d) => (d.value.sel?.[g.id] ?? []).flatMap((id) => {
       const xs = episodiosOpcion(d.value.det?.[g.id]?.[id])
-      const nombre = g.opciones?.find((o) => o.id === id)?.nombre ?? id
+      const nombre = g.opciones?.find((o) => o.id === id)?.nombre ?? nombreDeId(id)
       // Una opción marcada sin detalle cuenta como un episodio.
       return (xs.length ? xs : [{} as Detalle]).map((det) => ({ dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias, acciones: det.acciones ?? [], hice: det.hice ?? '' }))
     })),
