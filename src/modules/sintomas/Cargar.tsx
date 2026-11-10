@@ -34,11 +34,11 @@ export default function Cargar() {
       {!grupos ? (
         <div className="card">
           <p>El enlace no trae una configuración válida. No se ha cambiado nada.</p>
-          <Link className="btn secondary" to="/sintomas">Ir a Signos y síntomas</Link>
+          <Link className="btn secondary" to="/disautonomia">Ir a Disautonomía</Link>
         </div>
       ) : (
         <div className="card">
-          <p>Este enlace trae <strong>{grupos.length} grupos</strong> para Signos y síntomas:</p>
+          <p>Este enlace trae <strong>{grupos.length} grupos</strong> para Disautonomía y Ciclo menstrual:</p>
           <p className="muted">{grupos.map((g) => g.nombre).join(' · ')}</p>
           <p className="muted small">Sustituyen a los grupos que ves ahora. Lo que ya hayas registrado se conserva.</p>
           {estado === 'error' && <div className="notice small">No se ha podido guardar. Revisa la conexión y vuelve a pulsar.</div>}

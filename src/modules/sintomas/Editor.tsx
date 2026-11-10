@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Field } from '../../components/ui'
-import { GRUPOS_BASE, conOpciones, idLibre, leerGrupos, tieneEscala, type Grupo, type TipoGrupo } from './logica'
+import { GRUPOS_BASE, PAGINAS, conOpciones, idLibre, leerGrupos, paginaDe, tieneEscala, type Grupo, type Pagina, type TipoGrupo } from './logica'
 
 const TIPOS: [TipoGrupo, string][] = [['varias', 'Varias opciones'], ['una', 'Una sola opción'], ['detalle', 'Varias, con hora, gravedad y urgencias'], ['escala', 'Escala de 0 a 10']]
 const FIJOS: { [t in TipoGrupo]?: string } = { hambre: 'Bloque de hambre', heces: 'Bloque de heces', micciones: 'Bloque de micciones', texto: 'Texto libre' }
 
 /** Edición de los grupos y sus opciones. La lista se guarda en los ajustes de la usuaria. */
-export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grupo[]) => void }) {
+export function Editor({ grupos, guardar, acciones = [], guardarAcciones }: { grupos: Grupo[]; guardar: (g: Grupo[]) => void; acciones?: string[]; guardarAcciones?: (a: string[]) => void }) {
+  const [accion, setAccion] = useState('')
   const [nuevas, setNuevas] = useState<{ [g: string]: string }>({})
   const [nuevo, setNuevo] = useState('')
   const [borrar, setBorrar] = useState<string | null>(null)
@@ -56,6 +57,12 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
             <button type="button" className="btn sm ghost" aria-label="Subir" disabled={i === 0} onClick={() => mover(i, -1)}>↑</button>
             <button type="button" className="btn sm ghost" aria-label="Bajar" disabled={i === grupos.length - 1} onClick={() => mover(i, 1)}>↓</button>
           </div>
+          <label className="row small" style={{ gap: '.4rem', marginTop: '.35rem' }}>
+            <span className="muted">Sale en</span>
+            <select aria-label={`Pantalla de ${g.nombre}`} value={paginaDe(g)} style={{ flex: 1, minWidth: '9rem' }} onChange={(e) => cambia(g.id, { pagina: e.target.value as Pagina })}>
+              {PAGINAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+          </label>
           {!conOpciones(g.tipo) && g.tipo !== 'escala' && <div className="muted small" style={{ marginTop: '.3rem' }}>{FIJOS[g.tipo]}: se puede mover, renombrar o quitar.</div>}
           {(conOpciones(g.tipo) || g.tipo === 'escala') && (
             <div className="row" style={{ marginTop: '.4rem' }}>
@@ -108,6 +115,25 @@ export function Editor({ grupos, guardar }: { grupos: Grupo[]; guardar: (g: Grup
         <input type="text" aria-label="Nombre del grupo nuevo" placeholder="Grupo nuevo" style={{ flex: 1, minWidth: '8rem' }} value={nuevo} onChange={(e) => setNuevo(e.target.value)} />
         <button className="btn sm" disabled={!nuevo.trim()}>+ Grupo</button>
       </form>
+
+      {guardarAcciones && (
+        <div className="editor-grupo">
+          <strong>Botones de «Qué hice»</strong>
+          <p className="muted small" style={{ margin: '.2rem 0 .4rem' }}>Salen en cada episodio para marcar con un toque lo que tomaste o hiciste. Debajo siempre queda el texto libre.</p>
+          <div className="chips">
+            {acciones.map((a, k) => (
+              <span className="chip" key={a} style={{ cursor: 'default' }}>
+                {k > 0 && <button type="button" className="quitar" style={{ padding: '0 .2rem 0 0' }} aria-label={`Mover ${a} antes`} title="Mover antes" onClick={() => { const l = [...acciones]; l.splice(k, 1); l.splice(k - 1, 0, a); guardarAcciones(l) }}>‹</button>}
+                {a} <button type="button" className="quitar" aria-label={`Quitar ${a}`} onClick={() => guardarAcciones(acciones.filter((x) => x !== a))}>×</button>
+              </span>
+            ))}
+          </div>
+          <form className="row" style={{ marginTop: '.4rem' }} onSubmit={(e) => { e.preventDefault(); const v = accion.trim(); if (v && !acciones.includes(v)) guardarAcciones([...acciones, v]); setAccion('') }}>
+            <input type="text" aria-label="Nuevo botón de «Qué hice»" placeholder="Nuevo botón" style={{ flex: 1, minWidth: '8rem' }} value={accion} onChange={(e) => setAccion(e.target.value)} />
+            <button className="btn sm secondary" disabled={!accion.trim()}>Añadir</button>
+          </form>
+        </div>
+      )}
 
       <Field label="Cargar una configuración" hint="Pega aquí el texto de configuración que te hayan preparado. Sustituye a los grupos actuales; lo ya registrado se conserva.">
         <textarea value={pegado} onChange={(e) => { setPegado(e.target.value); setAviso('') }} />

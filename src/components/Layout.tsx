@@ -33,7 +33,7 @@ export function Layout() {
       </header>
       <nav className="tabbar" aria-label="Secciones">
         <Tab to="/" ico="🏠" label="Inicio" />
-        {modules.map((m) => <Tab key={m.id} to={'/' + m.path} ico={m.ico} label={m.name} />)}
+        {modules.filter((m) => !m.oculto).map((m) => <Tab key={m.id} to={'/' + m.path} ico={m.ico} label={m.name} />)}
         <Tab to="/mas" ico="🧭" label="Pilares" />
       </nav>
       <main className="content"><Outlet /></main>

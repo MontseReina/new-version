@@ -22,10 +22,69 @@ export type Grupo = {
   /** En grupos con escala: qué significan el 0 y el 10. */
   min_txt?: string
   max_txt?: string
+  /** Pantalla en la que sale el grupo. Sin decir nada, los grupos 'detalle' van a Disautonomía y el resto a Ciclo menstrual. */
+  pagina?: Pagina
 }
-export type SintCfg = { grupos?: Grupo[] }
+export type Pagina = 'disautonomia' | 'ciclo'
+export const PAGINAS: [Pagina, string][] = [['disautonomia', 'Disautonomía'], ['ciclo', 'Ciclo menstrual']]
+export const paginaDe = (g: Grupo): Pagina => g.pagina ?? (g.tipo === 'detalle' ? 'disautonomia' : 'ciclo')
+export const gruposDePagina = (gs: Grupo[], p: Pagina) => gs.filter((g) => paginaDe(g) === p)
+export type SintCfg = {
+  grupos?: Grupo[]
+  /** Botones rápidos de «Qué hice» en cada episodio (lo que se tomó o se hizo). Viven en los ajustes de cada usuaria. */
+  acciones?: string[]
+}
 
-export type Detalle = { hora?: string | null; gravedad?: number | null; urgencias?: boolean | null }
+export type Detalle = {
+  hora?: string | null
+  gravedad?: number | null
+  urgencias?: boolean | null
+  /** Qué hice: botones rápidos marcados (por nombre, tal como están en los ajustes). */
+  acciones?: string[] | null
+  /** Qué hice, con mis palabras. */
+  hice?: string | null
+}
+
+/** Una toma de constantes a una hora. Todos los campos son opcionales: se anota lo que se haya medido. */
+export type Medida = {
+  hora?: string | null
+  /** Frecuencia cardíaca, latidos por minuto. */
+  fc?: number | null
+  /** Tensión arterial sistólica y diastólica, mmHg. */
+  pas?: number | null
+  pad?: number | null
+  /** Glucosa capilar, mg/dl. */
+  glucosa?: number | null
+  /** Saturación de oxígeno, %. */
+  spo2?: number | null
+  posicion?: Posicion | null
+  nota?: string | null
+}
+export type Posicion = 'tumbada' | 'sentada' | 'de_pie'
+export const POSICIONES: [Posicion, string][] = [['tumbada', 'Tumbada'], ['sentada', 'Sentada'], ['de_pie', 'De pie']]
+/** Valores fuera de los rangos de referencia generales del adulto, para resaltarlos (no son un diagnóstico). */
+export function avisosMedida(m: Medida): string[] {
+  const out: string[] = []
+  if ((m.pas != null && m.pas < 90) || (m.pad != null && m.pad < 60)) out.push('Tensión baja')
+  if (m.pas != null && m.pas >= 140) out.push('Tensión alta')
+  if (m.fc != null && m.fc > 100) out.push('Taquicardia')
+  if (m.fc != null && m.fc < 50) out.push('Bradicardia')
+  if (m.spo2 != null && m.spo2 < 95) out.push('Saturación baja')
+  if (m.glucosa != null && m.glucosa < 70) out.push('Glucosa baja')
+  if (m.glucosa != null && m.glucosa > 140) out.push('Glucosa alta')
+  return out
+}
+/** Constantes de una toma en una línea: «FC 108 lpm · TA 97/79 mmHg · Glucosa 85 mg/dl · SatO₂ 98 % · de pie». */
+export function lineaMedida(m: Medida) {
+  const partes = [
+    m.fc != null && `FC ${m.fc} lpm`,
+    (m.pas != null || m.pad != null) && `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg`,
+    m.glucosa != null && `Glucosa ${m.glucosa} mg/dl`,
+    m.spo2 != null && `SatO₂ ${m.spo2} %`,
+    m.posicion && POSICIONES.find(([k]) => k === m.posicion)?.[1].toLowerCase(),
+  ].filter(Boolean)
+  return partes.join(' · ')
+}
 /** Episodios de una opción en un día. Hasta la 0.13.5 se guardaba uno solo (objeto); desde la 0.13.6, una lista. */
 export type DetOpcion = Detalle | Detalle[]
 /** Lee los episodios de una opción, se guardaran con la forma antigua o con la nueva. */
@@ -56,6 +115,8 @@ export type SintDia = {
   escala?: { [grupo: string]: number | null }
   /** Texto libre de los grupos 'texto'. */
   texto?: { [grupo: string]: string }
+  /** Tomas de constantes del día (frecuencia cardíaca, tensión, glucosa, saturación), cada una con su hora. */
+  constantes?: Medida[]
 }
 
 const op = (...nombres: string[]): Opcion[] => nombres.map((n) => ({ id: slug(n), nombre: n }))
@@ -131,7 +192,7 @@ export function leerGrupos(texto: string): Grupo[] | null {
   const lista = Array.isArray(x) ? x : (x as { grupos?: unknown } | null)?.grupos
   if (!Array.isArray(lista) || !lista.length) return null
   const out: Grupo[] = []
-  for (const g of lista as { id?: unknown; nombre?: unknown; tipo?: unknown; neutra?: unknown; opciones?: unknown; min_txt?: unknown; max_txt?: unknown; con_escala?: unknown }[]) {
+  for (const g of lista as { id?: unknown; nombre?: unknown; tipo?: unknown; neutra?: unknown; opciones?: unknown; min_txt?: unknown; max_txt?: unknown; con_escala?: unknown; pagina?: unknown }[]) {
     if (!g || typeof g.nombre !== 'string' || !g.nombre.trim()) return null
     const tipo: TipoGrupo = TIPOS.includes(g.tipo as TipoGrupo) ? (g.tipo as TipoGrupo) : 'varias'
     const id = typeof g.id === 'string' && g.id ? g.id : idLibre(g.nombre, out.map((o) => o.id))
@@ -148,12 +209,12 @@ export function leerGrupos(texto: string): Grupo[] | null {
     const mixto = (tipo === 'una' || tipo === 'varias') && !!g.con_escala
     const extremos = tipo === 'escala' || mixto ? { ...(mixto ? { con_escala: true } : {}), ...(txt(g.min_txt) ? { min_txt: txt(g.min_txt) } : {}), ...(txt(g.max_txt) ? { max_txt: txt(g.max_txt) } : {}) } : {}
     // Una escala conserva las opciones que tuvo el grupo: así lo ya registrado con ellas se sigue leyendo.
-    out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) || (tipo === 'escala' && opciones.length) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}), ...extremos })
+    out.push({ id, nombre: g.nombre.trim(), tipo, ...(conOpciones(tipo) || (tipo === 'escala' && opciones.length) ? { opciones } : {}), ...(tipo === 'varias' && g.neutra ? { neutra: true } : {}), ...extremos, ...(PAGINAS.some(([k]) => k === g.pagina) ? { pagina: g.pagina as Pagina } : {}) })
   }
   return out
 }
 
-export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; gravedad: number | null; urgencias: boolean }
+export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; gravedad: number | null; urgencias: boolean; acciones: string[]; hice: string }
 /** Episodios anotados (opciones marcadas en los grupos 'detalle', como Disautonomía), en orden. */
 export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia }[]): Episodio[] {
   return grupos.filter((g) => g.tipo === 'detalle').flatMap((g) =>
@@ -161,7 +222,7 @@ export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia
       const xs = episodiosOpcion(d.value.det?.[g.id]?.[id])
       const nombre = g.opciones?.find((o) => o.id === id)?.nombre ?? id
       // Una opción marcada sin detalle cuenta como un episodio.
-      return (xs.length ? xs : [{} as Detalle]).map((det) => ({ dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias }))
+      return (xs.length ? xs : [{} as Detalle]).map((det) => ({ dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias, acciones: det.acciones ?? [], hice: det.hice ?? '' }))
     })),
   ).sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora))
 }

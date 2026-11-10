@@ -5,6 +5,7 @@ import Introspeccion from './introspeccion/Introspeccion'
 import { ResumenHidratacion } from './hidratacion/Resumen'
 import Nutricion from './nutricion/Nutricion'
 import { ResumenNutricion } from './nutricion/Resumen'
+import Disautonomia from './sintomas/Disautonomia'
 import Sintomas from './sintomas/Sintomas'
 import { ResumenSintomas } from './sintomas/Resumen'
 import Suplementos from './suplementos/Suplementos'
@@ -25,13 +26,16 @@ export interface ModuleDef {
   Page?: ComponentType
   /** Estado del objetivo de hoy, para Inicio. */
   Resumen?: ComponentType<{ day: string }>
+  /** Fuera de la barra de áreas: su pantalla sigue abierta por su ruta (Hidratación vive dentro de Disautonomía). */
+  oculto?: boolean
 }
 
 export const modules: ModuleDef[] = [
-  { id: 'sintomas', name: 'Signos y síntomas', ico: '📝', path: 'sintomas', Page: Sintomas, Resumen: ResumenSintomas },
+  { id: 'disautonomia', name: 'Disautonomía', ico: '🫀', path: 'disautonomia', Page: Disautonomia },
+  { id: 'sintomas', name: 'Ciclo menstrual', ico: '🌸', path: 'sintomas', Page: Sintomas, Resumen: ResumenSintomas },
   { id: 'suplementos', name: 'Suplementos', ico: '💊', path: 'suplementos', Page: Suplementos, Resumen: ResumenSuplementos },
   { id: 'nutricion', name: 'Nutrición', ico: '🥣', path: 'nutricion', Page: Nutricion, Resumen: ResumenNutricion },
-  { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion },
+  { id: 'hidratacion', name: 'Hidratación', ico: '💧', path: 'hidratacion', Page: Hidratacion, Resumen: ResumenHidratacion, oculto: true },
   { id: 'ejercicio', name: 'Ejercicio', ico: '🏃', path: 'ejercicio' },
   { id: 'biohacking', name: 'Biohacking', ico: '🌙', path: 'biohacking', Page: Biohacking },
   { id: 'introspeccion', name: 'Trabajo introspectivo', ico: '💛', path: 'introspeccion', Page: Introspeccion },

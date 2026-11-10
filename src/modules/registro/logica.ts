@@ -7,7 +7,7 @@ import { ejercicioActivo, escritas, paginas, PAGINAS } from '../introspeccion/lo
 import type { NutriCfg, NutriDia } from '../nutricion/logica'
 import { hecha, limite, tomasDe, GRACIA_MIN } from '../nutricion/logica'
 import type { SintCfg, SintDia } from '../sintomas/logica'
-import { cumplimiento as cumplSintomas, gruposDe } from '../sintomas/logica'
+import { cumplimiento as cumplSintomas, gruposDe, gruposDePagina } from '../sintomas/logica'
 import type { SuplCfg, SuplDia } from '../suplementos/logica'
 import { clave, delDia, momentosDe, MOMENTOS } from '../suplementos/logica'
 
@@ -51,10 +51,13 @@ const NOMBRE_MOMENTO: { [k: string]: string } = Object.fromEntries(MOMENTOS)
 export function apartadosDelDia(x: DatosDia, date: string, ahoraMin: number | null): EstadoApartado[] {
   const out: EstadoApartado[] = []
 
-  // Signos y síntomas: los apartados que piden respuesta cada día.
-  {
-    const base = { id: 'sintomas', to: 'sintomas', ico: '📝', nombre: 'Signos y síntomas' }
-    const c = cumplSintomas(gruposDe(x.sintCfg), x.sintomas)
+  // Disautonomía y Ciclo menstrual: los apartados de cada pantalla que piden respuesta cada día.
+  for (const [pagina, base] of [
+    ['disautonomia', { id: 'disautonomia', to: 'disautonomia', ico: '🫀', nombre: 'Disautonomía' }],
+    ['ciclo', { id: 'sintomas', to: 'sintomas', ico: '🌸', nombre: 'Ciclo menstrual' }],
+  ] as const) {
+    const c = cumplSintomas(gruposDePagina(gruposDe(x.sintCfg), pagina), x.sintomas)
+    if (!c.total) continue
     out.push(c.faltan.length ? { ...base, completo: false, faltan: c.faltan.length, falta: `Falta: ${enumera(c.faltan.map(minus))}` } : hecho(base))
   }
 
@@ -87,7 +90,7 @@ export function apartadosDelDia(x: DatosDia, date: string, ahoraMin: number | nu
 
   // Hidratación: el objetivo del día y el vaso con el chupito de mar al levantarse.
   {
-    const base = { id: 'hidratacion', to: 'hidratacion', ico: '💧', nombre: 'Hidratación' }
+    const base = { id: 'hidratacion', to: 'disautonomia', ico: '💧', nombre: 'Hidratación' }
     const obj = objetivo(x.hidraCfg), tot = total(x.hidratacion)
     const partes: string[] = []
     if (!levantarHecho(x.hidraCfg, x.hidratacion)) partes.push('vaso y chupito al levantarte')

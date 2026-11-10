@@ -5,7 +5,7 @@ import { useSettings } from '../../store/useSettings'
 import { FASES, infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import { objetivo, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
-import { COMIDAS, conOpciones, episodiosDe, gruposDe, tieneEscala, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
+import { COMIDAS, conOpciones, episodiosDe, gruposDe, lineaMedida, tieneEscala, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
 import { MOMENTOS, cumplimiento, vigente, type SuplCfg, type SuplDia } from '../suplementos/logica'
 import { pendientesDe, type Pregunta } from './store'
 
@@ -95,6 +95,8 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
     }
   }
   const episodios = episodiosDe(grupos, dias)
+  const constantes = dias.flatMap((d) => (d.value.constantes ?? []).map((m) => ({ dia: d.day, m }))).filter(({ m }) => lineaMedida(m))
+    .sort((a, b) => (a.dia + (a.m.hora ?? '')).localeCompare(b.dia + (b.m.hora ?? '')))
   const notas = grupos.filter((g) => g.tipo === 'texto').flatMap((g) =>
     dias.filter((d) => d.value.texto?.[g.id]?.trim()).map((d) => ({ dia: d.day, texto: d.value.texto![g.id].trim() })),
   )
@@ -150,7 +152,20 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
               {episodios.map((e, i) => (
                 <tr key={i}>
                   <td>{fmtDate(e.dia)}{e.hora && ' · ' + e.hora}</td>
-                  <td>{e.nombre}{e.gravedad != null && ` · gravedad ${e.gravedad}/10`}{e.urgencias && ' · ingreso en urgencias'}</td>
+                  <td>{e.nombre}{e.gravedad != null && ` · intensidad ${e.gravedad}/10`}{e.urgencias && ' · ingreso en urgencias'}{(e.acciones.length > 0 || e.hice) && ` · qué hice: ${[e.acciones.join(', '), e.hice].filter(Boolean).join('. ')}`}</td>
+                </tr>
+              ))}
+            </tbody></table>
+          </>
+        )}
+        {constantes.length > 0 && (
+          <>
+            <h3>Constantes ({constantes.length})</h3>
+            <table className="table"><tbody>
+              {constantes.map(({ dia, m }, i) => (
+                <tr key={i}>
+                  <td>{fmtDate(dia)}{m.hora && ' · ' + m.hora}</td>
+                  <td>{lineaMedida(m)}{m.nota && ` · ${m.nota}`}</td>
                 </tr>
               ))}
             </tbody></table>

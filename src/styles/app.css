@@ -721,3 +721,18 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .pruebo-val button.on.no { background: color-mix(in srgb, var(--red) 10%, var(--card)); border-color: var(--red); color: var(--red); }
 .pruebo-nota { margin: 0; white-space: pre-wrap; }
 .pruebo-form { display: grid; gap: .2rem; border: 1px solid var(--primary-soft); border-radius: 10px; padding: .7rem; background: var(--card); }
+
+/* Disautonomía */
+.vaso-botones.tres { grid-template-columns: 1fr 1fr 1fr; }
+.hidra-mini .midia-check { align-items: flex-start; }
+.hidra-mini .midia-check .midia-caja { margin-top: .1rem; }
+.epi-hice textarea { min-height: 3.2rem; }
+.medida { border: 1px solid var(--line); border-radius: 10px; padding: .6rem; margin: .6rem 0; background: var(--bg); }
+.medida-campos { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .6rem; margin-top: .4rem; }
+.medida-campos .field { margin: 0; }
+.medida-ta { display: flex; align-items: center; gap: .3rem; }
+.medida-ta input { min-width: 0; }
+.medida-avisos { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+.medida-aviso { font-size: .78rem; padding: .15rem .5rem; border-radius: 999px; border: 1px solid var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+.dis-dia { display: flex; flex-wrap: wrap; gap: .4rem .9rem; }
+.dis-dia strong { font-size: 1.15rem; }
