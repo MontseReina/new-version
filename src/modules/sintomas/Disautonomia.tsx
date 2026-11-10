@@ -4,7 +4,8 @@ import { Section } from '../../components/ui'
 import { todayStr } from '../../lib/dates'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
-import { HidraCompacta } from '../hidratacion/Compacta'
+import { EditarPauta, HidraCompacta } from '../hidratacion/Compacta'
+import { useHidra } from '../hidratacion/useHidra'
 import { Constantes } from './Constantes'
 import { Editor } from './Editor'
 import { Grupos } from './Grupos'
@@ -19,6 +20,7 @@ export default function Disautonomia() {
   const date = useParams().date ?? todayStr()
   const { value: d, set, state, retry } = useDaily<SintDia>('sintomas', date)
   const [cfg, saveCfg] = useSettings<SintCfg>('sintomas')
+  const hidra = useHidra(date)
   const todos = gruposDe(cfg)
   const grupos = gruposDePagina(todos, 'disautonomia')
   const episodios = grupos.filter((g) => g.tipo === 'detalle')
@@ -38,9 +40,12 @@ export default function Disautonomia() {
       </fieldset>
       <Grupos grupos={episodios} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
       <Grupos grupos={resto} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
-      <HidraCompacta date={date} />
+      <HidraCompacta date={date} h={hidra} />
 
-      <Section title="Editar grupos">
+      <Section title="Editar mi pauta">
+        <EditarPauta h={hidra} />
+      </Section>
+      <Section title="Editar mis grupos">
         <Editor grupos={todos} acciones={cfg?.acciones ?? []} guardar={(g) => void saveCfg({ grupos: g })} guardarAcciones={(a) => void saveCfg({ acciones: a })} />
       </Section>
     </div>

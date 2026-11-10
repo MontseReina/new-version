@@ -44,7 +44,7 @@ export default function Sintomas() {
       <Grupos grupos={grupos} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
       <p className="muted small">La temperatura basal llegará sola desde Oura cuando se conecte el anillo. Los episodios, las constantes, la energía y la hidratación se anotan en Disautonomía.</p>
 
-      <Section title="Editar grupos">
+      <Section title="Editar mis grupos">
         <Editor grupos={todos} acciones={cfg?.acciones ?? []} guardar={(g) => void saveCfg({ grupos: g })} guardarAcciones={(a) => void saveCfg({ acciones: a })} />
       </Section>
     </div>

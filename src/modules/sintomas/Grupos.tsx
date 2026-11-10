@@ -121,7 +121,7 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
                 const on = marcadas.includes(o.id)
                 return <button type="button" key={o.id} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => marcar(g, o.id)}>{o.nombre}</button>
               })}
-              {!g.opciones?.length && <span className="muted small">Sin opciones todavía. Añádelas en «Editar grupos».</span>}
+              {!g.opciones?.length && <span className="muted small">Sin opciones todavía. Añádelas en «Editar mis grupos».</span>}
             </div>
             {tieneEscala(g) && <div style={{ marginTop: '.6rem' }}>{escala(g)}</div>}
             {g.tipo === 'detalle' && (g.opciones ?? []).filter((o) => marcadas.includes(o.id)).map((o) => {

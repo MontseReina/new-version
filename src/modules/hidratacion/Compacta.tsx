@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plegable } from '../../components/ui'
 import { CHUPITO_ML, TAZA_ML, filaLevantar, levantarHecho, type PautaFila } from './logica'
-import { useHidra } from './useHidra'
+import type { useHidra } from './useHidra'
+
+export type Hidra = ReturnType<typeof useHidra>
 
 /** Cantidades de agua de los botones rápidos (ml). */
 const VASOS = [250, 300, 500]
 
 /** Hidratación reducida, dentro de Disautonomía: el total del día, la pauta en el orden en que se toma
- *  (un toque la anota con su hora) y los botones rápidos. El desglose y la semana siguen en su pantalla. */
-export function HidraCompacta({ date }: { date: string }) {
-  const h = useHidra(date)
+ *  (un toque la anota con su hora) y los botones rápidos. El desglose y la semana siguen en su pantalla; la pauta se edita al final de Disautonomía. */
+export function HidraCompacta({ date, h }: { date: string; h: Hidra }) {
   const { value: d, cfg, obj, t, lv, pauta, state } = h
   const mar = d.mar_ml ?? 0
   const marMin = cfg?.mar_min_ml ?? 0
@@ -62,12 +62,13 @@ export function HidraCompacta({ date }: { date: string }) {
         {h.ultimo && <button type="button" className="linkbtn small" onClick={h.deshacer}>↩︎ Deshacer «{h.ultimo.txt}»</button>}
       </fieldset>
       <p className="muted small" style={{ margin: '.5rem 0 0' }}>Taza = {TAZA_ML} ml · chupito = {CHUPITO_ML} ml. <Link to={'/hidratacion/' + date}>Ver el desglose y la semana</Link></p>
-
-      <Plegable id="hidra-pauta-editar" title="Editar mi pauta">
-        <EditorPauta pauta={pauta} guardar={(p, antes) => { void h.saveCfg({ pauta: p }); if (antes) h.recolocar(antes) }} />
-      </Plegable>
     </div>
   )
+}
+
+/** «Editar mi pauta», al final de Disautonomía junto a «Editar mis grupos». */
+export function EditarPauta({ h }: { h: Hidra }) {
+  return <EditorPauta pauta={h.pauta} guardar={(p, antes) => { void h.saveCfg({ pauta: p }); if (antes) h.recolocar(antes) }} />
 }
 
 /** Edición de la pauta de hidratación: filas en el orden del día, con qué se toma y cuánto suma. */

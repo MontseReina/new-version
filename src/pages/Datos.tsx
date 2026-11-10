@@ -20,7 +20,7 @@ export function Datos() {
       counts().then(setN, () => {})
     } catch (e) {
       setAviso(e instanceof FaltanOpciones
-        ? `No se ha importado nada: faltan en los grupos de síntomas ${e.faltan.join('; ')}. Añádelas en «Editar grupos» y vuelve a pulsar.`
+        ? `No se ha importado nada: faltan en los grupos de síntomas ${e.faltan.join('; ')}. Añádelas en «Editar mis grupos» y vuelve a pulsar.`
         : 'La importación se ha interrumpido. Revisa la conexión y vuelve a pulsar: no se duplica nada.')
     }
     setBusy(false)
