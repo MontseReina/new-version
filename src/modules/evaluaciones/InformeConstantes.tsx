@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addDays, fmtDate, todayStr } from '../../lib/dates'
+import { addDays, fmtDate, todayStr, weekStart } from '../../lib/dates'
 import { listDaily } from '../../store/repo'
 import { useAncho } from '../oura/graficos'
 import { CONTEXTO_FC, type OuraDia } from '../oura/tipos'
@@ -7,15 +7,15 @@ import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, type Medida, type SintDia } fr
 
 /**
  * Evaluaciones · Constantes por días: gráficos y tabla de las tomas de Disautonomía (y, si se quiere, de los ratos
- * de pulso alto del anillo Oura) entre dos fechas, para imprimir o guardar en PDF y llevar a la consulta.
+ * de 100 lpm o más del anillo Oura) semana a semana (de lunes a domingo), para imprimir o guardar en PDF y llevar a la consulta.
  * Las franjas sombreadas son los rangos de referencia generales del adulto (los mismos que resaltan las tomas).
  */
 
 type Toma = Medida & { day: string; hora: string; origen: 'mia' | 'oura'; min?: number; contexto?: string }
 
-const PERIODOS: [number, string][] = [[7, '7 días'], [14, '14 días'], [30, '30 días'], [90, '3 meses']]
 const etiqueta = (pares: [string, string][], k?: string | null) => (k ? pares.find(([c]) => c === k)?.[1] ?? '' : '')
 const minDe = (hora: string) => { const [h, m] = hora.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
+const SEMANA = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
 const ddmm = (day: string) => `${day.slice(8, 10)}/${day.slice(5, 7)}`
 
 function dias(desde: string, hasta: string): string[] {
@@ -41,7 +41,7 @@ function PuntosPorDia({ titulo, unidad, ds, puntos, rango, nota }: {
   const idx = new Map(ds.map((d, i) => [d, i]))
   const X = (p: { day: string; hora: string }) => L + slot * ((idx.get(p.day) ?? 0) + Math.min(0.92, Math.max(0.08, minDe(p.hora) / 1440)))
   const Y = (v: number) => T + (H - T - B) * (1 - (v - lo) / (hi - lo))
-  const cada = Math.max(1, Math.ceil(n / Math.max(4, Math.floor((W - L - R) / 46))))
+  const cada = Math.max(1, Math.ceil(n / Math.max(4, Math.floor((W - L - R) / 44))))
   const sinDatos = !puntos.length
   return (
     <div className="oura-grafico informe-grafico" ref={ref}>
@@ -61,7 +61,7 @@ function PuntosPorDia({ titulo, unidad, ds, puntos, rango, nota }: {
         {ds.map((d, i) => (i % cada === 0 ? (
           <g key={d}>
             <line x1={L + slot * i} x2={L + slot * i} y1={T} y2={H - B} stroke="var(--line)" strokeWidth=".5" />
-            <text x={L + slot * i + 2} y={H - 5} fontSize="9" fill="var(--muted)">{ddmm(d)}</text>
+            <text x={L + slot * i + slot / 2} y={H - 5} textAnchor="middle" fontSize="9" fill="var(--muted)">{SEMANA[(new Date(d + 'T12:00:00').getDay() + 6) % 7]} {ddmm(d)}</text>
           </g>
         ) : null))}
         {puntos.map((p, k) => {
@@ -83,8 +83,8 @@ function PuntosPorDia({ titulo, unidad, ds, puntos, rango, nota }: {
 
 export function InformeConstantes() {
   const hoy = todayStr()
-  const [hasta, setHasta] = useState(hoy)
-  const [desde, setDesde] = useState(addDays(hoy, -13))
+  const [desde, setDesde] = useState(weekStart(hoy))
+  const hasta = addDays(desde, 6)
   const [conOura, setConOura] = useState(true)
   const [filas, setFilas] = useState<{ sint: { day: string; value: SintDia }[]; oura: { day: string; value: OuraDia }[] } | null>(null)
 
@@ -125,27 +125,27 @@ export function InformeConstantes() {
     if (c === 'ta' && t.ta_no_capta) return 'No la capta (muy baja)'
     if (c === 'glucosa' && t.glucosa != null) return String(t.glucosa)
     if (c === 'spo2' && t.spo2 != null) return String(t.spo2)
-    if (t.origen === 'oura') return '—'
+    // En las tomas del anillo, lo que no es el pulso no se pudo medir en ese momento.
+    if (t.origen === 'oura') return 'No se puede medir'
     return noMedible(t, c) ? 'No se puede medir' : ''
   }
-  const periodo = (n: number) => { setHasta(hoy); setDesde(addDays(hoy, -(n - 1))) }
 
   return (
     <section className="card informe-constantes oura">
       <h2 style={{ marginTop: 0 }} className="no-print">Constantes por días</h2>
       <div className="solo-print"><h1>Registro de constantes</h1></div>
-      <p className="small" style={{ marginTop: 0 }}>Del <b>{fmtDate(desde)}</b> al <b>{fmtDate(hasta)}</b> · {tomas.length} {tomas.length === 1 ? 'toma' : 'tomas'}</p>
+      <div className="row between no-print" style={{ margin: '.2rem 0 .5rem' }}>
+        <button type="button" className="btn sm ghost" aria-label="Semana anterior" onClick={() => setDesde(addDays(desde, -7))}>‹</button>
+        <div style={{ textAlign: 'center' }}>
+          <strong>{desde === weekStart(hoy) ? 'Esta semana' : 'Semana'}</strong>
+          <div className="muted small">del {fmtDate(desde)} al {fmtDate(hasta)}</div>
+        </div>
+        <button type="button" className="btn sm ghost" aria-label="Semana siguiente" disabled={addDays(desde, 7) > hoy} onClick={() => setDesde(addDays(desde, 7))}>›</button>
+      </div>
+      <p className="small solo-print">Semana del <b>{fmtDate(desde)}</b> al <b>{fmtDate(hasta)}</b></p>
+      <p className="small" style={{ marginTop: 0 }}>{tomas.length} {tomas.length === 1 ? 'toma' : 'tomas'} en la semana</p>
 
       <div className="no-print">
-        <div className="chips" role="group" aria-label="Periodo">
-          {PERIODOS.map(([n, t]) => (
-            <button type="button" key={n} className={'chip ' + (desde === addDays(hoy, -(n - 1)) && hasta === hoy ? 'on' : '')} onClick={() => periodo(n)}>{t}</button>
-          ))}
-        </div>
-        <div className="row" style={{ gap: '.6rem', flexWrap: 'wrap', margin: '.5rem 0' }}>
-          <label className="row small" style={{ gap: '.3rem' }}>Desde <input type="date" value={desde} max={hasta} onChange={(e) => e.target.value && setDesde(e.target.value)} /></label>
-          <label className="row small" style={{ gap: '.3rem' }}>Hasta <input type="date" value={hasta} min={desde} max={hoy} onChange={(e) => e.target.value && setHasta(e.target.value)} /></label>
-        </div>
         <label className="row small" style={{ gap: '.4rem', margin: '.2rem 0 .5rem' }}>
           <input type="checkbox" checked={conOura} onChange={(e) => setConOura(e.target.checked)} /> Incluir el pulso de 100 lpm o más del anillo Oura
         </label>
@@ -186,7 +186,7 @@ export function InformeConstantes() {
               </table>
             </div>
           )}
-          <p className="muted small">Rangos de referencia generales del adulto; no son un diagnóstico. Las tomas «Anillo Oura» las mide el anillo solo: tensión, glucosa y saturación no las mide.</p>
+          <p className="muted small">Rangos de referencia generales del adulto; no son un diagnóstico. Las tomas «Anillo Oura» son el pulso de 100 lpm o más que midió el anillo; la tensión, la glucosa y la saturación no se pudieron medir en ese momento.</p>
         </>
       )}
     </section>

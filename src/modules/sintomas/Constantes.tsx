@@ -63,7 +63,7 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
                 <span className="tag">Oura · automático</span>
               </div>
               <div className="medida-oura-fc">Frecuencia cardíaca <b>{a.fc} lpm</b> <span className="muted small">máximo durante {a.min} min{a.contexto ? ` · ${CONTEXTO_FC[a.contexto]}` : ''}</span></div>
-              <div className="small muted">Tensión, glucosa y saturación: no las mide el anillo.</div>
+              <div className="small muted">Tensión arterial, glucosa y saturación: no se puede medir.</div>
               {avisosA.length > 0 && <div className="medida-avisos">{avisosA.map((t) => <span key={t} className="medida-aviso">{t}</span>)}</div>}
               <button type="button" className="linkbtn small" onClick={() => completar(a)}>Completar con mis constantes</button>
             </div>
