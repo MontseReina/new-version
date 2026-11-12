@@ -7,7 +7,7 @@ import type { FasesNoche } from './tipos'
  * Ancho real del gráfico en píxeles. El dibujo se hace a ese ancho (1 unidad = 1 píxel), así la letra y la altura
  * son las mismas en el móvil y en una pantalla ancha, en vez de crecer con el ancho.
  */
-function useAncho(): [(el: HTMLElement | null) => void, number] {
+export function useAncho(): [(el: HTMLElement | null) => void, number] {
   const [w, setW] = useState(320)
   const obs = useRef<ResizeObserver | null>(null)
   const ref = useCallback((el: HTMLElement | null) => {

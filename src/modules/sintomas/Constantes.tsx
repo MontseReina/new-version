@@ -1,11 +1,16 @@
 import { todayStr, nowHM } from '../../lib/dates'
 import type { ReactNode } from 'react'
+import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
 import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, avisosMedida, type CampoMedida, type Medida, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
-/** Constantes del día: cada «Registrar» abre una toma nueva con la hora de ahora (en el registro de hoy). */
-export function Constantes({ d, set, date }: { d: SintDia; set: (patch: SintDia) => void; date: string }) {
+/**
+ * Constantes del día: cada «Registrar» abre una toma nueva con la hora de ahora (en el registro de hoy).
+ * Debajo, mezclados por hora, los ratos en que el anillo Oura midió el pulso a 100 lpm o más (solo lectura;
+ * «Completar» los convierte en una toma propia para añadir tensión, glucosa, saturación o posición).
+ */
+export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patch: SintDia) => void; date: string; oura?: FcAlta[] }) {
   const xs = d.constantes ?? []
   const poner = (i: number, patch: Medida) => set({ constantes: xs.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   const nueva = () => set({ constantes: [...xs, date === todayStr() ? { hora: nowHM() } : {}] })
@@ -30,8 +35,16 @@ export function Constantes({ d, set, date }: { d: SintDia; set: (patch: SintDia)
       </div>
     )
   }
+  // Ratos de Oura que no se han completado ya a mano.
+  const completados = new Set(xs.filter((x) => x.de_oura && x.hora).map((x) => x.hora))
+  const deOura = oura.filter((a) => !completados.has(a.hora))
+  const completar = (a: FcAlta) => set({ constantes: [...xs, { hora: a.hora, fc: a.fc, de_oura: true }] })
   // Se enseñan de la más reciente a la más antigua; se guardan en el orden en que se anotan.
-  const orden = xs.map((x, i) => [x, i] as const).sort(([a], [b]) => (b.hora ?? '').localeCompare(a.hora ?? ''))
+  type Fila = { hora: string; x?: Medida; i?: number; a?: FcAlta }
+  const orden: Fila[] = [
+    ...xs.map((x, i) => ({ hora: x.hora ?? '', x, i })),
+    ...deOura.map((a) => ({ hora: a.hora, a })),
+  ].sort((p, q) => q.hora.localeCompare(p.hora))
 
   return (
     <div className="card sint-grupo">
@@ -39,8 +52,24 @@ export function Constantes({ d, set, date }: { d: SintDia; set: (patch: SintDia)
         <h3 style={{ margin: 0 }}>🩺 Constantes</h3>
         <button type="button" className="btn sm" onClick={nueva}>+ Registrar</button>
       </div>
-      {xs.length === 0 && <p className="muted small" style={{ marginBottom: 0 }}>Frecuencia cardíaca, tensión arterial, glucosa y saturación. Cada registro lleva su hora.</p>}
-      {orden.map(([x, i]) => {
+      {xs.length === 0 && deOura.length === 0 && <p className="muted small" style={{ marginBottom: 0 }}>Frecuencia cardíaca, tensión arterial, glucosa y saturación. Cada registro lleva su hora.</p>}
+      {orden.map(({ x, i, a }) => {
+        if (a) {
+          const avisosA = avisosMedida({ fc: a.fc })
+          return (
+            <div className="medida medida-oura" key={'oura-' + a.hora}>
+              <div className="row between">
+                <span className="small"><span className="muted">Hora</span> <b>{a.hora}</b></span>
+                <span className="tag">Oura · automático</span>
+              </div>
+              <div className="medida-oura-fc">Frecuencia cardíaca <b>{a.fc} lpm</b> <span className="muted small">máximo durante {a.min} min{a.contexto ? ` · ${CONTEXTO_FC[a.contexto]}` : ''}</span></div>
+              <div className="small muted">Tensión, glucosa y saturación: no las mide el anillo.</div>
+              {avisosA.length > 0 && <div className="medida-avisos">{avisosA.map((t) => <span key={t} className="medida-aviso">{t}</span>)}</div>}
+              <button type="button" className="linkbtn small" onClick={() => completar(a)}>Completar con mis constantes</button>
+            </div>
+          )
+        }
+        if (!x || i == null) return null
         const avisos = avisosMedida(x)
         return (
           <div className="medida" key={i}>
@@ -74,6 +103,7 @@ export function Constantes({ d, set, date }: { d: SintDia; set: (patch: SintDia)
             <div className="chips" role="group" aria-label="Hidratación antes de medir">
               {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k })}>{l}</button>)}
             </div>
+            {x.de_oura && <div className="muted small" style={{ marginTop: '.4rem' }}>Empezó como pulso alto del anillo Oura.</div>}
             {x.nota && <div className="muted small" style={{ marginTop: '.4rem' }}>Nota: {x.nota}</div>}
             {avisos.length > 0 && <div className="medida-avisos">{avisos.map((a) => <span key={a} className="medida-aviso">{a}</span>)}</div>}
           </div>

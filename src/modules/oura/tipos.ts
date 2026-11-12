@@ -60,6 +60,11 @@ export type OuraDia = {
   cardio?: { edad_vascular?: number; vo2?: number }
   /** Frecuencia cardíaca del día, una media cada 30 minutos desde las 00:00 (48 valores). */
   fc_dia?: (number | null)[]
+  /**
+   * Ratos con la frecuencia a 100 lpm o más (lecturas de Oura de todo el día y la noche). Lecturas seguidas,
+   * con menos de 10 minutos entre una y otra, cuentan como un solo rato: hora de inicio, pulso máximo y minutos.
+   */
+  fc_altas?: FcAlta[]
   /** Horario de acostarse que recomienda Oura (HH:MM). */
   recomendada?: { desde?: string; hasta?: string }
   entrenos?: { actividad: string; inicio: string; min: number; kcal?: number; intensidad?: 'easy' | 'moderate' | 'hard' }[]
@@ -68,6 +73,15 @@ export type OuraDia = {
   /** Modo descanso activo ese día (lo activa ella o Oura cuando detecta que está enferma). */
   modo_descanso?: boolean
 }
+
+export type FcAlta = {
+  hora: string
+  fc: number
+  min: number
+  /** Qué hacía según el anillo: dormida, en reposo, moviéndose o en un entrenamiento. */
+  contexto?: 'sueno' | 'reposo' | 'movimiento' | 'entreno'
+}
+export const CONTEXTO_FC: Record<string, string> = { sueno: 'dormida', reposo: 'en reposo', movimiento: 'moviéndote', entreno: 'entrenamiento' }
 
 export type FactorSueno = 'total' | 'eficiencia' | 'descanso' | 'rem' | 'profundo' | 'latencia' | 'regularidad'
 export type FactorDisposicion =

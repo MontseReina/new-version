@@ -7,6 +7,7 @@ import { useSettings } from '../../store/useSettings'
 import { EditarPauta, HidraCompacta } from '../hidratacion/Compacta'
 import { useHidra } from '../hidratacion/useHidra'
 import { FcDelDia } from '../oura/FcDelDia'
+import { useOuraDia } from '../oura/useOuraDia'
 import { Constantes } from './Constantes'
 import { Editor } from './Editor'
 import { Grupos } from './Grupos'
@@ -22,6 +23,7 @@ export default function Disautonomia() {
   const { value: d, set, state, retry } = useDaily<SintDia>('sintomas', date)
   const [cfg, saveCfg] = useSettings<SintCfg>('sintomas')
   const hidra = useHidra(date)
+  const oura = useOuraDia(date)
   const todos = gruposDe(cfg)
   const grupos = gruposDePagina(todos, 'disautonomia')
   const episodios = grupos.filter((g) => g.tipo === 'detalle')
@@ -36,9 +38,9 @@ export default function Disautonomia() {
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
 
-      <FcDelDia date={date} />
+      <FcDelDia fc={oura?.fc_dia} />
       <fieldset className="sint" disabled={state === 'cargando'}>
-        <Constantes d={d} set={set} date={date} />
+        <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} />
       </fieldset>
       <Grupos grupos={episodios} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
       <Grupos grupos={resto} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />

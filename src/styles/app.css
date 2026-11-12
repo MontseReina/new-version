@@ -738,6 +738,26 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .medida-campos .linkbtn { margin-top: .2rem; }
 .medida-botones { display: flex; flex-wrap: wrap; gap: 0 .8rem; }
 .medida-no-capta { border-style: solid; border-color: var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+.medida-oura { border-style: dashed; background: var(--card); }
+.medida-oura .tag { font-size: .72rem; }
+.medida-oura-fc { margin: .35rem 0 .2rem; }
+
+/* Evaluaciones · Constantes por días (se imprime para la consulta) */
+.solo-print { display: none; }
+.informe-tabla { overflow-x: auto; }
+.informe-tabla .table { font-size: .82rem; }
+.informe-tabla .table td:first-child { min-width: 3.2rem; }
+.informe-tabla .table td, .informe-tabla .table th { white-space: nowrap; }
+.informe-tabla .table td:last-child { white-space: normal; min-width: 10rem; }
+.informe-tabla .fila-oura td { color: var(--muted); }
+@media print {
+  .solo-print { display: block; }
+  .informe-constantes { border: none; box-shadow: none; padding: 0; }
+  .informe-constantes .oura-grafico { break-inside: avoid; }
+  .informe-constantes, .informe-constantes * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .informe-tabla { overflow: visible; }
+  .informe-tabla tr { break-inside: avoid; }
+}
 .medida-eje { margin: .55rem 0 .25rem; }
 
 /* ---------- Pilar Oura Ring ---------- */

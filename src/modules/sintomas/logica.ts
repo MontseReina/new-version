@@ -68,6 +68,8 @@ export type Medida = {
   ta_no_capta?: boolean | null
   /** Nota libre (solo días anteriores a la 0.19.0). */
   nota?: string | null
+  /** Toma que empezó como rato de pulso alto del anillo Oura y se completó a mano. */
+  de_oura?: boolean | null
 }
 export type CampoMedida = 'fc' | 'ta' | 'glucosa' | 'spo2'
 export type TipoMedida = 'habitual' | 'episodio' | 'postprandial'

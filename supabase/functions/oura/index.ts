@@ -36,6 +36,11 @@ const TRAMO = 30
 const VACIOS_FIN = 3
 /** Hasta dónde se trae el histórico: el último año (decisión de Montserrate, 12-11-2026). */
 const HISTORICO_DIAS = 365
+/** Versión de lo que se guarda por día. Si sube, se vuelve a traer el histórico para completar los días ya guardados. */
+const DATOS_VERSION = 2
+/** Pulso a partir del cual se guarda el rato (para Constantes de Disautonomía) y hueco máximo entre lecturas de un mismo rato. */
+const FC_ALTA = 100
+const FC_ALTA_HUECO_MIN = 10
 /** Horas de la sincronización automática (hora local de la usuaria) y margen de la tarea de la base de datos. */
 const HORAS_AUTO = ['10:30', '22:00']
 const MARGEN_AUTO_MIN = 30
@@ -83,6 +88,8 @@ type Estado = {
   desde?: string | null
   /** Datos que Oura no deja leer con el permiso dado (p. ej. etiquetas o sesiones). */
   sin_permiso?: string[]
+  /** DATOS_VERSION con la que se trajo el histórico. */
+  version?: number
 }
 type Fila = { secret: Secreto; state: Estado }
 async function leerFila(userId: string): Promise<Fila | null> {
@@ -385,6 +392,38 @@ async function traerTramo(userId: string, token: string, tz: string, desde: stri
   for (const [dia, b] of Object.entries(sumas)) {
     doc(dia).fc_dia = b.s.map((s, i) => (b.n[i] ? Math.round(s / b.n[i]) : null))
   }
+  // Ratos con el pulso a 100 o más: lecturas seguidas (menos de 10 minutos entre ellas) cuentan como uno.
+  const altas: Record<string, { ini: number; fin: number; fc: number; fuentes: Set<string> }[]> = {}
+  const lecturas = (datos['heartrate'] ?? [])
+    .filter((x: any) => typeof x.bpm === 'number' && x.bpm >= FC_ALTA && typeof x.timestamp === 'string')
+    .map((x: any) => ({ t: new Date(x.timestamp).getTime(), bpm: x.bpm as number, fuente: String(x.source ?? ''), z: enZona(x.timestamp, tz) }))
+    .filter((x) => dentro(x.z.dia))
+    .sort((a, b) => a.t - b.t)
+  let previa: { t: number; dia: string } | null = null
+  for (const x of lecturas) {
+    const lista = (altas[x.z.dia] ??= [])
+    const ultimo = lista[lista.length - 1]
+    if (ultimo && previa && previa.dia === x.z.dia && x.t - previa.t <= FC_ALTA_HUECO_MIN * 60000) {
+      ultimo.fin = x.z.min; ultimo.fc = Math.max(ultimo.fc, x.bpm); ultimo.fuentes.add(x.fuente)
+    } else {
+      lista.push({ ini: x.z.min, fin: x.z.min, fc: x.bpm, fuentes: new Set([x.fuente]) })
+    }
+    previa = { t: x.t, dia: x.z.dia }
+  }
+  for (const [dia, lista] of Object.entries(altas)) {
+    const clase5 = docs[dia]?.actividad?.clase5 as string | undefined
+    doc(dia).fc_altas = lista.map((r) => {
+      // Contexto: lo que dice Oura de la lectura y, si no, el movimiento de esos minutos.
+      let contexto: string | undefined
+      if (r.fuentes.has('workout')) contexto = 'entreno'
+      else if (r.fuentes.has('sleep')) contexto = 'sueno'
+      else if (clase5) {
+        const c = [...clase5.slice(Math.floor(r.ini / 5), Math.floor(r.fin / 5) + 1)].map(Number)
+        contexto = c.some((v) => v >= 3) ? 'movimiento' : c.some((v) => v === 1 || v === 2) ? 'reposo' : undefined
+      }
+      return limpio({ hora: hhmm(r.ini * 60), fc: Math.round(r.fc), min: Math.max(5, r.fin - r.ini + 5), contexto })
+    })
+  }
 
   // Guardar: un documento por día (se sustituye entero; lo escribe solo esta función).
   const dias = Object.keys(docs).filter((d) => Object.keys(docs[d]).length).sort()
@@ -452,6 +491,10 @@ async function sincronizar(userId: string) {
     // 1) Los últimos días, siempre.
     const rec = await tramo(sumarDias(hoy, -RECIENTES), hoy)
     const st = fila.state
+    if ((st.version ?? 1) < DATOS_VERSION) {
+      // Hay datos nuevos por día: se vuelve a recorrer el histórico para completar lo ya guardado.
+      st.historico_completo = false; st.historico_hasta = null; st.historico_vacios = 0; st.version = DATOS_VERSION
+    }
     if (rec.dias.length && (!st.desde || rec.dias[0] < st.desde)) st.desde = rec.dias[0]
 
     // 2) Un tramo más del histórico, hacia atrás, hasta un año atrás o hasta que Oura deje de tener datos.
