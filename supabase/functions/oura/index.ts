@@ -5,7 +5,7 @@
 //  · POST {accion}     → llamadas de la app, con la sesión de la usuaria:
 //      'estado'       ¿está conectada?
 //      'url'          dirección de Oura para dar permiso
-//      'sincronizar'  trae los 3 últimos días y un tramo más del histórico (la app repite mientras falte histórico)
+//      'sincronizar'  trae los 3 últimos días y un tramo más del histórico del último año (la app repite mientras falte)
 //      'desconectar'  retira el permiso
 //  · POST {accion:'auto'} sin sesión → lo llama la base de datos cada 30 minutos (supabase/oura-cron.sql):
 //      sincroniza a las 10:30 y a las 22:00 de la hora de cada usuaria, y mientras falte histórico.
@@ -34,6 +34,8 @@ const RECIENTES = 3
 const TRAMO = 30
 /** Tramos seguidos sin ningún dato para dar el histórico por terminado. */
 const VACIOS_FIN = 3
+/** Hasta dónde se trae el histórico: el último año (decisión de Montserrate, 12-11-2026). */
+const HISTORICO_DIAS = 365
 /** Horas de la sincronización automática (hora local de la usuaria) y margen de la tarea de la base de datos. */
 const HORAS_AUTO = ['10:30', '22:00']
 const MARGEN_AUTO_MIN = 30
@@ -452,16 +454,17 @@ async function sincronizar(userId: string) {
     const st = fila.state
     if (rec.dias.length && (!st.desde || rec.dias[0] < st.desde)) st.desde = rec.dias[0]
 
-    // 2) Un tramo más del histórico, hacia atrás, hasta que Oura deje de tener datos.
+    // 2) Un tramo más del histórico, hacia atrás, hasta un año atrás o hasta que Oura deje de tener datos.
     if (!st.historico_completo) {
+      const limite = sumarDias(hoy, -HISTORICO_DIAS)
       const hasta = sumarDias(st.historico_hasta ?? sumarDias(hoy, -RECIENTES), -1)
-      const desde = sumarDias(hasta, -(TRAMO - 1))
+      const desde = [sumarDias(hasta, -(TRAMO - 1)), limite].sort()[1]
       const h = await tramo(desde, hasta)
       st.historico_hasta = desde
       const vacios = h.dias.length ? 0 : (st.historico_vacios ?? 0) + 1
       st.historico_vacios = vacios
       if (h.dias.length && (!st.desde || h.dias[0] < st.desde)) st.desde = h.dias[0]
-      if (vacios >= VACIOS_FIN || desde < '2015-01-01') st.historico_completo = true
+      if (vacios >= VACIOS_FIN || desde <= limite) st.historico_completo = true
     }
     st.ultima = new Date().toISOString()
     st.sin_permiso = [...sinPermiso]

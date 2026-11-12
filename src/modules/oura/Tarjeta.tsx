@@ -51,7 +51,7 @@ export function TarjetaOura({ o, onDemo }: { o: EstadoOura; onDemo: () => void }
           </p>
           {!o.historicoCompleto && (
             <p className="small" style={{ margin: '.3rem 0 0' }}>
-              Trayendo tu histórico de Oura{o.historicoHasta ? `: ya hasta el ${fmtDate(o.historicoHasta)}` : ''}… Puedes seguir usando la app; si la cierras, sigue sola cada media hora.
+              Trayendo tu último año de Oura{o.historicoHasta ? `: ya hasta el ${fmtDate(o.historicoHasta)}` : ''}… Puedes seguir usando la app; si la cierras, sigue sola cada media hora.
             </p>
           )}
           {o.historicoCompleto && o.desde && <p className="muted small" style={{ margin: '.3rem 0 0' }}>Histórico completo: datos desde el {fmtDate(o.desde)}.</p>}
