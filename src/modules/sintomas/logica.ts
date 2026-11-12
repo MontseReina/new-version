@@ -74,8 +74,8 @@ export type Medida = {
 export type CampoMedida = 'fc' | 'ta' | 'glucosa' | 'spo2'
 export type TipoMedida = 'habitual' | 'episodio' | 'postprandial'
 export const TIPOS_MEDIDA: [TipoMedida, string][] = [['habitual', 'Medición habitual'], ['episodio', 'Durante el episodio'], ['postprandial', 'Postprandial']]
-export type Posicion = 'tumbada' | 'sentada' | 'de_pie'
-export const POSICIONES: [Posicion, string][] = [['tumbada', 'Tumbada'], ['sentada', 'Sentada'], ['de_pie', 'De pie']]
+export type Posicion = 'tumbada' | 'sentada' | 'de_pie' | 'caminando'
+export const POSICIONES: [Posicion, string][] = [['tumbada', 'Tumbada'], ['sentada', 'Sentada'], ['de_pie', 'De pie'], ['caminando', 'Caminando']]
 export type Hidratacion = 'sin' | 'con'
 export const HIDRATACIONES: [Hidratacion, string][] = [['sin', 'Sin hidratar'], ['con', 'Con hidratación']]
 /** Valores fuera de los rangos de referencia generales del adulto, para resaltarlos (no son un diagnóstico). */
