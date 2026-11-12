@@ -6,8 +6,7 @@ import { FASES, infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import {
   BarraFases, BarrasDias, ciclosDe, Curva, Explica, Factores, finde, Hipnograma, hm, LeyendaManos, Mano, nivelDe,
-  Observacion, profundoPrimeraMitad, TiraDia, type Nivel, type PuntoDia,
-} from './graficos'
+  Observacion, profundoPrimeraMitad, TiraDia, type Nivel, type PuntoDia, fechaLarga } from './graficos'
 import { detallesDisposicion, observacionDisposicion, subidaTemperatura, valoracionVfc30, valoracionVfcNoche } from './analisis'
 import { FACTORES_DISPOSICION, FACTORES_SUENO, NIVELES, RESUMEN_ESTRES, type OuraDia } from './tipos'
 import { useOura } from './conexion'
@@ -129,7 +128,7 @@ export default function Oura() {
   // Lecturas escritas.
   const detDisp = detallesDisposicion(porDia, date)
   const obsDisp = observacionDisposicion(filas, date, info?.fase ?? null)
-  const subida = subidaTemperatura(filas, date, info?.ciclo.ovulacion ?? null, info?.fase ?? null)
+  const subida = subidaTemperatura(filas, date, info?.ciclo.ovuAprox ?? null, info?.fase ?? null)
   const vfcNoche = valoracionVfcNoche(porDia, date)
   const vfc30 = valoracionVfc30(filas, date, faseDe)
 
@@ -256,7 +255,11 @@ export default function Oura() {
             </div>
             <BarrasDias titulo="Temperatura de cada noche" puntos={serie(ult, (x) => x.disposicion?.temp_desv)} unidad="°C" dec={2} cero abajo="fecha" />
             <p className="muted small">Hacia arriba, noches por encima de tu media; hacia abajo, por debajo.</p>
-            <Observacion>{subida.texto.map((t, i) => <p key={i}>{t}</p>)}</Observacion>
+            <Observacion>
+              {info?.ciclo.ovuReal && date >= info.ciclo.ovuReal
+                ? <p>Subida de temperatura desde la noche del {fechaLarga(info.ciclo.ovuReal)}: confirma la ovulación real de este ciclo (la aproximada era el {fechaLarga(info.ciclo.ovuAprox)}). Lo normal es que siga por encima de tu media hasta la regla.</p>
+                : subida.texto.map((t, i) => <p key={i}>{t}</p>)}
+            </Observacion>
             <Explica>
               <ul>
                 <li>Es la temperatura de la piel del dedo durante la noche, comparada con tu propia media. No es la temperatura basal ni se lee en grados absolutos.</li>

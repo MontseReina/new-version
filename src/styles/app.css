@@ -810,3 +810,16 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .oura-observacion > strong { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-deep); }
 .oura-observacion p { margin: 0; }
 .oura-observacion ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .2rem; }
+
+/* 0.21.0 · Ciclo menstrual: resumen en viñetas, gotas de la regla y punto del manchado */
+.ciclo-resumen { margin: .5rem 0 0; padding-left: 1.2rem; font-size: .92rem; line-height: 1.5; }
+.ciclo-resumen li { margin: .15rem 0; }
+.ciclo-resumen .critica-txt, .ciclo-resumen .critica-txt strong { color: var(--red); }
+.seg button.con-icono { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; }
+.gotas { display: inline-flex; align-items: flex-end; gap: 1px; }
+.gota path { fill: var(--red); }
+.m-man.grande { width: 11px; height: 11px; }
+.chip-emoji { font-size: 1rem; }
+.m-ovu:not(.oura) { background: #fff; }
+.ciclo-guion { list-style: none; padding-left: .4rem; margin: .1rem 0; }
+.ciclo-guion li::before { content: '– '; }

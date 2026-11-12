@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, todayStr } from '../../lib/dates'
-import { listDaily } from '../../store/repo'
+import { listDaily, listTemperaturas } from '../../store/repo'
 import { useSettings } from '../../store/useSettings'
-import { crearModelo, type CicloCfg, type CicloDia, type Mapa } from './logica'
+import { crearModelo, type CicloCfg, type CicloDia, type Mapa, type Temp } from './logica'
 
 /** Cuánto se mira hacia atrás para calcular la media y pintar el calendario (unos tres años). */
 const DIAS_ATRAS = 1100
@@ -23,8 +23,15 @@ export function useCiclo(rev = 0, locales?: Mapa) {
     )
     return () => { alive = false }
   }, [hoy, rev])
+  // Temperatura de Oura (Oura guarda como mucho un año): confirma la ovulación real. Si falla, el ciclo sigue sin ella.
+  const [temps, setTemps] = useState<Temp[]>([])
+  useEffect(() => {
+    let alive = true
+    listTemperaturas(addDays(hoy, -400), hoy).then((r) => { if (alive) setTemps(r) }, () => { /* sin temperatura */ })
+    return () => { alive = false }
+  }, [hoy, rev])
   const [cfg, saveCfg] = useSettings<CicloCfg>('ciclo')
   const mapa = useMemo<Mapa>(() => (filas && locales ? { ...filas, ...locales } : filas ?? {}), [filas, locales])
-  const modelo = useMemo(() => crearModelo(mapa, cfg ?? {}, hoy), [mapa, cfg, hoy])
+  const modelo = useMemo(() => crearModelo(mapa, cfg ?? {}, hoy, temps), [mapa, cfg, hoy, temps])
   return { hoy, mapa, modelo, cfg, saveCfg, cargando: (filas === null && !error) || !cfg, error }
 }

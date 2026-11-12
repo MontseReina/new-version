@@ -36,3 +36,8 @@ export function fmtDateTime(s?: string | null) {
   const d = new Date(s)
   return d.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
+/** «martes 24 de noviembre». */
+export function fmtLarga(s?: string | null) {
+  if (!s) return '—'
+  return new Date(s.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+}

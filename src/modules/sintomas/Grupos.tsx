@@ -2,6 +2,7 @@ import { Stepper } from '../../components/ui'
 import { todayStr } from '../../lib/dates'
 import { Bristol } from './Bristol'
 import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, episodiosOpcion, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintDia } from './logica'
+import { emojiOpcion } from './emojis'
 
 const DIEZ = Array.from({ length: 10 }, (_, i) => i + 1)
 const ahora = () => new Date().toTimeString().slice(0, 5)
@@ -119,7 +120,7 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
             <div className="chips">
               {(g.opciones ?? []).map((o) => {
                 const on = marcadas.includes(o.id)
-                return <button type="button" key={o.id} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => marcar(g, o.id)}>{o.nombre}</button>
+                return <button type="button" key={o.id} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => marcar(g, o.id)}>{emojiOpcion(g, o.nombre) && <span className="chip-emoji" aria-hidden="true">{emojiOpcion(g, o.nombre)} </span>}{o.nombre}</button>
               })}
               {!g.opciones?.length && <span className="muted small">Sin opciones todavía. Añádelas en «Editar mis grupos».</span>}
             </div>

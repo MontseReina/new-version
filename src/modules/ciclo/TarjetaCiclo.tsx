@@ -56,20 +56,21 @@ export function TarjetaCiclo() {
           const m = epis.porDia[d]
           const etiqueta = `${fmtDate(d)}${p.txt ? ': ' + p.txt : ''}${m ? ', ' + textoMarca(m) : ''}`
           return d <= hoy
-            ? <button type="button" key={d} className={'ciclo-celda ' + p.cls} title={etiqueta} aria-label={etiqueta} onClick={() => abrir(d)}><NumDia d={d} ovu={p.info?.ovulacion} confirmada={p.info?.ciclo.ovuConfirmada} /><MarcaEpisodio m={m} /></button>
-            : <span key={d} className={'ciclo-celda ' + p.cls} title={etiqueta}><NumDia d={d} ovu={p.info?.ovulacion} confirmada={p.info?.ciclo.ovuConfirmada} /><MarcaEpisodio m={m} /></span>
+            ? <button type="button" key={d} className={'ciclo-celda ' + p.cls} title={etiqueta} aria-label={etiqueta} onClick={() => abrir(d)}><NumDia d={d} aprox={p.info?.ovuAprox} real={p.info?.ovuReal} /><MarcaEpisodio m={m} /></button>
+            : <span key={d} className={'ciclo-celda ' + p.cls} title={etiqueta}><NumDia d={d} aprox={p.info?.ovuAprox} real={p.info?.ovuReal} /><MarcaEpisodio m={m} /></span>
         })}
       </div>
       <div className="ciclo-leyenda" aria-hidden="true">
         <span><i className="ciclo-celda regla" /> Regla</span>
         <span><i className="ciclo-celda fertil" /> Fértil</span>
-        <span><i className="m-ovu oura" /> Ovulación (Oura)</span>
         <span><i className="m-ovu" /> Ovulación aprox.</span>
+        <span><i className="m-ovu oura" /> Ovulación real</span>
         {critica && <span><i className="ciclo-celda critica" /> Crítica</span>}
       </div>
       <LeyendaEpisodios lista={epis.lista} />
       <dl className="ciclo-datos">
-        <div><dt>{c.ovuConfirmada ? 'Ovulación (Oura)' : 'Ovulación aprox.'}</dt><dd>{fmtDate(c.ovulacion)} · {cuando(hoy, c.ovulacion)}</dd></div>
+        <div><dt>Ovulación aprox.</dt><dd>{fmtDate(c.ovuAprox)} · {cuando(hoy, c.ovuAprox)}</dd></div>
+        {c.ovuReal && <div><dt>Ovulación real (Oura)</dt><dd>{fmtDate(c.ovuReal)} · {cuando(hoy, c.ovuReal)}</dd></div>}
         {critica && <div><dt>Ventana crítica</dt><dd>{critica > hoy ? `desde ${fmtDate(critica)} · ${cuando(hoy, critica)}` : 'estás en ella'}</dd></div>}
         <div><dt>Próxima regla</dt><dd>{tarde > 0 ? `${tarde} ${tarde === 1 ? 'día' : 'días'} de retraso` : `${fmtDate(c.siguiente)} · ${cuando(hoy, c.siguiente)}`}</dd></div>
         <div><dt>{mes ? `Episodios en ${nombreMes(mes)}` : 'Episodios en este ciclo'}</dt><dd>{epis.lista.length ? `${epis.lista.length}${conIngreso ? ` · ${conIngreso} con ingreso` : ''}` : 'ninguno'}</dd></div>

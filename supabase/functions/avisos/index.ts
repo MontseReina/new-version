@@ -1182,7 +1182,7 @@ function menuDe(cfg, info, date) {
 		const c = info.ciclo;
 		if (id === "luteo") {
 			desdeFase = diffDays(date, c.ovulacion) - 1;
-			porque = `Día ${info.dia} del ciclo: la ovulación fue ${c.ovuConfirmada ? "el" : "hacia el"} ${fmtDate(c.ovulacion)}${c.ovuConfirmada ? " (Oura)" : ""}. Toca el menú lúteo hasta que venga la regla (${c.siguientePrevisto ? "prevista el " : ""}${fmtDate(c.siguiente)}).`;
+			porque = `Día ${info.dia} del ciclo: la ovulación fue ${c.ovuConfirmada ? "el" : "hacia el"} ${fmtDate(c.ovulacion)}${c.ovuConfirmada ? " (Oura, por la temperatura)" : ""}. Toca el menú lúteo hasta que venga la regla (${c.siguientePrevisto ? "prevista el " : ""}${fmtDate(c.siguiente)}).`;
 		} else porque = `Día ${info.dia} del ciclo: toca el menú folicular hasta la ovulación (hacia el ${fmtDate(c.ovulacion)}).`;
 	}
 	const n = menu?.dias.length ?? 0;
@@ -1655,6 +1655,39 @@ const SALTO = 9;
 /** Ciclos fuera de este intervalo no entran en la media (suele ser una regla sin registrar). */
 const MIN_CICLO = 15;
 const MAX_CICLO = 45;
+/** Subida de temperatura (adaptación de la regla «3 por encima de 6» del método sintotérmico):
+*  una noche que supera en 0,05 °C o más a la más alta de las 6 noches anteriores del mismo ciclo,
+*  seguida de dos noches más por encima de esa línea, y la tercera al menos 0,2 °C por encima
+*  (o, si no llega, una cuarta noche por encima). Las noches sin anillo se saltan.
+*  La ovulación real se fecha en la primera noche alta. */
+const MARGEN = 5;
+const SUBIDA = 20;
+const PREVIAS = 6;
+const MIN_PREVIAS = 3;
+const VENTANA_SUBIDA = 7;
+function ovulacionesOura(temps, reglas, hoy) {
+	const serie = temps.filter((x) => typeof x.t === "number").sort((a, b) => a.day.localeCompare(b.day));
+	const out = [];
+	reglas.forEach((r, i) => {
+		const fin = reglas[i + 1]?.inicio ?? addDays(hoy, 1);
+		const xs = serie.filter((p) => p.day >= r.inicio && p.day < fin);
+		const desde = addDays(r.fin, 1) > addDays(r.inicio, 5) ? addDays(r.fin, 1) : addDays(r.inicio, 5);
+		for (let j = 0; j < xs.length; j++) {
+			if (xs[j].day < desde) continue;
+			const prev = xs.slice(Math.max(0, j - PREVIAS), j);
+			if (prev.length < MIN_PREVIAS) continue;
+			const linea = Math.max(...prev.map((p) => p.t));
+			const sobre = (k) => Math.round((xs[k].t - linea) * 100);
+			const cerca = (k) => k < xs.length && diffDays(xs[k].day, xs[j].day) <= VENTANA_SUBIDA;
+			if (!cerca(j + 2) || sobre(j) < MARGEN || sobre(j + 1) < MARGEN || sobre(j + 2) < MARGEN) continue;
+			if (sobre(j + 2) >= SUBIDA || cerca(j + 3) && sobre(j + 3) >= MARGEN) {
+				out.push(xs[j].day);
+				break;
+			}
+		}
+	});
+	return out;
+}
 /** Agrupa los días con regla en reglas. El manchado no abre ciclo. */
 function reglasDe(m) {
 	const out = [];
@@ -1669,7 +1702,7 @@ function reglasDe(m) {
 	return out;
 }
 const mediaDe = (xs) => Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
-function crearModelo(m, cfg, hoy) {
+function crearModelo(m, cfg, hoy, temps = []) {
 	const reglas = reglasDe(m);
 	const duraciones = reglas.slice(1).map((r, i) => diffDays(r.inicio, reglas[i].inicio));
 	const validas = duraciones.filter((n) => n >= MIN_CICLO && n <= MAX_CICLO).slice(-6);
@@ -1683,19 +1716,20 @@ function crearModelo(m, cfg, hoy) {
 		mediaRegla: cerradas.length ? mediaDe(cerradas.map((r) => diffDays(r.fin, r.inicio) + 1)) : 5,
 		lutea: cfg.lutea_dias || 14,
 		critica: cfg.critica_dias ?? 7,
-		ovus: Object.keys(m).filter((k) => m[k]?.ovulacion).sort()
+		ovus: Object.keys(m).filter((k) => m[k]?.ovulacion).sort(),
+		ovusOura: ovulacionesOura(temps, reglas, hoy)
 	};
 }
-/** Ovulación confirmada entre `desde` (incluido) y `hasta` (sin incluir); la última si hay varias. */
+/** Ovulación real entre `desde` (incluido) y `hasta` (sin incluir): la de la temperatura de Oura y,
+*  en los ciclos sin ella, la marcada a mano. */
 function ovuEntre(mo, desde, hasta) {
-	const xs = mo.ovus.filter((d) => d >= desde && (!hasta || d < hasta));
-	return xs[xs.length - 1];
+	const en = (xs) => xs.filter((d) => d >= desde && (!hasta || d < hasta)).pop();
+	return en(mo.ovusOura) ?? en(mo.ovus);
 }
-/** Regla siguiente esperada para el último ciclo registrado: con la ovulación confirmada,
-*  ovulación + fase lútea; sin ella, inicio + duración media. */
+/** Regla siguiente esperada para el último ciclo registrado: inicio + duración media.
+*  La ovulación real se enseña al lado, pero no mueve la previsión. */
 function siguienteEsperada(mo, r) {
-	const ov = ovuEntre(mo, r.inicio);
-	return ov ? addDays(ov, mo.lutea) : addDays(r.inicio, mo.media);
+	return addDays(r.inicio, mo.media);
 }
 /** Ciclo al que pertenece una fecha. `null` si es anterior a la primera regla registrada. */
 function cicloDe(mo, date) {
@@ -1706,10 +1740,13 @@ function cicloDe(mo, date) {
 	const r = reglas[i];
 	const con = (c) => {
 		const ov = c.previsto ? void 0 : ovuEntre(mo, c.inicio, c.siguientePrevisto ? void 0 : c.siguiente);
+		const aprox = addDays(c.siguiente, -lutea);
 		return {
 			...c,
-			ovulacion: ov ?? addDays(c.siguiente, -lutea),
-			ovuConfirmada: !!ov
+			ovulacion: ov ?? aprox,
+			ovuConfirmada: !!ov,
+			ovuAprox: aprox,
+			ovuReal: ov ?? null
 		};
 	};
 	if (i < reglas.length - 1) return con({
@@ -1755,6 +1792,8 @@ function infoDia(mo, m, date) {
 		reglaPrevista: enRegla && !m[date]?.regla && date >= mo.hoy,
 		fertil: fase === "ovulatoria",
 		ovulacion: date === c.ovulacion,
+		ovuAprox: date === c.ovuAprox,
+		ovuReal: date === c.ovuReal,
 		critica: mo.critica > 0 && date >= addDays(c.siguiente, -mo.critica) && date < c.siguiente
 	};
 }
@@ -1940,6 +1979,12 @@ async function diario(userId, modulo, desde, hasta) {
 	if (error) throw new Error(error.message);
 	return new Map((data ?? []).map((r) => [r.day, r.value]));
 }
+/** Temperatura de cada noche según Oura (solo la desviación), para confirmar la ovulación real como en la app. */
+async function temperaturas(userId, desde, hasta) {
+	const { data, error } = await admin.from("entries").select("day,t:value->disposicion->temp_desv").eq("user_id", userId).eq("module", "oura").eq("kind", "dia").gte("day", desde).lte("day", hasta).is("deleted_at", null);
+	if (error) return [];
+	return data ?? [];
+}
 /** Claves VAPID de la usuaria: se crean la primera vez y se guardan en su fila. */
 async function clavesDe(userId, fila) {
 	if (fila.secret.vapid?.publica && fila.secret.vapid.privada) return fila.secret.vapid;
@@ -1999,13 +2044,14 @@ async function revisar(userId, fila) {
 	const cfg = ajustes?.data ?? {};
 	const nutriCfg = cfg.nutricion ?? {};
 	const ayer = addDays(hoy, -1);
-	const [nutri, hidra, ciclo] = await Promise.all([
+	const [nutri, hidra, ciclo, temps] = await Promise.all([
 		diario(userId, "nutricion", ayer, hoy),
 		diario(userId, "hidratacion", hoy, hoy),
-		diario(userId, "ciclo", addDays(hoy, -400), hoy)
+		diario(userId, "ciclo", addDays(hoy, -400), hoy),
+		temperaturas(userId, addDays(hoy, -400), hoy)
 	]);
 	const mapa = Object.fromEntries(ciclo);
-	const info = infoDia(crearModelo(mapa, cfg.ciclo ?? {}, hoy), mapa, hoy);
+	const info = infoDia(crearModelo(mapa, cfg.ciclo ?? {}, hoy, temps), mapa, hoy);
 	const avisosCfg = cfg.avisos ?? {};
 	const todos = avisosAhora({
 		hoy,

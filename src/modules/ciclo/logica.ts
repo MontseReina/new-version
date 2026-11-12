@@ -20,7 +20,8 @@ export type CicloDia = {
   regla?: Flujo | null
   manchado?: Manchado | null
   coagulos?: boolean | null
-  /** Ovulación confirmada ese día (la que marca Oura). Manda sobre la ovulación calculada. */
+  /** Ovulación marcada a mano (solo días anteriores a la 0.21.0; desde entonces la confirma la temperatura de Oura).
+   *  Se usa en los ciclos sin subida de temperatura detectada. */
   ovulacion?: boolean | null
 }
 export type Mapa = { [day: string]: CicloDia }
@@ -60,8 +61,42 @@ export interface Modelo {
   mediaRegla: number
   lutea: number
   critica: number
-  /** Días con la ovulación confirmada, en orden. */
+  /** Días con la ovulación marcada a mano, en orden. */
   ovus: string[]
+  /** Días de ovulación confirmados por la subida de temperatura de Oura, en orden. */
+  ovusOura: string[]
+}
+
+/** Temperatura de una noche (desviación frente a la media, °C); la noche cuenta como el día en que se despierta. */
+export type Temp = { day: string; t: number | null }
+
+/** Subida de temperatura (adaptación de la regla «3 por encima de 6» del método sintotérmico):
+ *  una noche que supera en 0,05 °C o más a la más alta de las 6 noches anteriores del mismo ciclo,
+ *  seguida de dos noches más por encima de esa línea, y la tercera al menos 0,2 °C por encima
+ *  (o, si no llega, una cuarta noche por encima). Las noches sin anillo se saltan.
+ *  La ovulación real se fecha en la primera noche alta. */
+const MARGEN = 5, SUBIDA = 20 // centésimas de grado
+const PREVIAS = 6, MIN_PREVIAS = 3, VENTANA_SUBIDA = 7
+export function ovulacionesOura(temps: Temp[], reglas: Regla[], hoy: string): string[] {
+  const serie = temps.filter((x): x is { day: string; t: number } => typeof x.t === 'number').sort((a, b) => a.day.localeCompare(b.day))
+  const out: string[] = []
+  reglas.forEach((r, i) => {
+    const fin = reglas[i + 1]?.inicio ?? addDays(hoy, 1)
+    const xs = serie.filter((p) => p.day >= r.inicio && p.day < fin)
+    // La subida no puede empezar con la regla: desde el día siguiente al último de regla y no antes del día 6.
+    const desde = addDays(r.fin, 1) > addDays(r.inicio, 5) ? addDays(r.fin, 1) : addDays(r.inicio, 5)
+    for (let j = 0; j < xs.length; j++) {
+      if (xs[j].day < desde) continue
+      const prev = xs.slice(Math.max(0, j - PREVIAS), j)
+      if (prev.length < MIN_PREVIAS) continue
+      const linea = Math.max(...prev.map((p) => p.t))
+      const sobre = (k: number) => Math.round((xs[k].t - linea) * 100)
+      const cerca = (k: number) => k < xs.length && diffDays(xs[k].day, xs[j].day) <= VENTANA_SUBIDA
+      if (!cerca(j + 2) || sobre(j) < MARGEN || sobre(j + 1) < MARGEN || sobre(j + 2) < MARGEN) continue
+      if (sobre(j + 2) >= SUBIDA || (cerca(j + 3) && sobre(j + 3) >= MARGEN)) { out.push(xs[j].day); break }
+    }
+  })
+  return out
 }
 
 /** Agrupa los días con regla en reglas. El manchado no abre ciclo. */
@@ -77,7 +112,7 @@ export function reglasDe(m: Mapa): Regla[] {
 
 const mediaDe = (xs: number[]) => Math.round(xs.reduce((a, b) => a + b, 0) / xs.length)
 
-export function crearModelo(m: Mapa, cfg: CicloCfg, hoy: string): Modelo {
+export function crearModelo(m: Mapa, cfg: CicloCfg, hoy: string, temps: Temp[] = []): Modelo {
   const reglas = reglasDe(m)
   const duraciones = reglas.slice(1).map((r, i) => diffDays(r.inicio, reglas[i].inicio))
   const validas = duraciones.filter((n) => n >= MIN_CICLO && n <= MAX_CICLO).slice(-ULTIMOS)
@@ -94,20 +129,21 @@ export function crearModelo(m: Mapa, cfg: CicloCfg, hoy: string): Modelo {
     lutea: cfg.lutea_dias || LUTEA_POR_DEFECTO,
     critica: cfg.critica_dias ?? CRITICA_POR_DEFECTO,
     ovus: Object.keys(m).filter((k) => m[k]?.ovulacion).sort(),
+    ovusOura: ovulacionesOura(temps, reglas, hoy),
   }
 }
 
-/** Ovulación confirmada entre `desde` (incluido) y `hasta` (sin incluir); la última si hay varias. */
+/** Ovulación real entre `desde` (incluido) y `hasta` (sin incluir): la de la temperatura de Oura y,
+ *  en los ciclos sin ella, la marcada a mano. */
 function ovuEntre(mo: Modelo, desde: string, hasta?: string) {
-  const xs = mo.ovus.filter((d) => d >= desde && (!hasta || d < hasta))
-  return xs[xs.length - 1]
+  const en = (xs: string[]) => xs.filter((d) => d >= desde && (!hasta || d < hasta)).pop()
+  return en(mo.ovusOura) ?? en(mo.ovus)
 }
 
-/** Regla siguiente esperada para el último ciclo registrado: con la ovulación confirmada,
- *  ovulación + fase lútea; sin ella, inicio + duración media. */
+/** Regla siguiente esperada para el último ciclo registrado: inicio + duración media.
+ *  La ovulación real se enseña al lado, pero no mueve la previsión. */
 function siguienteEsperada(mo: Modelo, r: Regla) {
-  const ov = ovuEntre(mo, r.inicio)
-  return ov ? addDays(ov, mo.lutea) : addDays(r.inicio, mo.media)
+  return addDays(r.inicio, mo.media)
 }
 
 export interface Ciclo {
@@ -115,9 +151,14 @@ export interface Ciclo {
   /** Primer día del ciclo siguiente (real si ya está registrado, previsto si no). */
   siguiente: string
   finRegla: string
+  /** Ovulación con la que se cuentan las fases: la real si la hay; si no, la aproximada. */
   ovulacion: string
-  /** La ovulación está confirmada (marcada por Oura), no calculada. */
+  /** Hay ovulación real (subida de temperatura de Oura). */
   ovuConfirmada: boolean
+  /** Ovulación aproximada (proyección): regla siguiente − fase lútea. */
+  ovuAprox: string
+  /** Ovulación real, por la subida de temperatura de Oura. */
+  ovuReal: string | null
   /** El ciclo entero es una previsión: su regla de inicio aún no ha llegado. */
   previsto: boolean
   /** El inicio del ciclo siguiente es una previsión. */
@@ -137,9 +178,10 @@ export function cicloDe(mo: Modelo, date: string): Ciclo | null {
   let i = reglas.length - 1
   while (reglas[i].inicio > date) i--
   const r = reglas[i]
-  const con = (c: Omit<Ciclo, 'ovulacion' | 'ovuConfirmada'>): Ciclo => {
+  const con = (c: Omit<Ciclo, 'ovulacion' | 'ovuConfirmada' | 'ovuAprox' | 'ovuReal'>): Ciclo => {
     const ov = c.previsto ? undefined : ovuEntre(mo, c.inicio, c.siguientePrevisto ? undefined : c.siguiente)
-    return { ...c, ovulacion: ov ?? addDays(c.siguiente, -lutea), ovuConfirmada: !!ov }
+    const aprox = addDays(c.siguiente, -lutea)
+    return { ...c, ovulacion: ov ?? aprox, ovuConfirmada: !!ov, ovuAprox: aprox, ovuReal: ov ?? null }
   }
   if (i < reglas.length - 1) return con({ inicio: r.inicio, siguiente: reglas[i + 1].inicio, finRegla: r.fin, previsto: false, siguientePrevisto: false })
   // Último ciclo real: si la regla prevista ya debería haber llegado, se espera para hoy.
@@ -166,7 +208,11 @@ export interface InfoDia {
   /** Regla esperada y todavía no registrada. */
   reglaPrevista: boolean
   fertil: boolean
+  /** Día de la ovulación con la que se cuentan las fases (real o, sin ella, aproximada). */
   ovulacion: boolean
+  /** Día de la ovulación aproximada (punto blanco) y de la real (punto negro). */
+  ovuAprox: boolean
+  ovuReal: boolean
   critica: boolean
 }
 
@@ -183,6 +229,8 @@ export function infoDia(mo: Modelo, m: Mapa, date: string): InfoDia | null {
     reglaPrevista: enRegla && !m[date]?.regla && date >= mo.hoy,
     fertil: fase === 'ovulatoria',
     ovulacion: date === c.ovulacion,
+    ovuAprox: date === c.ovuAprox,
+    ovuReal: date === c.ovuReal,
     critica: mo.critica > 0 && date >= addDays(c.siguiente, -mo.critica) && date < c.siguiente,
   }
 }
@@ -200,6 +248,21 @@ export function sumaMeses(mes: string, n: number) {
   const d = new Date(mes + '-15T12:00:00')
   d.setMonth(d.getMonth() + n)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+/** Evaluación de los ciclos completos: duración media, más corto y más largo, variación respecto a la media
+ *  (cuánto se acorta o se alarga) y duración promedio de la menstruación. */
+export function evaluacion(mo: Modelo) {
+  const validos = mo.duraciones.filter((n) => n >= MIN_CICLO && n <= MAX_CICLO)
+  const corto = validos.length ? Math.min(...validos) : null
+  const largo = validos.length ? Math.max(...validos) : null
+  return {
+    validos,
+    corto,
+    largo,
+    /** Días que el ciclo más corto se adelanta a la media y días que el más largo se retrasa. */
+    adelanto: corto != null && mo.nMedia ? Math.max(0, mo.media - corto) : null,
+    retrasoMax: largo != null && mo.nMedia ? Math.max(0, largo - mo.media) : null,
+  }
 }
 export const nombreMes = (mes: string) => new Date(mes + '-15T12:00:00').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
 /** Todos los días de `desde` a `hasta`, ambos incluidos. */

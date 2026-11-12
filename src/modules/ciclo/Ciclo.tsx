@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Empty, Field, Plegable } from '../../components/ui'
-import { addDays, diffDays, fmtDate } from '../../lib/dates'
+import { addDays, diffDays, fmtDate, fmtLarga } from '../../lib/dates'
 import { saveDaily } from '../../store/repo'
 import { useDaily } from '../../store/useDaily'
 import { Calendario, Leyenda, LeyendaEpisodios, ListaEpisodios, SelectorMes } from './Calendario'
-import { FASES, FLUJOS, MANCHADOS, cicloDe, infoDia, nombreMes, rango, retraso, sumaMeses, type CicloDia, type Mapa } from './logica'
+import { Gotas, PuntoManchado } from './Iconos'
+import { FASES, FLUJOS, MANCHADOS, cicloDe, infoDia, rango, retraso, sumaMeses, type CicloDia, type Mapa } from './logica'
 import { useCiclo } from './useCiclo'
 import { useEpisodios } from './useEpisodios'
 import type { SintDia } from '../sintomas/logica'
@@ -18,8 +19,8 @@ export function cuando(hoy: string, d: string) {
 }
 
 /**
- * Ciclo, dentro de Signos y síntomas: resumen del día `date`, registro de la menstruación,
- * calendario del mes y evaluación de los ciclos. De aquí leen Inicio y las demás áreas.
+ * Ciclo menstrual: resumen del día `date`, registro de la menstruación, regla pasada y calendario del mes.
+ * La evaluación de los ciclos y el registro de episodios del mes viven en el pilar Evaluaciones.
  */
 export default function Ciclo({ date, onDate, sintDia }: { date: string; onDate: (d: string) => void; sintDia?: SintDia }) {
   const [recarga, setRecarga] = useState(0)
@@ -64,17 +65,14 @@ export default function Ciclo({ date, onDate, sintDia }: { date: string; onDate:
     d.regla ? (FLUJOS.find(([k]) => k === d.regla)?.[1] ?? 'Regla') : '',
     d.coagulos ? 'coágulos' : '',
     d.manchado ? 'manchado ' + (MANCHADOS.find(([k]) => k === d.manchado)?.[1] ?? '').toLowerCase() : '',
-    d.ovulacion ? 'ovulación' : '',
   ].filter(Boolean).join(', ')
 
   const reglas = modelo.reglas
-  const durs = modelo.duraciones
-  // Un ciclo de más de 45 días suele esconder una regla sin anotar: no entra en la evaluación.
-  const validos = durs.filter((n) => n >= 15 && n <= 45)
-  const diasRegla = reglas.map((r) => diffDays(r.fin, r.inicio) + 1)
   const etiquetas = (i: NonNullable<typeof info>) => (
     <>
-      {i.ovulacion ? <span className="tag verde">{i.ciclo.ovuConfirmada ? 'Ovulación (Oura)' : 'Ovulación aprox.'}</span> : i.fertil ? <span className="tag">Ventana fértil</span> : null}
+      {i.ovuReal && <span className="tag verde">Ovulación real (Oura)</span>}
+      {i.ovuAprox && !i.ovuReal && <span className="tag verde">Ovulación aprox.</span>}
+      {!i.ovuReal && !i.ovuAprox && i.fertil && <span className="tag">Ventana fértil</span>}
       {i.critica && <span className="tag ambar">Ventana crítica</span>}
       {i.reglaPrevista && <span className="tag rojo">Regla prevista</span>}
     </>
@@ -94,12 +92,27 @@ export default function Ciclo({ date, onDate, sintDia }: { date: string; onDate:
             ? <div className="ciclo-dia"><strong>Día {info.dia}</strong> del ciclo · {FASES[info.fase]} <span style={{ fontSize: '.9rem' }}>{etiquetas(info)}</span></div>
             : <div className="ciclo-dia">Día anterior a la primera regla registrada</div>}
           {date === hoy && (
-            <p className="small">
-              {tarde > 0 ? <>Regla con <strong>{tarde} {tarde === 1 ? 'día' : 'días'} de retraso</strong>. </> : <>Próxima regla <strong>{fmtDate(actual.siguiente)}</strong> ({cuando(hoy, actual.siguiente)}). </>}
-              {actual.ovuConfirmada ? 'Ovulación (Oura)' : 'Ovulación aprox.'} <strong>{fmtDate(actual.ovulacion)}</strong> ({cuando(hoy, actual.ovulacion)}).
-              {actual.ovuConfirmada && actual.siguientePrevisto && <> La próxima regla se calcula desde ella: ovulación + {modelo.lutea} días de fase lútea.</>}
-              {modelo.critica > 0 && <> Ventana crítica desde <strong>{fmtDate(addDays(actual.siguiente, -modelo.critica))}</strong>.</>}
-            </p>
+            <ul className="ciclo-resumen">
+              <li>{tarde > 0
+                ? <>Regla con <strong>{tarde} {tarde === 1 ? 'día' : 'días'} de retraso</strong></>
+                : <>Próxima regla: <strong>{fmtLarga(actual.siguiente)}</strong>, {cuando(hoy, actual.siguiente)}</>}</li>
+              {actual.ovuReal ? (
+                <li>
+                  Ovulación
+                  <ul className="ciclo-guion">
+                    <li>aprox.: <strong>{fmtLarga(actual.ovuAprox)}</strong>, {cuando(hoy, actual.ovuAprox)}</li>
+                    <li>real: <strong>{fmtLarga(actual.ovuReal)}</strong>, {cuando(hoy, actual.ovuReal)} <span className="muted">(subida de temperatura de Oura)</span></li>
+                  </ul>
+                </li>
+              ) : <li>Ovulación aprox.: <strong>{fmtLarga(actual.ovuAprox)}</strong>, {cuando(hoy, actual.ovuAprox)}</li>}
+              {modelo.critica > 0 && tarde === 0 && (
+                <li className="critica-txt">
+                  {hoy >= addDays(actual.siguiente, -modelo.critica)
+                    ? <>Estás en la ventana crítica (desde el <strong>{fmtLarga(addDays(actual.siguiente, -modelo.critica))}</strong>)</>
+                    : <>Ventana crítica desde el <strong>{fmtLarga(addDays(actual.siguiente, -modelo.critica))}</strong></>}
+                </li>
+              )}
+            </ul>
           )}
         </div>
       )}
@@ -109,7 +122,7 @@ export default function Ciclo({ date, onDate, sintDia }: { date: string; onDate:
         <div className="field" style={{ marginTop: 0 }}>
           <span>Regla</span>
           <div className="seg">
-            {FLUJOS.map(([k, l]) => <button type="button" key={k} disabled={cargandoDia} className={d.regla === k ? 'on' : ''} aria-pressed={d.regla === k} onClick={() => poner({ regla: d.regla === k ? null : k })}>{l}</button>)}
+            {FLUJOS.map(([k, l]) => <button type="button" key={k} disabled={cargandoDia} className={'con-icono ' + (d.regla === k ? 'on' : '')} aria-pressed={d.regla === k} onClick={() => poner({ regla: d.regla === k ? null : k })}><Gotas flujo={k} />{l}</button>)}
           </div>
           <div className="chips" style={{ marginTop: '.4rem' }}>
             <button type="button" disabled={cargandoDia} className={'chip ' + (d.coagulos ? 'on' : '')} aria-pressed={!!d.coagulos} onClick={() => poner({ coagulos: !d.coagulos })}>Con coágulos</button>
@@ -119,38 +132,10 @@ export default function Ciclo({ date, onDate, sintDia }: { date: string; onDate:
         <div className="field">
           <span>Manchado</span>
           <div className="seg">
-            {MANCHADOS.map(([k, l]) => <button type="button" key={k} disabled={cargandoDia} className={d.manchado === k ? 'on' : ''} aria-pressed={d.manchado === k} onClick={() => poner({ manchado: d.manchado === k ? null : k })}>{l}</button>)}
+            {MANCHADOS.map(([k, l]) => <button type="button" key={k} disabled={cargandoDia} className={'con-icono ' + (d.manchado === k ? 'on' : '')} aria-pressed={d.manchado === k} onClick={() => poner({ manchado: d.manchado === k ? null : k })}><PuntoManchado color={k} />{l}</button>)}
           </div>
         </div>
-        <div className="field">
-          <span>Ovulación</span>
-          <div className="chips">
-            <button type="button" disabled={cargandoDia} className={'chip ' + (d.ovulacion ? 'on' : '')} aria-pressed={!!d.ovulacion} onClick={() => poner({ ovulacion: !d.ovulacion })}>Ovulación confirmada por Oura</button>
-          </div>
-          <div className="muted small">Márcala el día que Oura da como ovulación. Sustituye a la calculada y la próxima regla pasa a contarse desde ella. Cuando Oura esté conectado, se marcará sola.</div>
-        </div>
-        <p className="muted small">Toca otra vez una opción para quitarla. El manchado no cuenta como inicio de ciclo.</p>
-      </Plegable>
-
-      <Plegable id="calendario-del-ciclo" title="Calendario del ciclo" abierto>
-        <SelectorMes id="ciclo-cal" mes={m} onMes={setMes} desde={Number((reglas[0]?.inicio ?? hoy).slice(0, 4))} />
-        <Calendario mes={m} modelo={modelo} mapa={mapa} sel={vista} onSel={elegir} epis={epis.porDia} />
-        <Leyenda critica={modelo.critica > 0} confirmada={modelo.ovus.length > 0} />
-        <LeyendaEpisodios lista={epis.lista} />
-        <p className="small" style={{ marginTop: '.6rem' }}>
-          <strong>{vista === hoy ? 'Hoy' : mayus(fmtDate(vista))}</strong>
-          {infoVista ? <> · Día {infoVista.dia} · {FASES[infoVista.fase]} {etiquetas(infoVista)}</> : null}
-          {vista > hoy && <span className="muted"> · previsión</span>}
-        </p>
-        {epis.lista.some((e) => e.dia === vista) && <ListaEpisodios lista={epis.lista.filter((e) => e.dia === vista)} conFecha={false} />}
-        <p className="muted small">Toca un día pasado para abrir su registro; uno futuro, para ver la previsión.</p>
-        {epis.lista.length > 0 && (
-          <>
-            <h3 className="epi-titulo">Episodios de {nombreMes(m).replace(/ de \d+$/, '')} ({epis.lista.length})</h3>
-            <ListaEpisodios lista={epis.lista} />
-          </>
-        )}
-
+        <p className="muted small">Toca otra vez una opción para quitarla. El manchado no cuenta como inicio de ciclo. La ovulación real la da sola la subida de temperatura de Oura.</p>
       </Plegable>
 
       <Plegable id="regla-pasada" title="Añadir una regla pasada">
@@ -165,35 +150,19 @@ export default function Ciclo({ date, onDate, sintDia }: { date: string; onDate:
         </div>
       </Plegable>
 
-      <Plegable id="evaluacion-ciclos" title="Evaluación de mis ciclos">
-        {reglas.length === 0 ? <p className="muted small">Sin reglas registradas.</p> : (
-          <>
-            <dl className="ciclo-datos" style={{ marginBottom: '.6rem' }}>
-              <div><dt>Duración media del ciclo</dt><dd>{modelo.nMedia ? `${modelo.media} días` : 'Faltan ciclos completos'}</dd></div>
-              {validos.length > 1 && <div><dt>Ciclo más corto y más largo</dt><dd>{Math.min(...validos)} y {Math.max(...validos)} días</dd></div>}
-              <div><dt>Días de regla, de media</dt><dd>{modelo.mediaRegla}</dd></div>
-              <div><dt>Ciclos completos registrados</dt><dd>{validos.length}</dd></div>
-            </dl>
-            <div className="table-wrap">
-              <table className="table">
-                <thead><tr><th>Regla</th><th>Días de regla</th><th>Duración del ciclo</th></tr></thead>
-                <tbody>
-                  {[...reglas].reverse().map((r, i) => {
-                    const idx = reglas.length - 1 - i
-                    return (
-                      <tr key={r.inicio}>
-                        <td><button type="button" className="linkbtn" style={{ fontSize: 'inherit', color: 'var(--primary)' }} onClick={() => elegir(r.inicio)}>{fmtDate(r.inicio)}</button></td>
-                        <td>{diasRegla[idx] > 1 ? diasRegla[idx] : 'Solo el inicio'}</td>
-                        <td>{!durs[idx] ? 'En curso' : durs[idx] > 45 ? `${durs[idx]} días (falta alguna regla)` : `${durs[idx]} días`}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="muted small">Las fechas previstas salen de la media de tus últimos ciclos; son aproximadas.</p>
-          </>
-        )}
+      <Plegable id="calendario-del-ciclo" title="Calendario del ciclo" abierto>
+        <SelectorMes id="ciclo-cal" mes={m} onMes={setMes} desde={Number((reglas[0]?.inicio ?? hoy).slice(0, 4))} />
+        <Calendario mes={m} modelo={modelo} mapa={mapa} sel={vista} onSel={elegir} epis={epis.porDia} />
+        <Leyenda critica={modelo.critica > 0} />
+        <LeyendaEpisodios lista={epis.lista} />
+        <p className="small" style={{ marginTop: '.6rem' }}>
+          <strong>{vista === hoy ? 'Hoy' : mayus(fmtDate(vista))}</strong>
+          {infoVista ? <> · Día {infoVista.dia} · {FASES[infoVista.fase]} {etiquetas(infoVista)}</> : null}
+          {vista > hoy && <span className="muted"> · previsión</span>}
+        </p>
+        {epis.lista.some((e) => e.dia === vista) && <ListaEpisodios lista={epis.lista.filter((e) => e.dia === vista)} conFecha={false} />}
+        <p className="muted small">Toca un día pasado para abrir su registro; uno futuro, para ver la previsión.</p>
+        <p className="muted small">El registro de episodios de cada mes y la evaluación de tus ciclos están en Pilares → Evaluaciones.</p>
       </Plegable>
     </div>
   )

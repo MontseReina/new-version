@@ -21,7 +21,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { addDays } from '../../../src/lib/dates'
 import { avisosAhora, discreto, filtrar, type Aviso, type AvisosCfg } from '../../../src/modules/avisos/reglas'
-import { crearModelo, infoDia, type CicloCfg, type CicloDia } from '../../../src/modules/ciclo/logica'
+import { crearModelo, infoDia, type CicloCfg, type CicloDia, type Temp } from '../../../src/modules/ciclo/logica'
 import type { HidraCfg, HidraDia } from '../../../src/modules/hidratacion/logica'
 import { menuDe, type NutriCfg, type NutriDia } from '../../../src/modules/nutricion/logica'
 import type { ObjCfg } from '../../../src/modules/objetivos/logica'
@@ -73,6 +73,14 @@ async function diario<T>(userId: string, modulo: string, desde: string, hasta: s
   return new Map((data ?? []).map((r: { day: string; value: T }) => [r.day, r.value]))
 }
 
+/** Temperatura de cada noche según Oura (solo la desviación), para confirmar la ovulación real como en la app. */
+async function temperaturas(userId: string, desde: string, hasta: string): Promise<Temp[]> {
+  const { data, error } = await admin.from('entries').select('day,t:value->disposicion->temp_desv').eq('user_id', userId).eq('module', 'oura').eq('kind', 'dia')
+    .gte('day', desde).lte('day', hasta).is('deleted_at', null)
+  if (error) return []
+  return (data ?? []) as unknown as Temp[]
+}
+
 /** Claves VAPID de la usuaria: se crean la primera vez y se guardan en su fila. */
 async function clavesDe(userId: string, fila: Fila): Promise<Vapid> {
   if (fila.secret.vapid?.publica && fila.secret.vapid.privada) return fila.secret.vapid
@@ -110,13 +118,14 @@ async function revisar(userId: string, fila: Fila) {
   const cfg = ((ajustes as { data?: Record<string, unknown> } | null)?.data ?? {}) as Record<string, unknown>
   const nutriCfg = (cfg.nutricion ?? {}) as NutriCfg
   const ayer = addDays(hoy, -1)
-  const [nutri, hidra, ciclo] = await Promise.all([
+  const [nutri, hidra, ciclo, temps] = await Promise.all([
     diario<NutriDia>(userId, 'nutricion', ayer, hoy),
     diario<HidraDia>(userId, 'hidratacion', hoy, hoy),
     diario<CicloDia>(userId, 'ciclo', addDays(hoy, -400), hoy),
+    temperaturas(userId, addDays(hoy, -400), hoy),
   ])
   const mapa = Object.fromEntries(ciclo)
-  const info = infoDia(crearModelo(mapa, (cfg.ciclo ?? {}) as CicloCfg, hoy), mapa, hoy)
+  const info = infoDia(crearModelo(mapa, (cfg.ciclo ?? {}) as CicloCfg, hoy, temps), mapa, hoy)
   const avisosCfg = (cfg.avisos ?? {}) as AvisosCfg
   const todos = avisosAhora({
     hoy, ahoraMin: min, cfg: avisosCfg, nutriCfg, hidraCfg: (cfg.hidratacion ?? null) as HidraCfg | null, objCfg: (cfg.objetivos ?? {}) as ObjCfg,

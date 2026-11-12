@@ -22,7 +22,7 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 // ---------- Modo demostración: memoria + almacenamiento del navegador ----------
 interface DemoState { settings: Obj; daily: { [key: string]: Obj }; entries?: Entry[] }
 // La clave cambia con cada demostración para no arrastrar datos de una anterior.
-const DEMO_KEY = 'new-version-demo-oura-2'
+const DEMO_KEY = 'new-version-demo-ciclo-5'
 let demoState: DemoState | null = null
 function demo(): DemoState {
   if (demoState) return demoState
@@ -88,6 +88,19 @@ export async function listDaily<T extends Obj>(module: string, fromDay: string, 
     await db().from('entries').select('day,value').eq('module', module).eq('kind', 'dia').gte('day', fromDay).lte('day', toDay)
       .is('deleted_at', null).order('day'),
   ) as Daily<T>[]
+}
+
+/** Temperatura de cada noche según Oura (desviación frente a su media, °C), sin traer el resto del documento.
+ *  La lee el ciclo para confirmar la ovulación por la subida de temperatura. */
+export async function listTemperaturas(fromDay: string, toDay: string): Promise<{ day: string; t: number | null }[]> {
+  if (DEMO) {
+    return (await listDaily<{ disposicion?: { temp_desv?: number } }>('oura', fromDay, toDay))
+      .map((r) => ({ day: r.day, t: r.value.disposicion?.temp_desv ?? null }))
+  }
+  return check(
+    await db().from('entries').select('day,t:value->disposicion->temp_desv').eq('module', 'oura').eq('kind', 'dia').gte('day', fromDay).lte('day', toDay)
+      .is('deleted_at', null).order('day'),
+  ) as { day: string; t: number | null }[]
 }
 
 // ---------- Registros sueltos ----------

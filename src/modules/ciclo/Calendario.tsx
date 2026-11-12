@@ -34,12 +34,13 @@ export function MarcaEpisodio({ m }: { m?: ReturnType<typeof marcaDia> }) {
   if (!m) return null
   return <i className={'m-epi' + (m.ingreso ? ' ingreso' : '')} aria-hidden="true">{m.siglas.join(' ')}</i>
 }
-/** Número del día; en la ovulación, un punto negro al lado (relleno si la marca Oura; solo el borde si es aproximada). */
-export function NumDia({ d, ovu, confirmada }: { d: string; ovu?: boolean; confirmada?: boolean }) {
+/** Número del día; al lado, un punto blanco en la ovulación aproximada (proyección) y uno negro en la real (Oura). */
+export function NumDia({ d, aprox, real }: { d: string; aprox?: boolean; real?: boolean }) {
   return (
     <span className="num">
       {Number(d.slice(8))}
-      {ovu && <i className={'m-ovu' + (confirmada ? ' oura' : '')} aria-hidden="true" />}
+      {aprox && !real && <i className="m-ovu" aria-hidden="true" />}
+      {real && <i className="m-ovu oura" aria-hidden="true" />}
     </span>
   )
 }
@@ -86,7 +87,7 @@ export function pintaDia(mo: Modelo, m: Mapa, d: string) {
     reg?.regla ? 'regla ' + reg.regla : '',
     info?.reglaPrevista ? 'prevista' : '',
     info?.fertil ? 'fertil' : '',
-    info?.ovulacion ? 'ovu' + (info.ciclo.ovuConfirmada ? ' oura' : '') : '',
+    info?.ovulacion ? 'ovu' + (info.ovuReal ? ' oura' : '') : '',
     info?.critica ? 'critica' : '',
     d === mo.hoy ? 'hoy' : '',
   ].filter(Boolean).join(' ')
@@ -94,7 +95,9 @@ export function pintaDia(mo: Modelo, m: Mapa, d: string) {
     reg?.regla ? 'regla' : '',
     reg?.manchado ? 'manchado' : '',
     info?.reglaPrevista ? 'regla prevista' : '',
-    info?.ovulacion ? (info.ciclo.ovuConfirmada ? 'ovulación confirmada' : 'ovulación aproximada') : info?.fertil ? 'ventana fértil' : '',
+    info?.fertil ? 'ventana fértil' : '',
+    info?.ovuAprox ? 'ovulación aproximada' : '',
+    info?.ovuReal ? 'ovulación real (Oura)' : '',
     info?.critica ? 'ventana crítica' : '',
   ].filter(Boolean).join(', ')
   return { info, reg, cls, txt }
@@ -112,7 +115,7 @@ export function Calendario({ mes, modelo, mapa, sel, onSel, epis }: { mes: strin
         const n = Number(d.slice(8))
         return (
           <button type="button" key={d} className={'ciclo-celda ' + cls + (d === sel ? ' sel' : '')} aria-pressed={d === sel} aria-label={`Día ${n}${txt ? ': ' + txt : ''}`} onClick={() => onSel(d)}>
-            <NumDia d={d} ovu={info?.ovulacion} confirmada={info?.ciclo.ovuConfirmada} />
+            <NumDia d={d} aprox={info?.ovuAprox} real={info?.ovuReal} />
             <MarcaEpisodio m={epis?.[d]} />
             <span className="marcas" aria-hidden="true">
               {reg?.manchado && <i className={'m-man ' + reg.manchado} />}
@@ -124,14 +127,14 @@ export function Calendario({ mes, modelo, mapa, sel, onSel, epis }: { mes: strin
   )
 }
 
-export function Leyenda({ critica, confirmada }: { critica: boolean; confirmada?: boolean }) {
+export function Leyenda({ critica }: { critica: boolean }) {
   return (
     <div className="ciclo-ley">
       <span><i className="ciclo-celda regla moderado" /> Regla</span>
       <span><i className="ciclo-celda prevista" /> Regla prevista</span>
       <span><i className="ciclo-celda fertil" /> Ventana fértil</span>
-      <span><i className="m-ovu oura" /> Ovulación (Oura)</span>
-      {!confirmada && <span><i className="m-ovu" /> Ovulación aprox.</span>}
+      <span><i className="m-ovu" /> Ovulación aprox. (proyección)</span>
+      <span><i className="m-ovu oura" /> Ovulación real (Oura)</span>
       {critica && <span><i className="ciclo-celda critica" /> Ventana crítica</span>}
       <span><i className="m-man rojo" /> Manchado</span>
     </div>
