@@ -1,9 +1,28 @@
-import { useState, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import type { FasesNoche } from './tipos'
 
 /** Gráficos propios del pilar Oura Ring. Colores solo con las variables de tokens.css. */
 
-const W = 320
+/**
+ * Ancho real del gráfico en píxeles. El dibujo se hace a ese ancho (1 unidad = 1 píxel), así la letra y la altura
+ * son las mismas en el móvil y en una pantalla ancha, en vez de crecer con el ancho.
+ */
+function useAncho(): [(el: HTMLElement | null) => void, number] {
+  const [w, setW] = useState(320)
+  const obs = useRef<ResizeObserver | null>(null)
+  const ref = useCallback((el: HTMLElement | null) => {
+    obs.current?.disconnect()
+    obs.current = null
+    if (!el) return
+    const medir = (ancho: number) => { if (ancho > 0) setW(Math.max(240, Math.round(ancho))) }
+    medir(el.clientWidth)
+    if (typeof ResizeObserver !== 'undefined') {
+      obs.current = new ResizeObserver(([e]) => medir(e.contentRect.width))
+      obs.current.observe(el)
+    }
+  }, [])
+  return [ref, w]
+}
 
 /** Suma minutos a una hora HH:MM y la devuelve como HH:MM (vuelve a 00 pasada la medianoche). */
 export function horaMas(hm: string, min: number) {
@@ -63,13 +82,15 @@ const COLOR_FILA = ['var(--amber)', 'var(--plato-proteina)', 'var(--primary-soft
 
 /** Cada 5 minutos, en qué fase estaba (como en la app de Oura). */
 export function Hipnograma({ fases, dormir }: { fases: FasesNoche; dormir?: string }) {
-  const H = 112, L = 62, T = 6, B = 18
+  const [ref, W] = useAncho()
+  const H = 100, L = 62, T = 6, B = 18
   const n = fases.length
   if (!n) return null
   const fh = (H - T - B) / 4
   const x = (i: number) => L + ((W - L - 6) * i) / n
   const marcas = dormir ? [0, Math.round(n / 3), Math.round((2 * n) / 3), n] : []
   return (
+    <div ref={ref}>
     <svg className="oura-svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Fases del sueño de la noche, cada 5 minutos">
       {NOMBRE_FILA.map((t, r) => (
         <g key={t}>
@@ -86,6 +107,7 @@ export function Hipnograma({ fases, dormir }: { fases: FasesNoche; dormir?: stri
         <text key={m} x={Math.min(Math.max(x(m), L + 12), W - 18)} y={H - 4} textAnchor="middle" fontSize="10" fill="var(--muted)">{horaMas(dormir, m * 5)}</text>
       ))}
     </svg>
+    </div>
   )
 }
 
@@ -124,13 +146,13 @@ export function BarraFases({ profundo = 0, rem = 0, ligero = 0, despierta = 0 }:
 /* ---------- Curva por horas, se puede tocar ---------- */
 
 /** Índice del punto más cercano al dedo o al cursor. */
-function indiceEn(e: PointerEvent<SVGSVGElement>, n: number, L: number, R: number) {
+function indiceEn(e: PointerEvent<SVGSVGElement>, n: number, L: number, R: number, W: number) {
   const r = e.currentTarget.getBoundingClientRect()
   const x = ((e.clientX - r.left) / r.width) * W
   return Math.max(0, Math.min(n - 1, Math.round(((x - L) / (W - L - R)) * (n - 1))))
 }
 
-export function Curva({ valores, inicio, paso, unidad, titulo, color = 'var(--primary)', zona, dec = 0 }: {
+export function Curva({ valores, inicio, paso, unidad, titulo, color = 'var(--primary)', zona, dec = 0, alto = 100 }: {
   valores: (number | null)[]
   /** Hora del primer valor (HH:MM). */
   inicio: string
@@ -142,9 +164,13 @@ export function Curva({ valores, inicio, paso, unidad, titulo, color = 'var(--pr
   /** Franja que se resalta, en minutos desde `inicio` (por ejemplo, de 00 a 04 h). */
   zona?: { desde: number; hasta: number; texto: string }
   dec?: number
+  /** Alto en píxeles (más bajo en la versión pequeña de Disautonomía). */
+  alto?: number
 }) {
   const [sel, setSel] = useState<number | null>(null)
-  const H = 124, L = 30, R = 8, T = 10, B = 20
+  const [ref, W] = useAncho()
+  // Sin horas debajo: al tocar la curva sale la hora arriba.
+  const H = alto, L = 26, R = 6, T = 8, B = 6
   const ok = valores.filter((v): v is number => v != null)
   if (!ok.length) return null
   let lo = Math.min(...ok), hi = Math.max(...ok)
@@ -157,14 +183,11 @@ export function Curva({ valores, inicio, paso, unidad, titulo, color = 'var(--pr
   let d = ''
   valores.forEach((v, i) => { if (v == null) return; d += (d && valores[i - 1] != null ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) })
   const total = (n - 1) * paso
-  const cada = total > 600 ? 240 : total > 300 ? 120 : 60
-  const ticks: number[] = []
-  for (let m = 0; m <= total; m += cada) ticks.push(m)
   const XM = (m: number) => L + ((W - L - R) * m) / Math.max(1, total)
   const vMin = Math.min(...ok), vMax = Math.max(...ok)
   const s = sel != null && valores[sel] != null ? sel : null
   return (
-    <div className="oura-grafico">
+    <div className="oura-grafico" ref={ref}>
       <div className="row between small">
         <strong>{titulo}</strong>
         {s != null
@@ -172,7 +195,7 @@ export function Curva({ valores, inicio, paso, unidad, titulo, color = 'var(--pr
           : <span className="muted">de {fmt(vMin, dec)} a {fmt(vMax, dec)} {unidad} · toca la curva</span>}
       </div>
       <svg className="oura-svg toque" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${titulo}: de ${vMin} a ${vMax} ${unidad}`}
-        onPointerMove={(e) => setSel(indiceEn(e, n, L, R))} onPointerDown={(e) => setSel(indiceEn(e, n, L, R))}>
+        onPointerMove={(e) => setSel(indiceEn(e, n, L, R, W))} onPointerDown={(e) => setSel(indiceEn(e, n, L, R, W))}>
         {zona && zona.hasta > 0 && zona.desde < total && (
           <g>
             <rect x={XM(Math.max(0, zona.desde))} y={T} width={XM(Math.min(total, zona.hasta)) - XM(Math.max(0, zona.desde))} height={H - T - B} fill="var(--resalte)" />
@@ -192,7 +215,6 @@ export function Curva({ valores, inicio, paso, unidad, titulo, color = 'var(--pr
             <circle cx={X(s)} cy={Y(valores[s]!)} r="4" fill={color} stroke="var(--card)" strokeWidth="2" />
           </g>
         )}
-        {ticks.map((m) => <text key={m} x={XM(m)} y={H - 5} textAnchor="middle" fontSize="9" fill="var(--muted)">{horaMas(inicio, m)}</text>)}
       </svg>
     </div>
   )
@@ -222,7 +244,8 @@ export function BarrasDias({ titulo, puntos, unidad, dec = 0, abajo = 'semana', 
   marca?: { day: string; texto: string }
 }) {
   const [sel, setSel] = useState<number | null>(null)
-  const H = 126, L = 30, R = 6, T = 10, B = 20
+  const [ref, W] = useAncho()
+  const H = 106, L = 30, R = 6, T = 10, B = 20
   if (!puntos.length) return <p className="muted small">{titulo}: sin datos todavía.</p>
   const ys = puntos.map((p) => p.y)
   let lo: number, hi: number
@@ -244,7 +267,7 @@ export function BarrasDias({ titulo, puntos, unidad, dec = 0, abajo = 'semana', 
   const color = (v: number) => colorDe ? colorDe(v) : cero ? (v >= 0 ? 'var(--plato-proteina)' : 'var(--green)') : 'var(--muted)'
   const fechaCada = Math.ceil(n / 6)
   return (
-    <div className="oura-grafico">
+    <div className="oura-grafico" ref={ref}>
       <div className="row between small">
         <strong>{titulo}</strong>
         <span><b>{cero && puntos[s].y > 0 ? '+' : ''}{fmt(puntos[s].y, dec)} {unidad}</b> <span className="muted">· {fechaLarga(puntos[s].day)}</span></span>
@@ -312,13 +335,14 @@ const COLOR_CLASE = ['transparent', 'var(--primary-soft)', 'var(--line)', 'var(-
 const NOMBRE_CLASE = ['Sin anillo', 'Descanso', 'Sentada o quieta', 'Actividad baja', 'Actividad media', 'Actividad alta']
 /** Movimiento del día cada 5 minutos (class_5_min de Oura: 0 sin anillo, 1 descanso, 2 quieta, 3 baja, 4 media, 5 alta). */
 export function TiraDia({ clases }: { clases: string }) {
+  const [ref, W] = useAncho()
   const n = clases.length
   if (!n) return null
   const H = 46, L = 4, R = 4
   const w = (W - L - R) / n
   return (
     <div className="oura-grafico">
-      <div className="row between small"><strong>Movimiento del día</strong><span className="muted">cada 5 minutos</span></div>
+      <div className="row between small" ref={ref}><strong>Movimiento del día</strong><span className="muted">cada 5 minutos</span></div>
       <svg className="oura-svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Movimiento del día cada 5 minutos">
         {[...clases].map((c, i) => <rect key={i} x={L + w * i} y={6} width={w + 0.3} height={22} fill={COLOR_CLASE[Number(c)] ?? 'transparent'} />)}
         {[0, 6, 12, 18, 24].map((h) => <text key={h} x={L + ((W - L - R) * h) / 24} y={H - 4} textAnchor={h === 0 ? 'start' : h === 24 ? 'end' : 'middle'} fontSize="9" fill="var(--muted)">{String(h % 24).padStart(2, '0')}:00</text>)}

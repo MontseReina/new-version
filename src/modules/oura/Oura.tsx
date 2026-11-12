@@ -275,7 +275,7 @@ export default function Oura() {
               <Dato v={num(n.vfc_media)} u="ms" t="Variabilidad media" n={nVfc} comp={frente(n.vfc_media, m.vfc, 'ms')} />
             </div>
             {n.fc5 && n.dormir && <Curva titulo="Frecuencia cardíaca de la noche" valores={n.fc5} inicio={n.dormir} paso={5} unidad="lpm" color="var(--red)" zona={madrugada(n.dormir, n.fc5.length)} />}
-            {d.fc_dia && <Curva titulo="Frecuencia cardíaca del día" valores={d.fc_dia} inicio="00:00" paso={30} unidad="lpm" color="var(--red)" />}
+            <p className="muted small">La frecuencia cardíaca del día está en Disautonomía, encima de las constantes.</p>
 
             <h3>Variabilidad</h3>
             {n.vfc5 && n.dormir && <Curva titulo="Variabilidad de la noche" valores={n.vfc5} inicio={n.dormir} paso={5} unidad="ms" color="var(--green)" />}
@@ -301,7 +301,8 @@ export default function Oura() {
               <ul>
                 <li><b>Frecuencia cardíaca mínima</b>: lo más bajo que llega tu pulso durante la noche. Más baja que tu media suele indicar que el cuerpo descansa bien; más alta, que está cargado (estrés, infección, cena tardía, alcohol o fase lútea).</li>
                 <li><b>Curva de la noche</b>: lo normal es que baje en la primera mitad y suba poco a poco hacia el despertar. Si el punto más bajo llega muy tarde o hay picos de madrugada, la noche ha sido menos reparadora. La franja de 00 a 04 h va marcada.</li>
-                <li><b>Frecuencia del día</b>: sube al moverte, ponerte de pie, comer o ante el estrés. Toca la curva para ver el pulso de cada hora.</li>
+                <li><b>Frecuencia del día</b>: está en Disautonomía, encima de las constantes. Sube al moverte, ponerte de pie, comer o ante el estrés.</li>
+                <li><b>Huecos en las curvas</b>: cada punto es la media de 5 minutos. Cuando el anillo no consigue una lectura fiable, Oura deja ese rato en blanco en vez de inventarlo. Pasa al moverte o despertarte, si el anillo está flojo o girado, con los dedos fríos (llega menos sangre y la señal es débil), con latidos irregulares o con poca batería.</li>
                 <li><b>Variabilidad (VFC)</b>: cuánto cambia el tiempo entre un latido y el siguiente, en milisegundos. Refleja el equilibrio del sistema nervioso: más alta, más modo descanso y recuperación; más baja, más modo alerta. Cada persona tiene su rango, así que compárala solo con tu media.</li>
                 <li><b>VO2 máx</b>: cuánto oxígeno puede usar tu cuerpo en un esfuerzo; mide tu forma física. Se afina con la prueba de caminar de 6 minutos de la app de Oura.</li>
                 <li><b>Edad cardiovascular</b>: la edad que corresponde a la rigidez de tus arterias según Oura.</li>
