@@ -1442,6 +1442,18 @@ function kcalDia(cfg, d, menu, ahoraMin) {
 }
 const fmtKcal = (n) => Math.round(n).toLocaleString("es-ES");
 //#endregion
+//#region src/modules/oura/tipos.ts
+/** «11:45–12:20» o, si solo hubo una lectura, «11:33». */
+const horasRato = (a) => a.fin && a.fin !== a.hora ? `${a.hora}–${a.fin}` : a.hora;
+/** «104–126» o, si todas las lecturas dieron lo mismo, «106». */
+const fcRato = (a) => a.fc_min != null && a.fc_min < a.fc ? `${a.fc_min}–${a.fc}` : String(a.fc);
+const CONTEXTO_FC = {
+	sueno: "dormida",
+	reposo: "en reposo",
+	movimiento: "moviéndote",
+	entreno: "entrenamiento"
+};
+//#endregion
 //#region src/modules/avisos/reglas.ts
 /** Avisos al móvil: qué aviso toca en cada momento. Lo usa la función del servidor `avisos`, que lo revisa
 *  cada cinco minutos, y la página Avisos para enseñar la lista. Sin datos personales: horas, pautas y
@@ -1487,6 +1499,12 @@ const AVISOS = [
 		id: "cena",
 		nombre: "Hora de cenar",
 		detalle: "Media hora antes de la hora máxima de terminar la cena, si aún no has empezado.",
+		porDefecto: true
+	},
+	{
+		id: "pulso",
+		nombre: "Pulso alto del anillo Oura",
+		detalle: "Cuando el anillo registra un rato con el pulso a 100 lpm o más, para que anotes qué pasaba. Llega con retraso: el anillo tiene que pasar los datos al móvil y la app los trae cada media hora.",
 		porDefecto: true
 	}
 ];
@@ -1635,6 +1653,17 @@ function avisosAhora(x) {
 			cuerpo: `Son las ${aHora(max - 30)}: buen momento para empezar a cenar con calma y terminar antes de las ${aHora(max)}.`
 		});
 	}
+	if (activo(cfg, "pulso")) for (const a of x.fcAltas ?? []) {
+		const fin = aMin(a.fin ?? a.hora);
+		if (fin == null || m - fin > 180 || m < fin) continue;
+		out.push({
+			clave: "pulso-" + a.hora,
+			id: "pulso",
+			titulo: "Pulso alto",
+			ruta: "disautonomia",
+			cuerpo: `El anillo marcó ${fcRato(a)} lpm (${horasRato(a)}${a.contexto ? ", " + CONTEXTO_FC[a.contexto] : ""}). Si puedes, para, hidrátate y anota en Constantes qué pasaba.`
+		});
+	}
 	return out;
 }
 /** Quita los ya enviados hoy y evita dos avisos de comer seguidos: la «primera toma» no sale si un aviso
@@ -1648,7 +1677,7 @@ function filtrar(avisos, enviados, ahoraMin) {
 const discreto = (a) => ({
 	...a,
 	titulo: "New Version",
-	cuerpo: `Tienes un aviso de ${a.ruta === "hidratacion" ? "Hidratación" : "Nutrición"}.`
+	cuerpo: `Tienes un aviso de ${a.ruta === "hidratacion" ? "Hidratación" : a.ruta === "disautonomia" ? "Disautonomía" : "Nutrición"}.`
 });
 /** Más de estos días sin regla entre dos días con regla = empieza un ciclo nuevo. */
 const SALTO = 9;
@@ -1985,6 +2014,12 @@ async function temperaturas(userId, desde, hasta) {
 	if (error) return [];
 	return data ?? [];
 }
+/** Ratos de hoy con el pulso a 100 lpm o más (los guarda la función `oura`). */
+async function pulsosAltos(userId, hoy) {
+	const { data, error } = await admin.from("entries").select("a:value->fc_altas").eq("user_id", userId).eq("module", "oura").eq("kind", "dia").eq("day", hoy).is("deleted_at", null).maybeSingle();
+	if (error || !data) return [];
+	return data.a ?? [];
+}
 /** Claves VAPID de la usuaria: se crean la primera vez y se guardan en su fila. */
 async function clavesDe(userId, fila) {
 	if (fila.secret.vapid?.publica && fila.secret.vapid.privada) return fila.secret.vapid;
@@ -2044,11 +2079,12 @@ async function revisar(userId, fila) {
 	const cfg = ajustes?.data ?? {};
 	const nutriCfg = cfg.nutricion ?? {};
 	const ayer = addDays(hoy, -1);
-	const [nutri, hidra, ciclo, temps] = await Promise.all([
+	const [nutri, hidra, ciclo, temps, oura] = await Promise.all([
 		diario(userId, "nutricion", ayer, hoy),
 		diario(userId, "hidratacion", hoy, hoy),
 		diario(userId, "ciclo", addDays(hoy, -400), hoy),
-		temperaturas(userId, addDays(hoy, -400), hoy)
+		temperaturas(userId, addDays(hoy, -400), hoy),
+		pulsosAltos(userId, hoy)
 	]);
 	const mapa = Object.fromEntries(ciclo);
 	const info = infoDia(crearModelo(mapa, cfg.ciclo ?? {}, hoy, temps), mapa, hoy);
@@ -2063,7 +2099,8 @@ async function revisar(userId, fila) {
 		menu: menuDe(nutriCfg, info, hoy),
 		nutriHoy: nutri.get(hoy) ?? {},
 		nutriAyer: nutri.get(ayer) ?? null,
-		hidraHoy: hidra.get(hoy) ?? {}
+		hidraHoy: hidra.get(hoy) ?? {},
+		fcAltas: oura
 	});
 	const enviados = { ...fila.state.enviados?.[hoy] ?? {} };
 	const nuevos = filtrar(todos, enviados, min);

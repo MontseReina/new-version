@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { addDays, fmtDate, todayStr, weekStart } from '../../lib/dates'
 import { listDaily } from '../../store/repo'
 import { useAncho } from '../oura/graficos'
-import { CONTEXTO_FC, type OuraDia } from '../oura/tipos'
+import { CONTEXTO_FC, fcRato, horasRato, type OuraDia } from '../oura/tipos'
 import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, type Medida, type SintDia } from '../sintomas/logica'
 
 /**
@@ -11,7 +11,7 @@ import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, type Medida, type SintDia } fr
  * Las franjas sombreadas son los rangos de referencia generales del adulto (los mismos que resaltan las tomas).
  */
 
-type Toma = Medida & { day: string; hora: string; origen: 'mia' | 'oura'; min?: number; contexto?: string }
+type Toma = Medida & { day: string; hora: string; origen: 'mia' | 'oura'; min?: number; contexto?: string; horas?: string; rango?: string }
 
 const etiqueta = (pares: [string, string][], k?: string | null) => (k ? pares.find(([c]) => c === k)?.[1] ?? '' : '')
 const minDe = (hora: string) => { const [h, m] = hora.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
@@ -101,12 +101,13 @@ export function InformeConstantes() {
   const ds = useMemo(() => dias(desde, hasta), [desde, hasta])
   const tomas: Toma[] = useMemo(() => {
     if (!filas) return []
+    const ctx = Object.fromEntries(filas.sint.map((r) => [r.day, r.value.contexto_oura ?? {}]))
     const mias = filas.sint.flatMap((r) => (r.value.constantes ?? []).map((m) => ({ ...m, day: r.day, hora: m.hora ?? '', origen: 'mia' as const })))
     const completadas = new Set(mias.filter((m) => m.de_oura).map((m) => m.day + m.hora))
     const anillo = conOura
       ? filas.oura.flatMap((r) => (r.value.fc_altas ?? [])
         .filter((a) => !completadas.has(r.day + a.hora))
-        .map((a) => ({ day: r.day, hora: a.hora, fc: a.fc, min: a.min, contexto: a.contexto, origen: 'oura' as const })))
+        .map((a) => ({ day: r.day, hora: a.hora, fc: a.fc, min: a.min, contexto: a.contexto, horas: horasRato(a), rango: fcRato(a), nota: ctx[r.day]?.[a.hora] || null, origen: 'oura' as const })))
       : []
     return [...mias, ...anillo].sort((a, b) => (a.day + a.hora).localeCompare(b.day + b.hora))
   }, [filas, conOura])
@@ -120,6 +121,7 @@ export function InformeConstantes() {
   const sat = tomas.filter((t) => t.spo2 != null).map((t) => ({ day: t.day, hora: t.hora, y: t.spo2! }))
   const noMedible = (t: Toma, c: 'fc' | 'ta' | 'glucosa' | 'spo2') => (t.no_medible ?? []).includes(c)
   const celda = (t: Toma, c: 'fc' | 'ta' | 'glucosa' | 'spo2') => {
+    if (c === 'fc' && t.rango) return t.rango
     if (c === 'fc' && t.fc != null) return String(t.fc)
     if (c === 'ta' && (t.pas != null || t.pad != null)) return `${t.pas ?? '—'}/${t.pad ?? '—'}`
     if (c === 'ta' && t.ta_no_capta) return 'No la capta (muy baja)'
@@ -166,20 +168,21 @@ export function InformeConstantes() {
             <div className="informe-tabla">
               <table className="table">
                 <thead>
-                  <tr><th>Fecha</th><th>Hora</th><th>FC (lpm)</th><th>TA (mmHg)</th><th>Glucosa (mg/dl)</th><th>SatO₂ (%)</th><th>Situación</th></tr>
+                  <tr><th>Fecha</th><th>Hora</th><th>FC (lpm)</th><th>TA (mmHg)</th><th>Glucosa (mg/dl)</th><th>SatO₂ (%)</th><th>Situación y contexto</th></tr>
                 </thead>
                 <tbody>
                   {tomas.map((t, k) => (
                     <tr key={k} className={t.origen === 'oura' ? 'fila-oura' : ''}>
                       <td>{ddmm(t.day)}</td>
-                      <td>{t.hora || '—'}</td>
+                      <td>{t.horas || t.hora || '—'}</td>
                       <td>{celda(t, 'fc')}</td>
                       <td>{celda(t, 'ta')}</td>
                       <td>{celda(t, 'glucosa')}</td>
                       <td>{celda(t, 'spo2')}</td>
                       <td>{t.origen === 'oura'
-                        ? ['Anillo Oura', `máx. durante ${t.min} min`, t.contexto && CONTEXTO_FC[t.contexto]].filter(Boolean).join(' · ')
-                        : [etiqueta(TIPOS_MEDIDA, t.tipo), etiqueta(POSICIONES, t.posicion).toLowerCase(), etiqueta(HIDRATACIONES, t.hidratacion).toLowerCase()].filter(Boolean).join(' · ') || '—'}</td>
+                        ? ['Anillo Oura', `durante ${t.min} min`, t.contexto && CONTEXTO_FC[t.contexto]].filter(Boolean).join(' · ')
+                        : [etiqueta(TIPOS_MEDIDA, t.tipo), etiqueta(POSICIONES, t.posicion).toLowerCase(), etiqueta(HIDRATACIONES, t.hidratacion).toLowerCase()].filter(Boolean).join(' · ') || '—'}
+                        {t.nota && <div className="informe-contexto">{t.nota}</div>}</td>
                     </tr>
                   ))}
                 </tbody>

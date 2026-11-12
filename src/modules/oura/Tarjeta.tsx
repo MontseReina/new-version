@@ -4,7 +4,7 @@ import { fmtDate, fmtDateTime } from '../../lib/dates'
 import { DEMO } from '../../store/repo'
 import { conectar, desconectar, sincronizar, type EstadoOura } from './conexion'
 
-const HORAS = 'Se actualiza al abrir la app, a las 10:30 y a las 22:00.'
+const HORAS = 'Se actualiza al abrir la app y cada media hora de 7:30 a 23:30.'
 
 /** Tarjeta de arriba de Oura Ring: estado de la conexión con el anillo. */
 export function TarjetaOura({ o, onDemo }: { o: EstadoOura; onDemo: () => void }) {
@@ -17,7 +17,7 @@ export function TarjetaOura({ o, onDemo }: { o: EstadoOura; onDemo: () => void }
       <div className="card tight row between">
         <div>
           <strong>Conectado</strong> <span className="tag verde">Oura Gen3</span>
-          <div className="muted small">Última sincronización: hoy, 10:30 · {HORAS.toLowerCase()}</div>
+          <div className="muted small">Última sincronización: hoy, 10:30 · {HORAS.charAt(0).toLowerCase() + HORAS.slice(1)}</div>
         </div>
         <div className="row">
           <button className="btn sm" onClick={onDemo}>Sincronizar ahora</button>

@@ -8,8 +8,9 @@ import {
   type MenuHoy, type NutriCfg, type NutriDia,
 } from '../nutricion/logica'
 import { DORMIR_TRAS_CENA_MIN, type ObjCfg } from '../objetivos/logica'
+import { CONTEXTO_FC, fcRato, horasRato, type FcAlta } from '../oura/tipos'
 
-export type AvisoId = 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena'
+export type AvisoId = 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena' | 'pulso'
 
 export const AVISOS: { id: AvisoId; nombre: string; detalle: string; porDefecto: boolean }[] = [
   { id: 'ayuno', nombre: 'Horas sin comer', detalle: 'Media hora antes de cumplir las horas de ayuno, al cumplirlas y cada hora que pase después sin comer.', porDefecto: true },
@@ -19,6 +20,7 @@ export const AVISOS: { id: AvisoId; nombre: string; detalle: string; porDefecto:
   { id: 'dormir', nombre: 'Ya puedes acostarte', detalle: 'Cuando pasan las horas mínimas desde que terminas de cenar.', porDefecto: true },
   { id: 'pendiente', nombre: 'Comida principal sin anotar', detalle: 'Desayuno, comida o cena sin anotar media hora después de su hora.', porDefecto: true },
   { id: 'cena', nombre: 'Hora de cenar', detalle: 'Media hora antes de la hora máxima de terminar la cena, si aún no has empezado.', porDefecto: true },
+  { id: 'pulso', nombre: 'Pulso alto del anillo Oura', detalle: 'Cuando el anillo registra un rato con el pulso a 100 lpm o más, para que anotes qué pasaba. Llega con retraso: el anillo tiene que pasar los datos al móvil y la app los trae cada media hora.', porDefecto: true },
 ]
 
 export type AvisosCfg = {
@@ -61,6 +63,8 @@ export interface Contexto {
   nutriHoy: NutriDia
   nutriAyer: NutriDia | null
   hidraHoy: HidraDia
+  /** Ratos de hoy con el pulso a 100 lpm o más, según el anillo Oura. */
+  fcAltas?: FcAlta[]
 }
 
 const enSilencio = (c: AvisosCfg, m: number) => {
@@ -203,6 +207,15 @@ export function avisosAhora(x: Contexto): Aviso[] {
         cuerpo: `Son las ${aHora(max - 30)}: buen momento para empezar a cenar con calma y terminar antes de las ${aHora(max)}.` })
     }
   }
+  // 8. Pulso alto del anillo: un aviso por rato, solo si el rato es de las últimas 3 horas (no al traer el histórico).
+  if (activo(cfg, 'pulso')) {
+    for (const a of x.fcAltas ?? []) {
+      const fin = aMin(a.fin ?? a.hora)
+      if (fin == null || m - fin > 180 || m < fin) continue
+      out.push({ clave: 'pulso-' + a.hora, id: 'pulso', titulo: 'Pulso alto', ruta: 'disautonomia',
+        cuerpo: `El anillo marcó ${fcRato(a)} lpm (${horasRato(a)}${a.contexto ? ', ' + CONTEXTO_FC[a.contexto] : ''}). Si puedes, para, hidrátate y anota en Constantes qué pasaba.` })
+    }
+  }
   return out
 }
 
@@ -215,4 +228,4 @@ export function filtrar(avisos: Aviso[], enviados: { [clave: string]: number }, 
 }
 
 /** Texto discreto para la pantalla bloqueada. */
-export const discreto = (a: Aviso): Aviso => ({ ...a, titulo: 'New Version', cuerpo: `Tienes un aviso de ${a.ruta === 'hidratacion' ? 'Hidratación' : 'Nutrición'}.` })
+export const discreto = (a: Aviso): Aviso => ({ ...a, titulo: 'New Version', cuerpo: `Tienes un aviso de ${a.ruta === 'hidratacion' ? 'Hidratación' : a.ruta === 'disautonomia' ? 'Disautonomía' : 'Nutrición'}.` })

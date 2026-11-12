@@ -741,6 +741,9 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .medida-oura { border-style: dashed; background: var(--card); }
 .medida-oura .tag { font-size: .72rem; }
 .medida-oura-fc { margin: .35rem 0 .2rem; }
+.medida-contexto { display: block; margin-top: .5rem; }
+.medida-contexto textarea { width: 100%; min-height: 2.8rem; margin-top: .15rem; }
+.informe-contexto { color: var(--text); font-style: italic; margin-top: .15rem; white-space: normal; }
 
 /* Evaluaciones · Constantes por días (se imprime para la consulta) */
 .solo-print { display: none; }

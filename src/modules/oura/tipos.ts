@@ -75,12 +75,20 @@ export type OuraDia = {
 }
 
 export type FcAlta = {
+  /** Hora de la primera y de la última lectura del rato (HH:MM). */
   hora: string
+  fin?: string
+  /** Pulso más alto y más bajo del rato (todas las lecturas del rato están a 100 o más). */
   fc: number
+  fc_min?: number
   min: number
   /** Qué hacía según el anillo: dormida, en reposo, moviéndose o en un entrenamiento. */
   contexto?: 'sueno' | 'reposo' | 'movimiento' | 'entreno'
 }
+/** «11:45–12:20» o, si solo hubo una lectura, «11:33». */
+export const horasRato = (a: FcAlta) => (a.fin && a.fin !== a.hora ? `${a.hora}–${a.fin}` : a.hora)
+/** «104–126» o, si todas las lecturas dieron lo mismo, «106». */
+export const fcRato = (a: FcAlta) => (a.fc_min != null && a.fc_min < a.fc ? `${a.fc_min}–${a.fc}` : String(a.fc))
 export const CONTEXTO_FC: Record<string, string> = { sueno: 'dormida', reposo: 'en reposo', movimiento: 'moviéndote', entreno: 'entrenamiento' }
 
 export type FactorSueno = 'total' | 'eficiencia' | 'descanso' | 'rem' | 'profundo' | 'latencia' | 'regularidad'

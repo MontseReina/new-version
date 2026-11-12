@@ -1,6 +1,6 @@
 import { todayStr, nowHM } from '../../lib/dates'
 import type { ReactNode } from 'react'
-import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
+import { CONTEXTO_FC, fcRato, horasRato, type FcAlta } from '../oura/tipos'
 import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, avisosMedida, type CampoMedida, type Medida, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
@@ -38,7 +38,14 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
   // Ratos de Oura que no se han completado ya a mano.
   const completados = new Set(xs.filter((x) => x.de_oura && x.hora).map((x) => x.hora))
   const deOura = oura.filter((a) => !completados.has(a.hora))
-  const completar = (a: FcAlta) => set({ constantes: [...xs, { hora: a.hora, fc: a.fc, de_oura: true }] })
+  const ctxOura = d.contexto_oura ?? {}
+  const completar = (a: FcAlta) => set({ constantes: [...xs, { hora: a.hora, fc: a.fc, de_oura: true, nota: ctxOura[a.hora] || null }] })
+  const contexto = (valor: string, cambiar: (v: string) => void, etiqueta: string) => (
+    <label className="medida-contexto">
+      <span className="small muted">Contexto</span>
+      <textarea rows={2} aria-label={etiqueta} placeholder="Qué ha pasado: qué hacías, cómo te sentías, qué tomaste…" value={valor} onChange={(e) => cambiar(e.target.value)} />
+    </label>
+  )
   // Se enseñan de la más reciente a la más antigua; se guardan en el orden en que se anotan.
   type Fila = { hora: string; x?: Medida; i?: number; a?: FcAlta }
   const orden: Fila[] = [
@@ -59,12 +66,13 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
           return (
             <div className="medida medida-oura" key={'oura-' + a.hora}>
               <div className="row between">
-                <span className="small"><span className="muted">Hora</span> <b>{a.hora}</b></span>
+                <span className="small"><span className="muted">Hora</span> <b>{horasRato(a)}</b></span>
                 <span className="tag">Oura · automático</span>
               </div>
-              <div className="medida-oura-fc">Frecuencia cardíaca <b>{a.fc} lpm</b> <span className="muted small">máximo durante {a.min} min{a.contexto ? ` · ${CONTEXTO_FC[a.contexto]}` : ''}</span></div>
+              <div className="medida-oura-fc">Frecuencia cardíaca <b>{fcRato(a)} lpm</b> <span className="muted small">durante {a.min} min{a.contexto ? ` · ${CONTEXTO_FC[a.contexto]}` : ''}</span></div>
               <div className="small muted">Tensión arterial, glucosa y saturación: no se puede medir.</div>
               {avisosA.length > 0 && <div className="medida-avisos">{avisosA.map((t) => <span key={t} className="medida-aviso">{t}</span>)}</div>}
+              {contexto(ctxOura[a.hora] ?? '', (v) => set({ contexto_oura: { ...ctxOura, [a.hora]: v } }), `Contexto del pulso alto de las ${a.hora}`)}
               <button type="button" className="linkbtn small" onClick={() => completar(a)}>Completar con mis constantes</button>
             </div>
           )
@@ -104,7 +112,7 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
               {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k })}>{l}</button>)}
             </div>
             {x.de_oura && <div className="muted small" style={{ marginTop: '.4rem' }}>Empezó como pulso alto del anillo Oura.</div>}
-            {x.nota && <div className="muted small" style={{ marginTop: '.4rem' }}>Nota: {x.nota}</div>}
+            {contexto(x.nota ?? '', (v) => poner(i, { nota: v || null }), `Contexto de la toma de las ${x.hora ?? ''}`)}
             {avisos.length > 0 && <div className="medida-avisos">{avisos.map((a) => <span key={a} className="medida-aviso">{a}</span>)}</div>}
           </div>
         )

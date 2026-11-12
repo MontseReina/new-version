@@ -8,7 +8,7 @@
 //      'sincronizar'  trae los 3 últimos días y un tramo más del histórico del último año (la app repite mientras falte)
 //      'desconectar'  retira el permiso
 //  · POST {accion:'auto'} sin sesión → lo llama la base de datos cada 30 minutos (supabase/oura-cron.sql):
-//      sincroniza a las 10:30 y a las 22:00 de la hora de cada usuaria, y mientras falte histórico.
+//      sincroniza cada media hora de 7:30 a 23:30 (hora de cada usuaria) y, a cualquier hora, mientras falte histórico.
 //
 // Solo lee de Oura; no escribe nada en la cuenta de Oura.
 // Guarda un documento por día en `entries` (module 'oura', kind 'dia'), con la forma de src/modules/oura/tipos.ts.
@@ -37,13 +37,15 @@ const VACIOS_FIN = 3
 /** Hasta dónde se trae el histórico: el último año (decisión de Montserrate, 12-11-2026). */
 const HISTORICO_DIAS = 365
 /** Versión de lo que se guarda por día. Si sube, se vuelve a traer el histórico para completar los días ya guardados. */
-const DATOS_VERSION = 2
+const DATOS_VERSION = 3
 /** Pulso a partir del cual se guarda el rato (para Constantes de Disautonomía) y hueco máximo entre lecturas de un mismo rato. */
 const FC_ALTA = 100
 const FC_ALTA_HUECO_MIN = 10
 /** Horas de la sincronización automática (hora local de la usuaria) y margen de la tarea de la base de datos. */
-const HORAS_AUTO = ['10:30', '22:00']
-const MARGEN_AUTO_MIN = 30
+/** Franja del día (hora local) en la que la llamada automática sincroniza cada media hora, para que el aviso de
+ *  pulso alto llegue cuanto antes. Fuera de la franja, solo si falta histórico. */
+const AUTO_DESDE = '07:30'
+const AUTO_HASTA = '23:30'
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 
@@ -393,7 +395,7 @@ async function traerTramo(userId: string, token: string, tz: string, desde: stri
     doc(dia).fc_dia = b.s.map((s, i) => (b.n[i] ? Math.round(s / b.n[i]) : null))
   }
   // Ratos con el pulso a 100 o más: lecturas seguidas (menos de 10 minutos entre ellas) cuentan como uno.
-  const altas: Record<string, { ini: number; fin: number; fc: number; fuentes: Set<string> }[]> = {}
+  const altas: Record<string, { ini: number; fin: number; fc: number; bajo: number; fuentes: Set<string> }[]> = {}
   const lecturas = (datos['heartrate'] ?? [])
     .filter((x: any) => typeof x.bpm === 'number' && x.bpm >= FC_ALTA && typeof x.timestamp === 'string')
     .map((x: any) => ({ t: new Date(x.timestamp).getTime(), bpm: x.bpm as number, fuente: String(x.source ?? ''), z: enZona(x.timestamp, tz) }))
@@ -404,9 +406,9 @@ async function traerTramo(userId: string, token: string, tz: string, desde: stri
     const lista = (altas[x.z.dia] ??= [])
     const ultimo = lista[lista.length - 1]
     if (ultimo && previa && previa.dia === x.z.dia && x.t - previa.t <= FC_ALTA_HUECO_MIN * 60000) {
-      ultimo.fin = x.z.min; ultimo.fc = Math.max(ultimo.fc, x.bpm); ultimo.fuentes.add(x.fuente)
+      ultimo.fin = x.z.min; ultimo.fc = Math.max(ultimo.fc, x.bpm); ultimo.bajo = Math.min(ultimo.bajo, x.bpm); ultimo.fuentes.add(x.fuente)
     } else {
-      lista.push({ ini: x.z.min, fin: x.z.min, fc: x.bpm, fuentes: new Set([x.fuente]) })
+      lista.push({ ini: x.z.min, fin: x.z.min, fc: x.bpm, bajo: x.bpm, fuentes: new Set([x.fuente]) })
     }
     previa = { t: x.t, dia: x.z.dia }
   }
@@ -421,7 +423,8 @@ async function traerTramo(userId: string, token: string, tz: string, desde: stri
         const c = [...clase5.slice(Math.floor(r.ini / 5), Math.floor(r.fin / 5) + 1)].map(Number)
         contexto = c.some((v) => v >= 3) ? 'movimiento' : c.some((v) => v === 1 || v === 2) ? 'reposo' : undefined
       }
-      return limpio({ hora: hhmm(r.ini * 60), fc: Math.round(r.fc), min: Math.max(5, r.fin - r.ini + 5), contexto })
+      // Hora de inicio y de la última lectura, pulso más alto y más bajo del rato (como el rango que enseña la app de Oura).
+      return limpio({ hora: hhmm(r.ini * 60), fin: hhmm(r.fin * 60), fc: Math.round(r.fc), fc_min: Math.round(r.bajo), min: Math.max(5, r.fin - r.ini + 5), contexto })
     })
   }
 
@@ -531,11 +534,8 @@ async function automatica() {
     if (!f.secret?.refresh_token) continue
     const tz = await zonaDe(f.user_id)
     const ahora = enZona(new Date().toISOString(), tz).min
-    const toca = HORAS_AUTO.some((h) => {
-      const [hh, mm] = h.split(':').map(Number)
-      const d = ahora - (hh * 60 + mm)
-      return d >= 0 && d < MARGEN_AUTO_MIN
-    })
+    const aMinutos = (h: string) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
+    const toca = ahora >= aMinutos(AUTO_DESDE) && ahora < aMinutos(AUTO_HASTA)
     const reciente = f.state?.ultima && Date.now() - new Date(f.state.ultima).getTime() < 20 * 60 * 1000
     if ((toca && !reciente) || !f.state?.historico_completo) {
       try { await sincronizar(f.user_id); hechas.push(f.user_id) } catch { /* se reintenta en la siguiente vuelta */ }

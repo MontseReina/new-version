@@ -25,6 +25,7 @@ import { crearModelo, infoDia, type CicloCfg, type CicloDia, type Temp } from '.
 import type { HidraCfg, HidraDia } from '../../../src/modules/hidratacion/logica'
 import { menuDe, type NutriCfg, type NutriDia } from '../../../src/modules/nutricion/logica'
 import type { ObjCfg } from '../../../src/modules/objetivos/logica'
+import type { FcAlta } from '../../../src/modules/oura/tipos'
 import { b64url, desB64url, enviar, type Suscripcion } from './webpush'
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response>): void }
@@ -81,6 +82,14 @@ async function temperaturas(userId: string, desde: string, hasta: string): Promi
   return (data ?? []) as unknown as Temp[]
 }
 
+/** Ratos de hoy con el pulso a 100 lpm o más (los guarda la función `oura`). */
+async function pulsosAltos(userId: string, hoy: string): Promise<FcAlta[]> {
+  const { data, error } = await admin.from('entries').select('a:value->fc_altas').eq('user_id', userId).eq('module', 'oura').eq('kind', 'dia')
+    .eq('day', hoy).is('deleted_at', null).maybeSingle()
+  if (error || !data) return []
+  return ((data as { a?: FcAlta[] | null }).a ?? []) as FcAlta[]
+}
+
 /** Claves VAPID de la usuaria: se crean la primera vez y se guardan en su fila. */
 async function clavesDe(userId: string, fila: Fila): Promise<Vapid> {
   if (fila.secret.vapid?.publica && fila.secret.vapid.privada) return fila.secret.vapid
@@ -118,18 +127,19 @@ async function revisar(userId: string, fila: Fila) {
   const cfg = ((ajustes as { data?: Record<string, unknown> } | null)?.data ?? {}) as Record<string, unknown>
   const nutriCfg = (cfg.nutricion ?? {}) as NutriCfg
   const ayer = addDays(hoy, -1)
-  const [nutri, hidra, ciclo, temps] = await Promise.all([
+  const [nutri, hidra, ciclo, temps, oura] = await Promise.all([
     diario<NutriDia>(userId, 'nutricion', ayer, hoy),
     diario<HidraDia>(userId, 'hidratacion', hoy, hoy),
     diario<CicloDia>(userId, 'ciclo', addDays(hoy, -400), hoy),
     temperaturas(userId, addDays(hoy, -400), hoy),
+    pulsosAltos(userId, hoy),
   ])
   const mapa = Object.fromEntries(ciclo)
   const info = infoDia(crearModelo(mapa, (cfg.ciclo ?? {}) as CicloCfg, hoy, temps), mapa, hoy)
   const avisosCfg = (cfg.avisos ?? {}) as AvisosCfg
   const todos = avisosAhora({
     hoy, ahoraMin: min, cfg: avisosCfg, nutriCfg, hidraCfg: (cfg.hidratacion ?? null) as HidraCfg | null, objCfg: (cfg.objetivos ?? {}) as ObjCfg,
-    menu: menuDe(nutriCfg, info, hoy), nutriHoy: nutri.get(hoy) ?? {}, nutriAyer: nutri.get(ayer) ?? null, hidraHoy: hidra.get(hoy) ?? {},
+    menu: menuDe(nutriCfg, info, hoy), nutriHoy: nutri.get(hoy) ?? {}, nutriAyer: nutri.get(ayer) ?? null, hidraHoy: hidra.get(hoy) ?? {}, fcAltas: oura,
   })
   const enviados = { ...(fila.state.enviados?.[hoy] ?? {}) }
   const nuevos = filtrar(todos, enviados, min)

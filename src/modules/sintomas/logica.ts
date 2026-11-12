@@ -66,7 +66,7 @@ export type Medida = {
   no_medible?: CampoMedida[] | null
   /** El tensiómetro no capta la tensión porque está muy baja (es un hallazgo, no una toma que falte). */
   ta_no_capta?: boolean | null
-  /** Nota libre (solo días anteriores a la 0.19.0). */
+  /** Contexto: qué ha pasado, con sus palabras (sale en el informe de constantes). */
   nota?: string | null
   /** Toma que empezó como rato de pulso alto del anillo Oura y se completó a mano. */
   de_oura?: boolean | null
@@ -137,6 +137,8 @@ export type SintDia = {
   texto?: { [grupo: string]: string }
   /** Tomas de constantes del día (frecuencia cardíaca, tensión, glucosa, saturación), cada una con su hora. */
   constantes?: Medida[]
+  /** Contexto escrito en los ratos de pulso alto del anillo Oura, por hora de inicio del rato. */
+  contexto_oura?: { [hora: string]: string }
 }
 
 const op = (...nombres: string[]): Opcion[] => nombres.map((n) => ({ id: slug(n), nombre: n }))
