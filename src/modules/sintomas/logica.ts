@@ -60,8 +60,12 @@ export type Medida = {
   posicion?: Posicion | null
   /** Habitual (los controles de cada día), durante un episodio o postprandial. */
   tipo?: TipoMedida | null
+  /** Hidratación antes de medir: sin hidratar todavía o ya hidratada. */
+  hidratacion?: Hidratacion | null
   /** Constantes que se intentaron y no se pudieron medir. */
   no_medible?: CampoMedida[] | null
+  /** El tensiómetro no capta la tensión porque está muy baja (es un hallazgo, no una toma que falte). */
+  ta_no_capta?: boolean | null
   /** Nota libre (solo días anteriores a la 0.19.0). */
   nota?: string | null
 }
@@ -70,9 +74,12 @@ export type TipoMedida = 'habitual' | 'episodio' | 'postprandial'
 export const TIPOS_MEDIDA: [TipoMedida, string][] = [['habitual', 'Medición habitual'], ['episodio', 'Durante el episodio'], ['postprandial', 'Postprandial']]
 export type Posicion = 'tumbada' | 'sentada' | 'de_pie'
 export const POSICIONES: [Posicion, string][] = [['tumbada', 'Tumbada'], ['sentada', 'Sentada'], ['de_pie', 'De pie']]
+export type Hidratacion = 'sin' | 'con'
+export const HIDRATACIONES: [Hidratacion, string][] = [['sin', 'Sin hidratar'], ['con', 'Con hidratación']]
 /** Valores fuera de los rangos de referencia generales del adulto, para resaltarlos (no son un diagnóstico). */
 export function avisosMedida(m: Medida): string[] {
   const out: string[] = []
+  if (m.ta_no_capta) out.push('Tensión tan baja que no se capta')
   if ((m.pas != null && m.pas < 90) || (m.pad != null && m.pad < 60)) out.push('Tensión baja')
   if (m.pas != null && m.pas >= 140) out.push('Tensión alta')
   if (m.fc != null && m.fc > 100) out.push('Taquicardia')
@@ -88,10 +95,11 @@ export function lineaMedida(m: Medida) {
   const partes = [
     m.tipo && TIPOS_MEDIDA.find(([k]) => k === m.tipo)?.[1],
     m.fc != null ? `FC ${m.fc} lpm` : no('fc') && 'FC no medible',
-    m.pas != null || m.pad != null ? `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg` : no('ta') && 'TA no medible',
+    m.pas != null || m.pad != null ? `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg` : m.ta_no_capta ? 'TA indetectable (el tensiómetro no la capta, muy baja)' : no('ta') && 'TA no medible',
     m.glucosa != null ? `Glucosa ${m.glucosa} mg/dl` : no('glucosa') && 'glucosa no medible',
     m.spo2 != null ? `SatO₂ ${m.spo2} %` : no('spo2') && 'SatO₂ no medible',
     m.posicion && POSICIONES.find(([k]) => k === m.posicion)?.[1].toLowerCase(),
+    m.hidratacion && HIDRATACIONES.find(([k]) => k === m.hidratacion)?.[1].toLowerCase(),
   ].filter(Boolean)
   return partes.join(' · ')
 }

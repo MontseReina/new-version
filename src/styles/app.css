@@ -736,6 +736,9 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .medida-aviso { font-size: .78rem; padding: .15rem .5rem; border-radius: 999px; border: 1px solid var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
 .medida-no { padding: .55rem .6rem; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
 .medida-campos .linkbtn { margin-top: .2rem; }
+.medida-botones { display: flex; flex-wrap: wrap; gap: 0 .8rem; }
+.medida-no-capta { border-style: solid; border-color: var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+.medida-eje { margin: .55rem 0 .25rem; }
 
 /* ---------- Pilar Oura Ring ---------- */
 .oura .oura-svg { width: 100%; height: auto; display: block; margin: .3rem 0 .4rem; }
