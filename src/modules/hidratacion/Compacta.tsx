@@ -6,7 +6,7 @@ import type { useHidra } from './useHidra'
 export type Hidra = ReturnType<typeof useHidra>
 
 /** Cantidades de agua de los botones rápidos (ml). */
-const VASOS = [250, 300, 500]
+const VASOS = [100, 250, 300, 500]
 
 /** Hidratación reducida, dentro de Disautonomía: el total del día, la pauta en el orden en que se toma
  *  (un toque la anota con su hora) y los botones rápidos. El desglose y la semana siguen en su pantalla; la pauta se edita al final de Disautonomía. */
