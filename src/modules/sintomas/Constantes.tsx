@@ -1,7 +1,7 @@
 import { todayStr, nowHM } from '../../lib/dates'
 import type { ReactNode } from 'react'
 import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
-import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, tiposDe, type CampoMedida, type Medida, type SintDia } from './logica'
+import { HIDRATACIONES, MIN_COMIDA, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, tiposDe, type CampoMedida, type Medida, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
@@ -85,6 +85,12 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
             <div className="chips" role="group" aria-label="Tipo de medición">
               {TIPOS_MEDIDA.map(([k, l]) => <button type="button" key={k} className={'chip ' + (tipos.includes(k) ? 'on' : '')} aria-pressed={tipos.includes(k)} onClick={() => poner(i, alternarTipo(x, k))}>{l}</button>)}
             </div>
+            {tipos.includes('postprandial') && <>
+              <div className="medida-eje small muted">Tiempo desde que terminé de comer</div>
+              <div className="chips" role="group" aria-label="Tiempo desde que terminé de comer">
+                {MIN_COMIDA.map((n) => <button type="button" key={n} className={'chip ' + (x.min_comida === n ? 'on' : '')} aria-pressed={x.min_comida === n} onClick={() => poner(i, { min_comida: x.min_comida === n ? null : n })}>{etiquetaMinComida(n)}</button>)}
+              </div>
+            </>}
             <div className="medida-campos">
               {campo(x, i, 'fc', 'Frecuencia cardíaca (lpm)', <input type="number" inputMode="numeric" min={20} max={250} value={x.fc ?? ''} onChange={(e) => poner(i, { fc: num(e.target.value) })} />)}
               {campo(x, i, 'ta', 'Tensión arterial (mmHg)', (

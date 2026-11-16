@@ -63,6 +63,8 @@ export type Medida = {
   /** Tipos de medición de la toma (desde la 0.23.0): se pueden combinar, p. ej. durante el episodio y postprandial.
    *  «Medición habitual» y «Durante el episodio» se excluyen entre sí. */
   tipos?: TipoMedida[] | null
+  /** En las postprandiales: minutos desde que terminó de comer (15, 30, 60, 90 o 120). */
+  min_comida?: number | null
   /** Hidratación antes de medir: sin hidratar todavía o ya hidratada. */
   hidratacion?: Hidratacion | null
   /** Constantes que se intentaron y no se pudieron medir. */
@@ -88,11 +90,20 @@ export function alternarTipo(m: Medida, k: TipoMedida): Medida {
   let nuevos = ahora.includes(k) ? ahora.filter((x) => x !== k) : [...ahora, k]
   if (!ahora.includes(k) && k === 'habitual') nuevos = nuevos.filter((x) => x !== 'episodio')
   if (!ahora.includes(k) && k === 'episodio') nuevos = nuevos.filter((x) => x !== 'habitual')
-  return { tipo: null, tipos: nuevos.length ? nuevos : null }
+  return { tipo: null, tipos: nuevos.length ? nuevos : null, ...(nuevos.includes('postprandial') ? {} : { min_comida: null }) }
 }
+/** Botones de «Tiempo desde que terminé de comer» en las tomas postprandiales. */
+export const MIN_COMIDA = [15, 30, 60, 90, 120]
+const txtMin = (n: number) => (n >= 120 ? '2 h o más' : `${n} min`)
+export const etiquetaMinComida = (n: number) => txtMin(n)
 /** Tipos en texto: «Durante el episodio · postprandial». */
 export function textoTipos(m: Medida) {
-  return tiposDe(m).map((k, i) => { const l = TIPOS_MEDIDA.find(([x]) => x === k)![1]; return i === 0 ? l : l.toLowerCase() }).join(' · ')
+  const ts = tiposDe(m)
+  return ts.map((k, i) => {
+    const l = TIPOS_MEDIDA.find(([x]) => x === k)![1]
+    const t = i === 0 ? l : l.toLowerCase()
+    return k === 'postprandial' && m.min_comida ? `${t} (${txtMin(m.min_comida)} tras comer)` : t
+  }).join(' · ')
 }
 export type Posicion = 'tumbada' | 'sentada' | 'de_pie' | 'caminando'
 export const POSICIONES: [Posicion, string][] = [['tumbada', 'Tumbada'], ['sentada', 'Sentada'], ['de_pie', 'De pie'], ['caminando', 'Caminando']]
