@@ -1,7 +1,7 @@
 import { todayStr, nowHM } from '../../lib/dates'
 import type { ReactNode } from 'react'
 import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
-import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, avisosMedida, type CampoMedida, type Medida, type SintDia } from './logica'
+import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, tiposDe, type CampoMedida, type Medida, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
@@ -71,6 +71,7 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
         }
         if (!x || i == null) return null
         const avisos = avisosMedida(x)
+        const tipos = tiposDe(x)
         return (
           <div className="medida" key={i}>
             <div className="row between">
@@ -80,8 +81,9 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
               </label>
               <button type="button" className="linkbtn" onClick={() => set({ constantes: xs.filter((_, k) => k !== i) })}>Quitar</button>
             </div>
-            <div className="chips" style={{ marginTop: '.45rem' }} role="group" aria-label="Tipo de medición">
-              {TIPOS_MEDIDA.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.tipo === k ? 'on' : '')} aria-pressed={x.tipo === k} onClick={() => poner(i, { tipo: x.tipo === k ? null : k })}>{l}</button>)}
+            <div className="medida-eje small muted">Tipo de medición <span className="medida-pista">· puedes marcar más de uno</span></div>
+            <div className="chips" role="group" aria-label="Tipo de medición">
+              {TIPOS_MEDIDA.map(([k, l]) => <button type="button" key={k} className={'chip ' + (tipos.includes(k) ? 'on' : '')} aria-pressed={tipos.includes(k)} onClick={() => poner(i, alternarTipo(x, k))}>{l}</button>)}
             </div>
             <div className="medida-campos">
               {campo(x, i, 'fc', 'Frecuencia cardíaca (lpm)', <input type="number" inputMode="numeric" min={20} max={250} value={x.fc ?? ''} onChange={(e) => poner(i, { fc: num(e.target.value) })} />)}
@@ -104,7 +106,10 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
               {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k })}>{l}</button>)}
             </div>
             {x.de_oura && <div className="muted small" style={{ marginTop: '.4rem' }}>Empezó como pulso alto del anillo Oura.</div>}
-            {x.nota && <div className="muted small" style={{ marginTop: '.4rem' }}>Nota: {x.nota}</div>}
+            <label className="medida-nota">
+              <span className="medida-eje small muted">Notas de esta toma</span>
+              <textarea rows={2} placeholder="Qué estaba pasando, qué había comido y cuándo, cómo me encontraba…" value={x.nota ?? ''} onChange={(e) => poner(i, { nota: e.target.value || null })} />
+            </label>
             {avisos.length > 0 && <div className="medida-avisos">{avisos.map((a) => <span key={a} className="medida-aviso">{a}</span>)}</div>}
           </div>
         )

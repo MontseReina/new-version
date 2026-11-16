@@ -759,6 +759,10 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
   .informe-tabla tr { break-inside: avoid; }
 }
 .medida-eje { margin: .55rem 0 .25rem; }
+.medida-pista { font-size: .9em; opacity: .8; }
+.medida-nota { display: block; }
+.medida-nota textarea { width: 100%; }
+.toma-nota { font-style: italic; color: var(--muted); margin-top: .15rem; white-space: pre-wrap; }
 
 /* ---------- Pilar Oura Ring ---------- */
 .oura .oura-svg { width: 100%; height: auto; display: block; margin: .3rem 0 .4rem; }

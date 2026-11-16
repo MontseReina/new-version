@@ -58,15 +58,18 @@ export type Medida = {
   /** Saturación de oxígeno, %. */
   spo2?: number | null
   posicion?: Posicion | null
-  /** Habitual (los controles de cada día), durante un episodio o postprandial. */
+  /** Tipo de medición hasta la 0.22.1 (uno solo). Desde la 0.23.0 se guarda en `tipos`; leer con `tiposDe`. */
   tipo?: TipoMedida | null
+  /** Tipos de medición de la toma (desde la 0.23.0): se pueden combinar, p. ej. durante el episodio y postprandial.
+   *  «Medición habitual» y «Durante el episodio» se excluyen entre sí. */
+  tipos?: TipoMedida[] | null
   /** Hidratación antes de medir: sin hidratar todavía o ya hidratada. */
   hidratacion?: Hidratacion | null
   /** Constantes que se intentaron y no se pudieron medir. */
   no_medible?: CampoMedida[] | null
   /** El tensiómetro no capta la tensión porque está muy baja (es un hallazgo, no una toma que falte). */
   ta_no_capta?: boolean | null
-  /** Nota libre (solo días anteriores a la 0.19.0). */
+  /** Notas de la toma, con sus palabras: qué estaba pasando, qué había comido, cómo se encontraba… */
   nota?: string | null
   /** Toma que empezó como rato de pulso alto del anillo Oura y se completó a mano. */
   de_oura?: boolean | null
@@ -74,6 +77,23 @@ export type Medida = {
 export type CampoMedida = 'fc' | 'ta' | 'glucosa' | 'spo2'
 export type TipoMedida = 'habitual' | 'episodio' | 'postprandial'
 export const TIPOS_MEDIDA: [TipoMedida, string][] = [['habitual', 'Medición habitual'], ['episodio', 'Durante el episodio'], ['postprandial', 'Postprandial']]
+/** Tipos de una toma, guardada con la forma antigua (`tipo`) o con la nueva (`tipos`). */
+export function tiposDe(m: Medida): TipoMedida[] {
+  if (m.tipos) return TIPOS_MEDIDA.map(([k]) => k).filter((k) => m.tipos!.includes(k))
+  return m.tipo ? [m.tipo] : []
+}
+/** Marca o desmarca un tipo. «Medición habitual» y «Durante el episodio» no van juntas: al marcar una se quita la otra. */
+export function alternarTipo(m: Medida, k: TipoMedida): Medida {
+  const ahora = tiposDe(m)
+  let nuevos = ahora.includes(k) ? ahora.filter((x) => x !== k) : [...ahora, k]
+  if (!ahora.includes(k) && k === 'habitual') nuevos = nuevos.filter((x) => x !== 'episodio')
+  if (!ahora.includes(k) && k === 'episodio') nuevos = nuevos.filter((x) => x !== 'habitual')
+  return { tipo: null, tipos: nuevos.length ? nuevos : null }
+}
+/** Tipos en texto: «Durante el episodio · postprandial». */
+export function textoTipos(m: Medida) {
+  return tiposDe(m).map((k, i) => { const l = TIPOS_MEDIDA.find(([x]) => x === k)![1]; return i === 0 ? l : l.toLowerCase() }).join(' · ')
+}
 export type Posicion = 'tumbada' | 'sentada' | 'de_pie' | 'caminando'
 export const POSICIONES: [Posicion, string][] = [['tumbada', 'Tumbada'], ['sentada', 'Sentada'], ['de_pie', 'De pie'], ['caminando', 'Caminando']]
 export type Hidratacion = 'sin' | 'con'
@@ -95,7 +115,7 @@ export function avisosMedida(m: Medida): string[] {
 export function lineaMedida(m: Medida) {
   const no = (c: CampoMedida) => (m.no_medible ?? []).includes(c)
   const partes = [
-    m.tipo && TIPOS_MEDIDA.find(([k]) => k === m.tipo)?.[1],
+    textoTipos(m),
     m.fc != null ? `FC ${m.fc} lpm` : no('fc') && 'FC no medible',
     m.pas != null || m.pad != null ? `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg` : m.ta_no_capta ? 'TA indetectable (el tensiómetro no la capta, muy baja)' : no('ta') && 'TA no medible',
     m.glucosa != null ? `Glucosa ${m.glucosa} mg/dl` : no('glucosa') && 'glucosa no medible',

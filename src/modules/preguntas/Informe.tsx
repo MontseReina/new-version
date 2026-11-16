@@ -165,7 +165,7 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
               {constantes.map(({ dia, m }, i) => (
                 <tr key={i}>
                   <td>{fmtDate(dia)}{m.hora && ' · ' + m.hora}</td>
-                  <td>{lineaMedida(m)}{m.nota && ` · ${m.nota}`}</td>
+                  <td>{lineaMedida(m)}{m.nota && <div className="toma-nota">{m.nota}</div>}</td>
                 </tr>
               ))}
             </tbody></table>

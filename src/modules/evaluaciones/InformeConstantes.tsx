@@ -3,7 +3,7 @@ import { addDays, fmtDate, todayStr, weekStart } from '../../lib/dates'
 import { listDaily } from '../../store/repo'
 import { useAncho } from '../oura/graficos'
 import { CONTEXTO_FC, type OuraDia } from '../oura/tipos'
-import { HIDRATACIONES, POSICIONES, TIPOS_MEDIDA, type Medida, type SintDia } from '../sintomas/logica'
+import { HIDRATACIONES, POSICIONES, textoTipos, type Medida, type SintDia } from '../sintomas/logica'
 
 /**
  * Evaluaciones · Constantes por días: gráficos y tabla de las tomas de Disautonomía (y, si se quiere, de los ratos
@@ -179,7 +179,10 @@ export function InformeConstantes() {
                       <td>{celda(t, 'spo2')}</td>
                       <td>{t.origen === 'oura'
                         ? ['Anillo Oura', `máx. durante ${t.min} min`, t.contexto && CONTEXTO_FC[t.contexto]].filter(Boolean).join(' · ')
-                        : [etiqueta(TIPOS_MEDIDA, t.tipo), etiqueta(POSICIONES, t.posicion).toLowerCase(), etiqueta(HIDRATACIONES, t.hidratacion).toLowerCase()].filter(Boolean).join(' · ') || '—'}</td>
+                        : <>
+                          {[textoTipos(t), etiqueta(POSICIONES, t.posicion).toLowerCase(), etiqueta(HIDRATACIONES, t.hidratacion).toLowerCase()].filter(Boolean).join(' · ') || '—'}
+                          {t.nota && <div className="toma-nota">{t.nota}</div>}
+                        </>}</td>
                     </tr>
                   ))}
                 </tbody>
