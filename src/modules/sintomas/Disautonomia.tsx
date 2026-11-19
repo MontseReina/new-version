@@ -56,8 +56,8 @@ export default function Disautonomia() {
       <fieldset className="sint" disabled={state === 'cargando'}>
         <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} relojDia={reloj} />
       </fieldset>
-      <Grupos grupos={episodios} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
-      <Grupos grupos={resto} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
+      <Grupos grupos={episodios} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} plegados />
+      <Grupos grupos={resto} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} plegados />
       <HidraCompacta date={date} h={hidra} />
 
       <Section title="Editar mi pauta">

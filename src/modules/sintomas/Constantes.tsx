@@ -36,6 +36,8 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
     if (cambia) set({ constantes: nuevas })
   }, [relojDia, xs, set])
   const [abierta, setAbierta] = useState<Momento | null>(null)
+  /** Las esporádicas empiezan plegadas; se abren al tocar su cabecera o al registrar una. */
+  const [verEsp, setVerEsp] = useState(false)
   const [otraDe, setOtraDe] = useState<string | null>(null)
   const horaAhora = () => (date === todayStr() ? { hora: nowHM() } : {})
   /** i = -1: medición fija todavía sin toma; se crea al anotar el primer dato. */
@@ -261,14 +263,18 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
       </div>
 
       <div className="row between" style={{ marginTop: '1rem' }}>
-        <h4 style={{ margin: 0 }}>Esporádicas</h4>
+        <button type="button" className="plegable-cab esp-cab" aria-expanded={verEsp} onClick={() => setVerEsp(!verEsp)}>
+          <h4 style={{ margin: 0 }}>Esporádicas</h4>
+          <span className="muted small">{esporadicas || 'ninguna'}</span>
+          <span className="fija-flecha" aria-hidden="true">{verEsp ? '▴' : '▾'}</span>
+        </button>
         <div className="row" style={{ gap: '.4rem' }}>
-          {date === todayStr() && <button type="button" className="btn sm secondary" onClick={taquicardia}>❤️ Siento taquicardia ahora</button>}
-          <button type="button" className="btn sm" onClick={nueva}>+ Registrar</button>
+          {date === todayStr() && <button type="button" className="btn sm secondary" onClick={() => { setVerEsp(true); taquicardia() }}>❤️ Siento taquicardia ahora</button>}
+          <button type="button" className="btn sm" onClick={() => { setVerEsp(true); nueva() }}>+ Registrar</button>
         </div>
       </div>
-      {esporadicas === 0 && <p className="muted small" style={{ marginBottom: 0 }}>Para tomas fuera de las fijas: durante un episodio, después de un esfuerzo… Cada una lleva su hora.</p>}
-      {orden.map(({ x, i, a, ar }) => {
+      {verEsp && esporadicas === 0 && <p className="muted small" style={{ marginBottom: 0 }}>Para tomas fuera de las fijas: durante un episodio, después de un esfuerzo… Cada una lleva su hora.</p>}
+      {verEsp && orden.map(({ x, i, a, ar }) => {
         if (ar) {
           const avisosR = avisosMedida({ fc: ar.fc })
           return (

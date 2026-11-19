@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Stepper } from '../../components/ui'
 import { todayStr } from '../../lib/dates'
 import { Bristol } from './Bristol'
@@ -10,7 +11,10 @@ const ahora = () => new Date().toTimeString().slice(0, 5)
 
 /** Grupos de síntomas del día, para marcar con un toque. Lo usan Disautonomía y Ciclo menstrual:
  *  los dos escriben en el mismo registro diario ('sintomas'), cada uno con sus grupos. */
-export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grupos: Grupo[]; d: SintDia; set: (patch: SintDia) => void; date: string; acciones?: string[]; disabled?: boolean }) {
+export function Grupos({ grupos, d, set, date, acciones = [], disabled, plegados }: { grupos: Grupo[]; d: SintDia; set: (patch: SintDia) => void; date: string; acciones?: string[]; disabled?: boolean; plegados?: boolean }) {
+  /** Con `plegados`, cada grupo empieza cerrado y enseña en su cabecera un resumen de lo marcado. */
+  const [abiertos, setAbiertos] = useState<string[]>([])
+  const alternarGrupo = (id: string) => setAbiertos((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]))
   const marcar = (g: Grupo, id: string) => {
     const sel = { ...(d.sel ?? {}), [g.id]: alternar(g, d.sel?.[g.id] ?? [], id) }
     if (g.tipo !== 'detalle') { set({ sel }); return }
@@ -183,14 +187,47 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
     }
   }
 
+  /** Resumen corto de lo anotado en un grupo, para la cabecera plegada. */
+  const resumenGrupo = (g: Grupo): string => {
+    const partes: string[] = []
+    const marcadas = (g.opciones ?? []).filter((o) => (d.sel?.[g.id] ?? []).includes(o.id))
+    if (g.tipo === 'detalle') {
+      const n = marcadas.reduce((t, o) => t + Math.max(1, episodiosOpcion(d.det?.[g.id]?.[o.id]).length), 0)
+      if (marcadas.length) partes.push(`${n} ${n === 1 ? 'episodio' : 'episodios'}`)
+    } else if (marcadas.length) {
+      const nombres = marcadas.map((o) => o.nombre)
+      partes.push(nombres.length > 2 ? `${nombres.slice(0, 2).join(', ')} +${nombres.length - 2}` : nombres.join(', '))
+    }
+    const v = d.escala?.[g.id]
+    if (v != null && (g.tipo === 'escala' || tieneEscala(g))) partes.push(`${v}/10`)
+    if (g.tipo === 'texto' && d.texto?.[g.id]?.trim()) partes.push('Anotado')
+    if (g.tipo === 'heces') partes.push(...(d.heces?.length ? [`${d.heces.length} deposición${d.heces.length > 1 ? 'es' : ''}`] : d.sin_heces ? ['No ha habido'] : []))
+    if (g.tipo === 'micciones' && d.micciones) partes.push(`${d.micciones} veces`)
+    return partes.join(' · ')
+  }
+
   return (
     <fieldset className="sint" disabled={disabled}>
-      {grupos.map((g) => (
-        <div className="card sint-grupo" key={g.id}>
-          <h3>{g.nombre}</h3>
-          {bloque(g)}
-        </div>
-      ))}
+      {grupos.map((g) => {
+        if (!plegados) return (
+          <div className="card sint-grupo" key={g.id}>
+            <h3>{g.nombre}</h3>
+            {bloque(g)}
+          </div>
+        )
+        const abierto = abiertos.includes(g.id)
+        const res = resumenGrupo(g)
+        return (
+          <div className={'card sint-grupo plegable' + (abierto ? ' abierta' : '')} key={g.id}>
+            <button type="button" className="plegable-cab" aria-expanded={abierto} onClick={() => alternarGrupo(g.id)}>
+              <span className="plegable-nombre">{g.nombre}</span>
+              <span className="plegable-resumen small">{res ? res : <span className="muted">Sin registrar</span>}</span>
+              <span className="fija-flecha" aria-hidden="true">{abierto ? '▴' : '▾'}</span>
+            </button>
+            {abierto && <div className="plegable-cuerpo">{bloque(g)}</div>}
+          </div>
+        )
+      })}
     </fieldset>
   )
 }
