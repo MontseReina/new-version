@@ -351,6 +351,8 @@ details.pesadas > summary::after { content: '▸'; color: var(--muted); }
 .reloj-uno { text-align: center; min-width: 0; }
 .reloj-uno > * { margin: .15rem 0; }
 .reloj-uno > strong { display: block; }
+.reloj-uno.ancho { grid-column: 1 / -1; display: grid; grid-template-columns: 7.5rem 1fr; gap: .8rem; align-items: center; text-align: left; padding-bottom: .6rem; border-bottom: 1px solid var(--line); }
+.reloj .reloj-uno.ancho svg { max-width: 7.5rem; margin: 0; }
 .reloj svg { display: block; width: 100%; max-width: 14rem; height: auto; margin: 0 auto .3rem; }
 .reloj-fondo { fill: none; stroke: var(--line); stroke-width: 12; }
 .reloj-aro { fill: none; stroke: var(--green); stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }

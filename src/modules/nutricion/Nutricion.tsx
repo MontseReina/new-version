@@ -9,7 +9,9 @@ import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
 import { infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
-import type { HidraDia } from '../hidratacion/logica'
+import type { HidraCfg, HidraDia } from '../hidratacion/logica'
+import type { SintDia } from '../sintomas/logica'
+import { horaLevantarse } from '../sintomas/levantarse'
 import {
   AGUA_ANTES_POR_DEFECTO, AGUA_DESPUES_POR_DEFECTO, AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, MENUS, estadosDe,
   aMin, aHora, aguaDe, modeloDe, platoMarcado, PLATO_MODELOS, protObjetivo, anotada, avisosDe, ayuno, duracion, hecha, horarios, leerCfg, limite, menuDe, nivelDia, platosDe, semana, tomasDe,
@@ -29,6 +31,8 @@ export default function Nutricion() {
   const { value: d, set, state, rev, retry } = useDaily<NutriDia>('nutricion', date)
   const [cfg, saveCfg] = useSettings<NutriCfg>('nutricion')
   const { value: hidra } = useDaily<HidraDia>('hidratacion', date)
+  const { value: sint } = useDaily<SintDia>('sintomas', date)
+  const [hidraCfg] = useSettings<HidraCfg>('hidratacion')
   const { modelo, mapa } = useCiclo()
   const c = cfg ?? {}
   const defs = tomasDe(cfg)
@@ -93,7 +97,7 @@ export default function Nutricion() {
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
 
-      {date === hoy && <Reloj cfg={c} ayer={ayer} dia={d} />}
+      {date === hoy && <Reloj cfg={c} ayer={ayer} dia={d} levantar={horaLevantarse(sint, hidraCfg, hidra)} />}
       <Balance cfg={c} pr={pr} kc={kc} esHoy={date === hoy} />
 
       <div className={'card vaso-card ' + lv} style={{ gridTemplateColumns: '1fr' }}>

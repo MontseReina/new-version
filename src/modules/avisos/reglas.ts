@@ -1,7 +1,7 @@
 /** Avisos al móvil: qué aviso toca en cada momento. Lo usa la función del servidor `avisos`, que lo revisa
  *  cada minuto, y la página Avisos para enseñar la lista. Sin datos personales: horas, pautas y
  *  menús salen de los ajustes y registros de cada usuaria. */
-import { filaLevantar, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
+import { total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
 import { fmtKcal, kcalDia, RANGO_POR_DEFECTO } from '../nutricion/kcal'
 import {
   AYUNO_MAX_POR_DEFECTO, CENA_MAX_POR_DEFECTO, GRACIA_MIN, aHora, aMin, finDe, hecha, limite, tomasDe, ultimaComida,
@@ -9,13 +9,14 @@ import {
 } from '../nutricion/logica'
 import { DORMIR_TRAS_CENA_MIN, type ObjCfg } from '../objetivos/logica'
 import { MINUTOS_DE_PIE, medidaConDatos, type SintDia } from '../sintomas/logica'
+import { horaLevantarse } from '../sintomas/levantarse'
 
 export type AvisoId = 'pie' | 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena'
 
 export const AVISOS: { id: AvisoId; nombre: string; detalle: string; porDefecto: boolean }[] = [
   { id: 'pie', nombre: 'Test de pie', detalle: 'A los 5 y a los 10 minutos de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.', porDefecto: true },
   { id: 'ayuno', nombre: 'Horas sin comer', detalle: 'Media hora antes de cumplir las horas de ayuno, al cumplirlas y cada hora que pase después sin comer.', porDefecto: true },
-  { id: 'primera', nombre: 'Primera toma del día', detalle: 'Si pasa una hora desde que te levantas sin ninguna toma. La hora de levantarte es la del botón «Vaso de agua y chupito de mar al levantarme» de Hidratación.', porDefecto: true },
+  { id: 'primera', nombre: 'Primera toma del día', detalle: 'A los 45 minutos de levantarte (recordatorio) y a la hora, si aún no hay ninguna toma. La hora de levantarte es la de tu primera tensión («Al levantarme» en Disautonomía → Constantes); sin ella, la del botón «al levantarme» de Hidratación.', porDefecto: true },
   { id: 'agua', nombre: 'Agua a mediodía', detalle: 'A la hora que digas, si no llegas a la cantidad mínima.', porDefecto: true },
   { id: 'kcal', nombre: 'Kilocalorías del día', detalle: 'A media tarde, si vas en rango o por debajo de lo previsto hasta esa hora; y el balance del día después de cenar. Nunca avisa por pasarte.', porDefecto: true },
   { id: 'dormir', nombre: 'Ya puedes acostarte', detalle: 'Cuando pasan las horas mínimas desde que terminas de cenar.', porDefecto: true },
@@ -79,12 +80,10 @@ const enSilencio = (c: AvisosCfg, m: number) => {
 /** ¿Estamos dentro de la franja [desde, desde + dura) minutos? */
 const dentro = (m: number, desde: number, dura: number) => m >= desde && m < desde + dura
 
-/** Hora a la que se levantó hoy: la del toque «al levantarme» de Hidratación. */
-export function horaLevantar(hc: HidraCfg | null, d: HidraDia): number | null {
-  const i = filaLevantar(hc)
-  const k = i >= 0 ? 'pauta:' + i : 'levantar'
-  const t = (d.horas ?? []).find((x) => x.k === k)
-  return aMin(t?.h)
+/** Hora a la que se levantó hoy: la de su primera tensión («Al levantarme» en Constantes) o, sin ella, la del
+ *  toque «al levantarme» de Hidratación. */
+export function horaLevantar(hc: HidraCfg | null, d: HidraDia, sint?: SintDia | null): number | null {
+  return horaLevantarse(sint, hc, d)?.min ?? null
 }
 
 /** Test de pie: a los 5 y a los 10 minutos de ponerse de pie, si esa toma aún no está anotada (durante 3 minutos). */
@@ -136,9 +135,13 @@ export function avisosAhora(x: Contexto): Aviso[] {
     }
   }
 
-  // 2. Primera toma: una hora después de levantarse sin ninguna toma.
+  // 2. Primera toma: a los 45 minutos de levantarse, recordatorio; a la hora, aviso. Solo si aún no hay ninguna toma.
   if (activo(cfg, 'primera') && !algunaHoy) {
-    const w = horaLevantar(x.hidraCfg, x.hidraHoy)
+    const w = horaLevantar(x.hidraCfg, x.hidraHoy, x.sintHoy)
+    if (w != null && dentro(m, w + 45, 15)) {
+      out.push({ clave: 'primera-45', id: 'primera', titulo: 'Primera toma', ruta: 'nutricion',
+        cuerpo: `Llevas 45 minutos levantada: tu primera toma, antes de las ${aHora((w + 60) % 1440)} 🍳` })
+    }
     if (w != null && dentro(m, w + 60, 90)) {
       out.push({ clave: 'primera', id: 'primera', titulo: 'Primera toma', ruta: 'nutricion',
         cuerpo: `Buenos días ☀️ Hace una hora que te levantaste: tu primera toma es el primer gesto de cuidado del día.` })

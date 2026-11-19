@@ -1158,7 +1158,7 @@ const platoMarcado = (x) => !!x?.plato && [
 * Si aún no se ha marcado, el que se sigue ahora.
 */
 const modeloDe = (cfg, x) => x?.plato?.modelo ?? (platoMarcado(x) ? "verdura" : cfg?.plato_modelo ?? "verdura");
-const aMin = (h) => {
+const aMin$1 = (h) => {
 	const m = /^(\d{1,2}):(\d{2})$/.exec(h ?? "");
 	return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
@@ -1211,12 +1211,12 @@ function platosDe(cfg, m, toma) {
 }
 const tomasDe = (cfg) => cfg?.tomas ?? [];
 /** Anotada sin decir cuánto: tiene escrito lo que ha tomado o alguna hora, pero ningún estado marcado. */
-const anotada = (t) => !!t && !t.estado && (!!t.otro?.trim() || aMin(t.ini) != null || aMin(t.fin) != null);
+const anotada = (t) => !!t && !t.estado && (!!t.otro?.trim() || aMin$1(t.ini) != null || aMin$1(t.fin) != null);
 const hecha = (t) => t?.estado === "entera" || t?.estado === "tres_cuartos" || t?.estado === "media" || t?.estado === "hecha" || anotada(t);
 /** Hora límite prevista de una toma, en minutos. */
-const limite = (t) => aMin(t.hasta) ?? aMin(t.hora);
+const limite = (t) => aMin$1(t.hasta) ?? aMin$1(t.hora);
 /** Hora en la que acaba una toma: el fin si lo guarda, o su inicio. */
-const finDe = (t) => aMin(t?.fin) ?? aMin(t?.ini);
+const finDe = (t) => aMin$1(t?.fin) ?? aMin$1(t?.ini);
 /** La última comida con hora: la más tardía de hoy que ya haya pasado; si hoy no hay ninguna, la más tardía de ayer
 *  (la cena, si está registrada). `minutos` = los que han pasado hasta `ahoraMin`. */
 function ultimaComida(cfg, ayer, d, ahoraMin) {
@@ -1475,7 +1475,7 @@ const GRUPOS_DISAUTONOMIA = [{
 	tipo: "varias",
 	neutra: true,
 	pagina: "disautonomia",
-	opciones: op("Nada hoy", "Dolor abdominal después de comer", "Saciedad precoz", "Vómitos después de comer", "Alivio tumbada boca arriba o boca abajo", "Dolor pélvico que empeora de pie", "Sangre en la orina", "Rubor o enrojecimiento", "Sofocos", "Picor", "Habones (ronchas)", "Dermografismo (marcas al rascar)", "Congestión nasal", "Subluxación o luxación", "Dolor articular", "Hematomas sin golpe", "Piernas o manos moradas de pie", "Manos y pies fríos")
+	opciones: op("Nada hoy", "Dolor abdominal después de comer", "Saciedad precoz", "Vómitos después de comer", "Alivio tumbada boca arriba", "Alivio tumbada boca abajo", "Alivio tumbada sobre el lado izquierdo", "Dolor pélvico que empeora de pie", "Sangre en la orina", "Rubor o enrojecimiento", "Sofocos", "Picor", "Habones (ronchas)", "Dermografismo (marcas al rascar)", "Congestión nasal", "Subluxación o luxación", "Dolor articular", "Hematomas sin golpe", "Piernas o manos moradas de pie", "Manos y pies fríos")
 }];
 [
 	op("Ok", "Dolor de estómago", "Náuseas", "Hinchazón", "Gases"),
@@ -1486,6 +1486,30 @@ const GRUPOS_DISAUTONOMIA = [{
 	op("Normal", "Bonito", "Seco", "Encrespado", "Con caída", "Cuero cabelludo graso", "Cuero cabelludo seco"),
 	...GRUPOS_DISAUTONOMIA
 ];
+//#endregion
+//#region src/modules/sintomas/levantarse.ts
+const aMin = (h) => {
+	const p = /^(\d{1,2}):(\d{2})/.exec(h ?? "");
+	return p ? Number(p[1]) * 60 + Number(p[2]) : null;
+};
+/**
+* Hora (en minutos del día) a la que se levantó: la de la toma de constantes «Al levantarme» de Disautonomía
+* (su primera tensión del día, desde la 0.24.0). Sin ella, la del toque «al levantarme» de Hidratación.
+*/
+function horaLevantarse(sint, hc, hidra) {
+	const t = aMin((sint?.constantes ?? []).find((c) => c.momento === "levantarme")?.hora);
+	if (t != null) return {
+		min: t,
+		de: "tension"
+	};
+	const i = filaLevantar(hc);
+	const k = i >= 0 ? "pauta:" + i : "levantar";
+	const h = aMin((hidra?.horas ?? []).find((x) => x.k === k)?.h);
+	return h != null ? {
+		min: h,
+		de: "hidratacion"
+	} : null;
+}
 //#endregion
 //#region src/modules/avisos/reglas.ts
 /** Avisos al móvil: qué aviso toca en cada momento. Lo usa la función del servidor `avisos`, que lo revisa
@@ -1507,7 +1531,7 @@ const AVISOS = [
 	{
 		id: "primera",
 		nombre: "Primera toma del día",
-		detalle: "Si pasa una hora desde que te levantas sin ninguna toma. La hora de levantarte es la del botón «Vaso de agua y chupito de mar al levantarme» de Hidratación.",
+		detalle: "A los 45 minutos de levantarte (recordatorio) y a la hora, si aún no hay ninguna toma. La hora de levantarte es la de tu primera tensión («Al levantarme» en Disautonomía → Constantes); sin ella, la del botón «al levantarme» de Hidratación.",
 		porDefecto: true
 	},
 	{
@@ -1543,18 +1567,16 @@ const AVISOS = [
 ];
 const activo = (c, id) => c.activos?.[id] ?? AVISOS.find((a) => a.id === id).porDefecto;
 const enSilencio = (c, m) => {
-	const a = aMin(c.silencio_desde ?? "23:30"), b = aMin(c.silencio_hasta ?? "07:30");
+	const a = aMin$1(c.silencio_desde ?? "23:30"), b = aMin$1(c.silencio_hasta ?? "07:30");
 	if (a == null || b == null || a === b) return false;
 	return a < b ? m >= a && m < b : m >= a || m < b;
 };
 /** ¿Estamos dentro de la franja [desde, desde + dura) minutos? */
 const dentro = (m, desde, dura) => m >= desde && m < desde + dura;
-/** Hora a la que se levantó hoy: la del toque «al levantarme» de Hidratación. */
-function horaLevantar(hc, d) {
-	const i = filaLevantar(hc);
-	const k = i >= 0 ? "pauta:" + i : "levantar";
-	const t = (d.horas ?? []).find((x) => x.k === k);
-	return aMin(t?.h);
+/** Hora a la que se levantó hoy: la de su primera tensión («Al levantarme» en Constantes) o, sin ella, la del
+*  toque «al levantarme» de Hidratación. */
+function horaLevantar(hc, d, sint) {
+	return horaLevantarse(sint, hc, d)?.min ?? null;
 }
 /** Test de pie: a los 5 y a los 10 minutos de ponerse de pie, si esa toma aún no está anotada (durante 3 minutos). */
 function avisosPie(x) {
@@ -1607,7 +1629,14 @@ function avisosAhora(x) {
 		}
 	}
 	if (activo(cfg, "primera") && !algunaHoy) {
-		const w = horaLevantar(x.hidraCfg, x.hidraHoy);
+		const w = horaLevantar(x.hidraCfg, x.hidraHoy, x.sintHoy);
+		if (w != null && dentro(m, w + 45, 15)) out.push({
+			clave: "primera-45",
+			id: "primera",
+			titulo: "Primera toma",
+			ruta: "nutricion",
+			cuerpo: `Llevas 45 minutos levantada: tu primera toma, antes de las ${aHora((w + 60) % 1440)} 🍳`
+		});
 		if (w != null && dentro(m, w + 60, 90)) out.push({
 			clave: "primera",
 			id: "primera",
@@ -1617,7 +1646,7 @@ function avisosAhora(x) {
 		});
 	}
 	if (activo(cfg, "agua")) {
-		const h = aMin(cfg.agua_hora ?? "12:00") ?? 720, min = cfg.agua_ml ?? 500;
+		const h = aMin$1(cfg.agua_hora ?? "12:00") ?? 720, min = cfg.agua_ml ?? 500;
 		const t = total(x.hidraHoy);
 		if (dentro(m, h, 90) && t < min) out.push({
 			clave: "agua",
@@ -1630,7 +1659,7 @@ function avisosAhora(x) {
 	if (activo(cfg, "kcal")) {
 		const rango = (cfg.rango_pct ?? 90) / 100;
 		const sin = (s) => s.length ? ` (Sin contar: ${s.join(", ").toLowerCase()}.)` : "";
-		const h = aMin(cfg.kcal_hora ?? "17:30") ?? 1050;
+		const h = aMin$1(cfg.kcal_hora ?? "17:30") ?? 1050;
 		if (dentro(m, h, 60)) {
 			const k = kcalDia(nc, x.nutriHoy, x.menu, m);
 			if (k.referenciaHasta) {
@@ -1647,7 +1676,7 @@ function avisosAhora(x) {
 		const cena = defs[defs.length - 1];
 		const xc = cena ? x.nutriHoy.tomas?.[cena.id] : void 0;
 		const finCena = hecha(xc) ? finDe(xc) : null;
-		const tope = (aMin(nc.cena_fin_max ?? "21:00") ?? 1260) + 30;
+		const tope = (aMin$1(nc.cena_fin_max ?? "21:00") ?? 1260) + 30;
 		const cuando = finCena != null ? finCena + 30 : tope;
 		if (dentro(m, cuando, 90)) {
 			const k = kcalDia(nc, x.nutriHoy, x.menu, null);
@@ -1668,7 +1697,7 @@ function avisosAhora(x) {
 	if (activo(cfg, "dormir")) {
 		const cena = defs[defs.length - 1];
 		const xc = cena ? x.nutriHoy.tomas?.[cena.id] : void 0;
-		const fin = hecha(xc) ? aMin(xc?.fin) : null;
+		const fin = hecha(xc) ? aMin$1(xc?.fin) : null;
 		const tras = x.objCfg.dormir_tras_cena_min ?? 120;
 		if (fin != null && dentro(m, fin + tras, 60)) out.push({
 			clave: "dormir",
@@ -1694,8 +1723,8 @@ function avisosAhora(x) {
 	if (activo(cfg, "cena")) {
 		const cena = defs[defs.length - 1];
 		const xc = cena ? x.nutriHoy.tomas?.[cena.id] : void 0;
-		const max = aMin(nc.cena_fin_max ?? "21:00") ?? 1260;
-		if (cena && !hecha(xc) && aMin(xc?.ini) == null && dentro(m, max - 30, 30)) out.push({
+		const max = aMin$1(nc.cena_fin_max ?? "21:00") ?? 1260;
+		if (cena && !hecha(xc) && aMin$1(xc?.ini) == null && dentro(m, max - 30, 30)) out.push({
 			clave: "cena",
 			id: "cena",
 			titulo: "Cena",

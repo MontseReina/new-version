@@ -261,6 +261,13 @@ export function ayunoNocturno(cfg: NutriCfg, ayer: NutriDia | null, d: NutriDia,
   return { desdeNombre: desde.nombre, desdeHora: aHora(desde.fin), finNombre: primera?.nombre ?? null, finHora: primera ? aHora(primera.ini) : null, minutos: hasta + 1440 - desde.fin, enMarcha: !primera }
 }
 
+/** Primera toma de hoy con hora (la que para el reloj de la noche y el de «desde que me levanté»). */
+export function primeraTomaHoy(cfg: NutriCfg, d: NutriDia): { nombre: string; ini: number } | null {
+  let primera: { nombre: string; ini: number } | null = null
+  for (const t of tomasDe(cfg)) { const x = d.tomas?.[t.id]; const i = aMin(x?.ini) ?? aMin(x?.fin); if (hecha(x) && i != null && (!primera || i < primera.ini)) primera = { nombre: t.nombre, ini: i } }
+  return primera
+}
+
 /** Hora de mañana antes de la cual hay que hacer la primera toma, según el final de la cena de hoy. */
 export function primeraAntesDe(cfg: NutriCfg, d: NutriDia): string | null {
   const defs = tomasDe(cfg)
