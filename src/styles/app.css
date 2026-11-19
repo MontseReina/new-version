@@ -863,3 +863,12 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .ciclo-guion { list-style: none; padding-left: .4rem; margin: .1rem 0; }
 .ciclo-guion li::before { content: '– '; }
 .epi-tiempo .seg, .epi-sino { flex-wrap: nowrap; }
+
+/* Reloj (tensión, pulso, variabilidad y saturación que llegan de Apple Salud), desde la 0.25.0 */
+.reloj-dia .fc-del-dia { margin-top: .4rem; }
+.reloj-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .4rem .8rem; margin: .5rem 0 0; }
+.reloj-datos dt { font-size: .75rem; }
+.reloj-datos dd { margin: 0; font-weight: 600; }
+.reloj-pendientes { margin: .4rem 0 .6rem; padding: .5rem .6rem; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--primary-soft); }
+.reloj-pendientes .medida { background: var(--card); }
+.reloj-url code { display: block; word-break: break-all; padding: .4rem .5rem; margin-top: .3rem; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); }

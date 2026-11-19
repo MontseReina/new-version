@@ -106,6 +106,8 @@ export type Medida = {
   nota?: string | null
   /** Toma que empezó como rato de pulso alto del anillo Oura y se completó a mano. */
   de_oura?: boolean | null
+  /** Toma que llegó del reloj (Apple Salud): hora de la lectura del reloj, para no enseñarla dos veces (desde la 0.25.0). */
+  de_reloj?: string | null
   /** Medición fija del día a la que pertenece (desde la 0.24.0). Sin ella, es una toma esporádica. */
   momento?: Momento | null
   /** En «Poslevantarme»: minutos que llevaba de pie al medir (test de bipedestación, desde la 0.24.0). */

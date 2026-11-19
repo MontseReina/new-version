@@ -9,6 +9,9 @@ import { EditarPauta, HidraCompacta } from '../hidratacion/Compacta'
 import { useHidra } from '../hidratacion/useHidra'
 import { FcDelDia } from '../oura/FcDelDia'
 import { useOuraDia } from '../oura/useOuraDia'
+import { ConectarReloj } from '../reloj/Conectar'
+import { RelojDelDia } from '../reloj/RelojDelDia'
+import { useRelojDia } from '../reloj/useRelojDia'
 import { Constantes } from './Constantes'
 import { Editor } from './Editor'
 import { Grupos } from './Grupos'
@@ -18,7 +21,7 @@ import { conGruposNuevos, gruposDe, gruposDePagina, type SintCfg, type SintDia }
 let anadidos = false
 
 /**
- * Disautonomía: frecuencia cardíaca del día de Oura (en pequeño), constantes con su hora, episodios (hora, intensidad, ingreso y qué hice), los grupos del día
+ * Disautonomía: frecuencia cardíaca del día de Oura (en pequeño), resumen del reloj (pulso, variabilidad, saturación), constantes con su hora, episodios (hora, intensidad, ingreso y qué hice), los grupos del día
  * que la usuaria haya puesto en esta pantalla (energía, neurología, emocional…) e hidratación reducida.
  * Escribe en el mismo registro diario que Ciclo menstrual ('sintomas'): lo ya anotado se conserva.
  */
@@ -34,6 +37,7 @@ export default function Disautonomia() {
   }, [cfg, saveCfg])
   const hidra = useHidra(date)
   const oura = useOuraDia(date)
+  const reloj = useRelojDia(date)
   const todos = gruposDe(cfg)
   const grupos = gruposDePagina(todos, 'disautonomia')
   const episodios = grupos.filter((g) => g.tipo === 'detalle')
@@ -49,8 +53,9 @@ export default function Disautonomia() {
       )}
 
       <FcDelDia fc={oura?.fc_dia} />
+      <RelojDelDia r={reloj} />
       <fieldset className="sint" disabled={state === 'cargando'}>
-        <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} />
+        <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} reloj={reloj?.ta} />
       </fieldset>
       <Grupos grupos={episodios} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
       <Grupos grupos={resto} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
@@ -58,6 +63,9 @@ export default function Disautonomia() {
 
       <Section title="Editar mi pauta">
         <EditarPauta h={hidra} />
+      </Section>
+      <Section title="⌚ Conectar el reloj">
+        <ConectarReloj />
       </Section>
       <Section title="Editar mis grupos">
         <Editor grupos={todos} acciones={cfg?.acciones ?? []} guardar={(g) => void saveCfg({ grupos: g })} guardarAcciones={(a) => void saveCfg({ acciones: a })} />
