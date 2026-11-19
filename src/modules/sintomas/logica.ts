@@ -75,6 +75,27 @@ export type Medida = {
   nota?: string | null
   /** Toma que empezó como rato de pulso alto del anillo Oura y se completó a mano. */
   de_oura?: boolean | null
+  /** Medición fija del día a la que pertenece (desde la 0.24.0). Sin ella, es una toma esporádica. */
+  momento?: Momento | null
+}
+/** Mediciones fijas del día, en su orden. */
+export type Momento = 'levantarme' | 'poslevantarme' | 'media_manana' | 'antes_comer' | 'despues_comer' | 'media_tarde' | 'antes_cenar' | 'antes_cama'
+export const MOMENTOS: [Momento, string][] = [
+  ['levantarme', 'Al levantarme'],
+  ['poslevantarme', 'Poslevantarme'],
+  ['media_manana', 'Media mañana'],
+  ['antes_comer', 'Antes de comer'],
+  ['despues_comer', 'Después de comer'],
+  ['media_tarde', 'Media tarde'],
+  ['antes_cenar', 'Antes de cenar'],
+  ['antes_cama', 'Antes de irme a la cama'],
+]
+export const etiquetaMomento = (m?: Momento | null) => (m ? MOMENTOS.find(([k]) => k === m)?.[1] ?? '' : '')
+/** Tipo con el que nace una medición fija: habitual; la de después de comer, además postprandial. */
+export const tiposDeMomento = (m: Momento): TipoMedida[] => (m === 'despues_comer' ? ['habitual', 'postprandial'] : ['habitual'])
+/** ¿Tiene la toma algo anotado además de la hora y el tipo? */
+export function medidaConDatos(m: Medida) {
+  return [m.fc, m.pas, m.pad, m.glucosa, m.spo2].some((v) => v != null) || !!m.ta_no_capta || !!(m.no_medible ?? []).length || !!m.posicion || !!m.hidratacion || !!m.nota
 }
 export type CampoMedida = 'fc' | 'ta' | 'glucosa' | 'spo2'
 export type TipoMedida = 'habitual' | 'episodio' | 'postprandial'
@@ -126,6 +147,7 @@ export function avisosMedida(m: Medida): string[] {
 export function lineaMedida(m: Medida) {
   const no = (c: CampoMedida) => (m.no_medible ?? []).includes(c)
   const partes = [
+    etiquetaMomento(m.momento),
     textoTipos(m),
     m.fc != null ? `FC ${m.fc} lpm` : no('fc') && 'FC no medible',
     m.pas != null || m.pad != null ? `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg` : m.ta_no_capta ? 'TA indetectable (el tensiómetro no la capta, muy baja)' : no('ta') && 'TA no medible',
