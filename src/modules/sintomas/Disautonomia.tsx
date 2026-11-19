@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
 import { Section } from '../../components/ui'
-import { todayStr } from '../../lib/dates'
+import { addDays, todayStr } from '../../lib/dates'
 import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
 import { EditarPauta, HidraCompacta } from '../hidratacion/Compacta'
@@ -37,6 +37,7 @@ export default function Disautonomia() {
   const hidra = useHidra(date)
   const oura = useOuraDia(date)
   const reloj = useRelojDia(date)
+  const relojAyer = useRelojDia(addDays(date, -1))
   const todos = gruposDe(cfg)
   const grupos = gruposDePagina(todos, 'disautonomia')
   const episodios = grupos.filter((g) => g.tipo === 'detalle')
@@ -51,7 +52,7 @@ export default function Disautonomia() {
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
 
-      <PulsoDelDia reloj={reloj} oura={oura} />
+      <PulsoDelDia reloj={reloj} oura={oura} relojAyer={relojAyer} />
       <fieldset className="sint" disabled={state === 'cargando'}>
         <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} relojDia={reloj} />
       </fieldset>

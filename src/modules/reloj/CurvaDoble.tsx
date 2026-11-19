@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { horaMas, indiceEn, useAncho } from '../oura/graficos'
 
-export type Serie = { nombre: string; valores: (number | null)[]; color: string }
+/** `unir`: para series con pocas lecturas sueltas (p. ej. la variabilidad del reloj), se unen saltando huecos y se marca cada punto. */
+export type Serie = { nombre: string; valores: (number | null)[]; color: string; unir?: boolean }
 
 /**
  * Curva de dos (o más) series con la misma escala de tiempo, p. ej. el pulso del día del reloj y el de Oura
@@ -23,9 +24,9 @@ export function CurvaDoble({ series, inicio, paso, unidad, titulo, alto = 90 }: 
   const n = Math.max(...conDatos.map((s) => s.valores.length))
   const X = (i: number) => L + ((W - L - R) * i) / Math.max(1, n - 1)
   const Y = (v: number) => T + (H - T - B) * (1 - (v - lo) / (hi - lo))
-  const camino = (vs: (number | null)[]) => {
+  const camino = (vs: (number | null)[], unir?: boolean) => {
     let d = ''
-    vs.forEach((v, i) => { if (v == null) return; d += (d && vs[i - 1] != null ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) })
+    vs.forEach((v, i) => { if (v == null) return; d += (d && (unir || vs[i - 1] != null) ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) })
     return d
   }
   return (
@@ -49,7 +50,8 @@ export function CurvaDoble({ series, inicio, paso, unidad, titulo, alto = 90 }: 
             <text x={L - 4} y={Y(v) + 3} textAnchor="end" fontSize="9" fill="var(--muted)">{v}</text>
           </g>
         ))}
-        {conDatos.map((s) => <path key={s.nombre} d={camino(s.valores)} fill="none" stroke={s.color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />)}
+        {conDatos.map((s) => <path key={s.nombre} d={camino(s.valores, s.unir)} fill="none" stroke={s.color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />)}
+        {conDatos.filter((s) => s.unir).map((s) => s.valores.map((v, i) => v != null && <circle key={s.nombre + i} cx={X(i)} cy={Y(v)} r="2.6" fill={s.color} />))}
         {sel != null && (
           <g>
             <line x1={X(sel)} x2={X(sel)} y1={T} y2={H - B} stroke="var(--muted)" strokeDasharray="3 3" />
