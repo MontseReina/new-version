@@ -11,7 +11,7 @@
 //      'estado'     cuántos móviles tienen los avisos y los últimos enviados
 //      'prueba'     envía un aviso de prueba a sus móviles
 //  · POST {accion: 'revisar'} con la cabecera x-avisos-secreto (desde la tarea programada de la base de datos,
-//    cada cinco minutos): para cada usuaria con avisos, mira qué toca y lo envía una sola vez al día.
+//    cada minuto): para cada usuaria con avisos, mira qué toca y lo envía una sola vez al día.
 //
 // No necesita secretos: las claves VAPID de cada usuaria se crean aquí la primera vez y se guardan en su fila de
 // `integrations`. Opcional: AVISOS_SECRETO (si existe, la revisión programada tiene que traerlo en x-avisos-secreto;
@@ -25,6 +25,7 @@ import { crearModelo, infoDia, type CicloCfg, type CicloDia, type Temp } from '.
 import type { HidraCfg, HidraDia } from '../../../src/modules/hidratacion/logica'
 import { menuDe, type NutriCfg, type NutriDia } from '../../../src/modules/nutricion/logica'
 import type { ObjCfg } from '../../../src/modules/objetivos/logica'
+import type { SintDia } from '../../../src/modules/sintomas/logica'
 import { b64url, desB64url, enviar, type Suscripcion } from './webpush'
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response>): void }
@@ -63,7 +64,8 @@ async function guardarFila(userId: string, f: Fila) {
 function ahoraEn(tz: string, d = new Date()) {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
     .formatToParts(d).map((x) => [x.type, x.value]))
-  return { hoy: `${p.year}-${p.month}-${p.day}`, min: Number(p.hour) * 60 + Number(p.minute), hm: `${p.hour}:${p.minute}` }
+  const min = Number(p.hour) * 60 + Number(p.minute)
+  return { hoy: `${p.year}-${p.month}-${p.day}`, min, seg: min * 60 + d.getSeconds(), hm: `${p.hour}:${p.minute}` }
 }
 
 async function diario<T>(userId: string, modulo: string, desde: string, hasta: string): Promise<Map<string, T>> {
@@ -113,22 +115,23 @@ async function mandar(subs: Movil[], a: Aviso, ttl: number, claves: Vapid): Prom
 async function revisar(userId: string, fila: Fila) {
   const { data: perfil } = await admin.from('profiles').select('timezone').eq('id', userId).maybeSingle()
   const tz = (perfil as { timezone?: string } | null)?.timezone || 'Europe/Madrid'
-  const { hoy, min, hm } = ahoraEn(tz)
+  const { hoy, min, seg, hm } = ahoraEn(tz)
   const { data: ajustes } = await admin.from('settings').select('data').eq('user_id', userId).maybeSingle()
   const cfg = ((ajustes as { data?: Record<string, unknown> } | null)?.data ?? {}) as Record<string, unknown>
   const nutriCfg = (cfg.nutricion ?? {}) as NutriCfg
   const ayer = addDays(hoy, -1)
-  const [nutri, hidra, ciclo, temps] = await Promise.all([
+  const [nutri, hidra, ciclo, temps, sint] = await Promise.all([
     diario<NutriDia>(userId, 'nutricion', ayer, hoy),
     diario<HidraDia>(userId, 'hidratacion', hoy, hoy),
     diario<CicloDia>(userId, 'ciclo', addDays(hoy, -400), hoy),
     temperaturas(userId, addDays(hoy, -400), hoy),
+    diario<SintDia>(userId, 'sintomas', hoy, hoy),
   ])
   const mapa = Object.fromEntries(ciclo)
   const info = infoDia(crearModelo(mapa, (cfg.ciclo ?? {}) as CicloCfg, hoy, temps), mapa, hoy)
   const avisosCfg = (cfg.avisos ?? {}) as AvisosCfg
   const todos = avisosAhora({
-    hoy, ahoraMin: min, cfg: avisosCfg, nutriCfg, hidraCfg: (cfg.hidratacion ?? null) as HidraCfg | null, objCfg: (cfg.objetivos ?? {}) as ObjCfg,
+    hoy, ahoraMin: min, ahoraSeg: seg, sintHoy: sint.get(hoy) ?? null, cfg: avisosCfg, nutriCfg, hidraCfg: (cfg.hidratacion ?? null) as HidraCfg | null, objCfg: (cfg.objetivos ?? {}) as ObjCfg,
     menu: menuDe(nutriCfg, info, hoy), nutriHoy: nutri.get(hoy) ?? {}, nutriAyer: nutri.get(ayer) ?? null, hidraHoy: hidra.get(hoy) ?? {},
   })
   const enviados = { ...(fila.state.enviados?.[hoy] ?? {}) }
@@ -137,10 +140,10 @@ async function revisar(userId: string, fila: Fila) {
   const ultimos = [...(fila.state.ultimos ?? [])]
   const fallos: string[] = []
   for (const a of nuevos) {
-    const r = await mandar(subs, avisosCfg.texto === 'discreto' ? discreto(a) : a, 3600, fila.secret.vapid!)
+    const r = await mandar(subs, avisosCfg.texto === 'discreto' ? discreto(a) : a, a.ttl ?? 3600, fila.secret.vapid!)
     subs = r.vivas
     fallos.push(...r.fallos)
-    // Se da por enviado aunque falle, para no repetirlo cada cinco minutos.
+    // Se da por enviado aunque falle, para no repetirlo cada minuto.
     enviados[a.clave] = min
     if (r.enviado) ultimos.unshift({ cuando: `${hoy} ${hm}`, titulo: a.titulo, cuerpo: a.cuerpo })
   }

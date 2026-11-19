@@ -77,6 +77,8 @@ export type Medida = {
   de_oura?: boolean | null
   /** Medición fija del día a la que pertenece (desde la 0.24.0). Sin ella, es una toma esporádica. */
   momento?: Momento | null
+  /** En «Poslevantarme»: minutos que llevaba de pie al medir (test de bipedestación, desde la 0.24.0). */
+  min_de_pie?: number | null
 }
 /** Mediciones fijas del día, en su orden. */
 export type Momento = 'levantarme' | 'poslevantarme' | 'media_manana' | 'antes_comer' | 'despues_comer' | 'media_tarde' | 'antes_cenar' | 'antes_cama'
@@ -91,11 +93,26 @@ export const MOMENTOS: [Momento, string][] = [
   ['antes_cama', 'Antes de irme a la cama'],
 ]
 export const etiquetaMomento = (m?: Momento | null) => (m ? MOMENTOS.find(([k]) => k === m)?.[1] ?? '' : '')
-/** Tipo con el que nace una medición fija: habitual; la de después de comer, además postprandial. */
-export const tiposDeMomento = (m: Momento): TipoMedida[] => (m === 'despues_comer' ? ['habitual', 'postprandial'] : ['habitual'])
-/** ¿Tiene la toma algo anotado además de la hora y el tipo? */
+/** Momento con sus minutos de pie: «Poslevantarme (5 min de pie)». */
+export const etiquetaToma = (m: Medida) => {
+  const e = etiquetaMomento(m.momento)
+  return e && m.min_de_pie ? `${e} (${m.min_de_pie} min de pie)` : e
+}
+/** Momentos fijos con varias tomas: en «Poslevantarme», el test de bipedestación a los 5 y a los 10 minutos de pie. */
+export const MINUTOS_DE_PIE = [5, 10]
+export const subtomasDe = (m: Momento): (number | null)[] => (m === 'poslevantarme' ? MINUTOS_DE_PIE : [null])
+/** Cómo nace una medición fija: habitual (la de después de comer, además postprandial); al levantarme, tumbada; poslevantarme, de pie. */
+export function porDefectoMomento(m: Momento, minDePie: number | null): Medida {
+  return {
+    momento: m,
+    tipos: m === 'despues_comer' ? ['habitual', 'postprandial'] : ['habitual'],
+    ...(m === 'levantarme' ? { posicion: 'tumbada' as const } : m === 'poslevantarme' ? { posicion: 'de_pie' as const } : {}),
+    ...(minDePie ? { min_de_pie: minDePie } : {}),
+  }
+}
+/** ¿Tiene la toma algo anotado además de la hora, el tipo y la posición (que pueden venir puestos)? */
 export function medidaConDatos(m: Medida) {
-  return [m.fc, m.pas, m.pad, m.glucosa, m.spo2].some((v) => v != null) || !!m.ta_no_capta || !!(m.no_medible ?? []).length || !!m.posicion || !!m.hidratacion || !!m.nota
+  return [m.fc, m.pas, m.pad, m.glucosa, m.spo2].some((v) => v != null) || !!m.ta_no_capta || !!(m.no_medible ?? []).length || !!m.hidratacion || !!m.nota
 }
 export type CampoMedida = 'fc' | 'ta' | 'glucosa' | 'spo2'
 export type TipoMedida = 'habitual' | 'episodio' | 'postprandial'
@@ -147,7 +164,7 @@ export function avisosMedida(m: Medida): string[] {
 export function lineaMedida(m: Medida) {
   const no = (c: CampoMedida) => (m.no_medible ?? []).includes(c)
   const partes = [
-    etiquetaMomento(m.momento),
+    etiquetaToma(m),
     textoTipos(m),
     m.fc != null ? `FC ${m.fc} lpm` : no('fc') && 'FC no medible',
     m.pas != null || m.pad != null ? `TA ${m.pas ?? '—'}/${m.pad ?? '—'} mmHg` : m.ta_no_capta ? 'TA indetectable (el tensiómetro no la capta, muy baja)' : no('ta') && 'TA no medible',
@@ -169,6 +186,8 @@ export const COMIDAS = [['de', 'Desayuno'], ['co', 'Comida'], ['ce', 'Cena']] as
 export type Comida = (typeof COMIDAS)[number][0]
 
 export type SintDia = {
+  /** Test de bipedestación de la mañana: hora (HH:MM:SS) a la que se puso de pie, para avisar a los 5 y 10 minutos. */
+  test_pie?: { inicio?: string | null } | null
   /** Opciones marcadas de cada grupo, por id. */
   sel?: { [grupo: string]: string[] }
   /** Hora, gravedad y urgencias de cada episodio de las opciones marcadas en los grupos 'detalle'

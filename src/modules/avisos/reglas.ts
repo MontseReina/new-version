@@ -1,5 +1,5 @@
 /** Avisos al móvil: qué aviso toca en cada momento. Lo usa la función del servidor `avisos`, que lo revisa
- *  cada cinco minutos, y la página Avisos para enseñar la lista. Sin datos personales: horas, pautas y
+ *  cada minuto, y la página Avisos para enseñar la lista. Sin datos personales: horas, pautas y
  *  menús salen de los ajustes y registros de cada usuaria. */
 import { filaLevantar, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
 import { fmtKcal, kcalDia, RANGO_POR_DEFECTO } from '../nutricion/kcal'
@@ -8,10 +8,12 @@ import {
   type MenuHoy, type NutriCfg, type NutriDia,
 } from '../nutricion/logica'
 import { DORMIR_TRAS_CENA_MIN, type ObjCfg } from '../objetivos/logica'
+import { MINUTOS_DE_PIE, medidaConDatos, type SintDia } from '../sintomas/logica'
 
-export type AvisoId = 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena'
+export type AvisoId = 'pie' | 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena'
 
 export const AVISOS: { id: AvisoId; nombre: string; detalle: string; porDefecto: boolean }[] = [
+  { id: 'pie', nombre: 'Test de pie', detalle: 'A los 5 y a los 10 minutos de tocar «Me pongo de pie ahora» en Disautonomía → Poslevantarme. Suena también en las horas de silencio.', porDefecto: true },
   { id: 'ayuno', nombre: 'Horas sin comer', detalle: 'Media hora antes de cumplir las horas de ayuno, al cumplirlas y cada hora que pase después sin comer.', porDefecto: true },
   { id: 'primera', nombre: 'Primera toma del día', detalle: 'Si pasa una hora desde que te levantas sin ninguna toma. La hora de levantarte es la del botón «Vaso de agua y chupito de mar al levantarme» de Hidratación.', porDefecto: true },
   { id: 'agua', nombre: 'Agua a mediodía', detalle: 'A la hora que digas, si no llegas a la cantidad mínima.', porDefecto: true },
@@ -48,6 +50,8 @@ export interface Aviso {
   cuerpo: string
   /** Página que abre al tocarlo. */
   ruta: string
+  /** Segundos que el aviso sigue valiendo si el móvil no lo recibe enseguida (por defecto, una hora). */
+  ttl?: number
 }
 
 export interface Contexto {
@@ -61,6 +65,10 @@ export interface Contexto {
   nutriHoy: NutriDia
   nutriAyer: NutriDia | null
   hidraHoy: HidraDia
+  /** Registro de Disautonomía de hoy (test de pie). */
+  sintHoy?: SintDia | null
+  /** Segundo del día, para los avisos que van al minuto (test de pie). Sin él, se usa el minuto. */
+  ahoraSeg?: number
 }
 
 const enSilencio = (c: AvisosCfg, m: number) => {
@@ -79,11 +87,26 @@ export function horaLevantar(hc: HidraCfg | null, d: HidraDia): number | null {
   return aMin(t?.h)
 }
 
+/** Test de pie: a los 5 y a los 10 minutos de ponerse de pie, si esa toma aún no está anotada (durante 3 minutos). */
+export function avisosPie(x: Contexto): Aviso[] {
+  const ini = x.sintHoy?.test_pie?.inicio
+  const p = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(ini ?? '')
+  if (!p) return []
+  const pasado = (x.ahoraSeg ?? x.ahoraMin * 60) - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3] ?? 0))
+  const anotada = (n: number) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === 'poslevantarme' && c.min_de_pie === n && medidaConDatos(c))
+  return MINUTOS_DE_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
+    clave: `pie-${ini}-${n}`, id: 'pie' as const, titulo: 'Test de pie', ruta: 'disautonomia', ttl: 180,
+    cuerpo: `Llevas ${n} minutos de pie: tómate ahora la tensión y el pulso 🩺`,
+  }))
+}
+
 /** Todos los avisos que tocan ahora, antes de quitar los ya enviados. */
 export function avisosAhora(x: Contexto): Aviso[] {
   const { ahoraMin: m, cfg, nutriCfg: nc } = x
-  if (enSilencio(cfg, m)) return []
-  const out: Aviso[] = []
+  // 0. Test de pie: va antes del silencio, porque se hace al levantarse.
+  const pie = activo(cfg, 'pie') ? avisosPie(x) : []
+  if (enSilencio(cfg, m)) return pie
+  const out: Aviso[] = [...pie]
   const defs = tomasDe(nc)
   const algunaHoy = defs.some((t) => hecha(x.nutriHoy.tomas?.[t.id]))
 
@@ -215,4 +238,4 @@ export function filtrar(avisos: Aviso[], enviados: { [clave: string]: number }, 
 }
 
 /** Texto discreto para la pantalla bloqueada. */
-export const discreto = (a: Aviso): Aviso => ({ ...a, titulo: 'New Version', cuerpo: `Tienes un aviso de ${a.ruta === 'hidratacion' ? 'Hidratación' : 'Nutrición'}.` })
+export const discreto = (a: Aviso): Aviso => ({ ...a, titulo: 'New Version', cuerpo: `Tienes un aviso de ${a.ruta === 'hidratacion' ? 'Hidratación' : a.ruta === 'disautonomia' ? 'Disautonomía' : 'Nutrición'}.` })

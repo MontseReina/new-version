@@ -1,13 +1,14 @@
 import { todayStr, nowHM } from '../../lib/dates'
 import { useState, type ReactNode } from 'react'
 import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
-import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, tiposDeMomento, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
+import { TestDePie } from './TestDePie'
+import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, porDefectoMomento, subtomasDe, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
 /**
  * Constantes del día. Arriba, las ocho mediciones fijas (al levantarme, poslevantarme… antes de irme a la cama), plegadas:
- * al abrir una se rellena igual que cualquier toma y la toma se crea con la hora de ahora al anotar el primer dato.
+ * al abrir una se rellena igual que cualquier toma («Poslevantarme» lleva el test de pie, con tomas a los 5 y 10 minutos) y la toma se crea con la hora de ahora al anotar el primer dato.
  * Debajo, las esporádicas: cada «Registrar» abre una toma nueva con la hora de ahora (en el registro de hoy).
  * Debajo, mezclados por hora, los ratos en que el anillo Oura midió el pulso a 100 lpm o más (solo lectura;
  * «Completar» los convierte en una toma propia para añadir tensión, glucosa, saturación o posición).
@@ -17,21 +18,22 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
   const [abierta, setAbierta] = useState<Momento | null>(null)
   const horaAhora = () => (date === todayStr() ? { hora: nowHM() } : {})
   /** i = -1: medición fija todavía sin toma; se crea al anotar el primer dato. */
-  const poner = (i: number, patch: Medida, momento?: Momento) => {
-    if (i < 0 && momento) return set({ constantes: [...xs, { ...horaAhora(), momento, tipos: tiposDeMomento(momento), ...patch }] })
+  const poner = (i: number, patch: Medida, base?: Medida) => {
+    if (i < 0 && base) return set({ constantes: [...xs, { ...horaAhora(), ...base, ...patch }] })
     set({ constantes: xs.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   }
   const quitar = (i: number) => set({ constantes: xs.filter((_, k) => k !== i) })
   const nueva = () => set({ constantes: [...xs, horaAhora()] })
-  // Al plegar una medición fija sin nada anotado, se borra la toma vacía.
+  // Al plegar una medición fija, se borran sus tomas sin nada anotado.
   const plegar = (m: Momento | null) => {
-    const prev = abierta && xs.findIndex((x) => x.momento === abierta)
-    if (prev != null && prev >= 0 && !medidaConDatos(xs[prev])) quitar(prev)
+    const vacias = xs.filter((x) => abierta && x.momento === abierta && !medidaConDatos(x))
+    if (vacias.length) set({ constantes: xs.filter((x) => !vacias.includes(x)) })
     setAbierta(m)
   }
+  const indiceDe = (k: Momento, sub: number | null) => xs.findIndex((x) => x.momento === k && (x.min_de_pie ?? null) === sub)
   /** Un campo con su casilla «No se puede medir»: marcada, se borra el valor y se oculta la casilla de número.
    *  La tensión tiene además «No la capta (muy baja)», que es un hallazgo y se resalta. */
-  const campo = (x: Medida, i: number, c: CampoMedida, label: string, input: ReactNode, momento?: Momento) => {
+  const campo = (x: Medida, i: number, c: CampoMedida, label: string, input: ReactNode, base?: Medida) => {
     const no = (x.no_medible ?? []).includes(c)
     const noCapta = c === 'ta' && !!x.ta_no_capta
     const vacio: Medida = c === 'ta' ? { pas: null, pad: null } : { [c]: null }
@@ -42,61 +44,62 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
         {noCapta ? <div className="medida-no medida-no-capta small">No la capta: tensión muy baja</div>
           : no ? <div className="medida-no small">No se puede medir</div> : input}
         {noCapta || no
-          ? <button type="button" className="linkbtn small" onClick={() => poner(i, { no_medible: sinEsta, ...(c === 'ta' ? { ta_no_capta: null } : {}) }, momento)}>Anotar valor</button>
+          ? <button type="button" className="linkbtn small" onClick={() => poner(i, { no_medible: sinEsta, ...(c === 'ta' ? { ta_no_capta: null } : {}) }, base)}>Anotar valor</button>
           : <div className="medida-botones">
-              {c === 'ta' && <button type="button" className="linkbtn small" onClick={() => poner(i, { ...vacio, no_medible: sinEsta, ta_no_capta: true }, momento)}>No la capta (muy baja)</button>}
-              <button type="button" className="linkbtn small" onClick={() => poner(i, { ...vacio, no_medible: [...sinEsta, c], ...(c === 'ta' ? { ta_no_capta: null } : {}) }, momento)}>No se puede medir</button>
+              {c === 'ta' && <button type="button" className="linkbtn small" onClick={() => poner(i, { ...vacio, no_medible: sinEsta, ta_no_capta: true }, base)}>No la capta (muy baja)</button>}
+              <button type="button" className="linkbtn small" onClick={() => poner(i, { ...vacio, no_medible: [...sinEsta, c], ...(c === 'ta' ? { ta_no_capta: null } : {}) }, base)}>No se puede medir</button>
             </div>}
       </div>
     )
   }
-  const formulario = (x: Medida, i: number, momento?: Momento) => {
+  const formulario = (x: Medida, i: number, base?: Medida, titulo?: string) => {
     const avisos = avisosMedida(x)
     const tipos = tiposDe(x)
     return (
-      <div className={'medida' + (momento ? ' medida-fija-form' : '')} key={i}>
+      <div className={'medida' + (base ? ' medida-fija-form' : '')} key={i < 0 ? 'nueva-' + (titulo ?? '') : i}>
+        {titulo && <div className="medida-sub">{titulo}</div>}
         <div className="row between">
           <label className="row small" style={{ gap: '.4rem' }}>
             <span className="muted">Hora</span>
-            <input type="time" aria-label="Hora de la toma" style={{ width: '7.5rem' }} value={x.hora ?? ''} onChange={(e) => poner(i, { hora: e.target.value || null }, momento)} />
+            <input type="time" aria-label="Hora de la toma" style={{ width: '7.5rem' }} value={x.hora ?? ''} onChange={(e) => poner(i, { hora: e.target.value || null }, base)} />
           </label>
-          {i >= 0 && <button type="button" className="linkbtn" onClick={() => { quitar(i); if (momento) setAbierta(null) }}>{momento ? 'Borrar esta toma' : 'Quitar'}</button>}
+          {i >= 0 && <button type="button" className="linkbtn" onClick={() => quitar(i)}>{base ? 'Borrar esta toma' : 'Quitar'}</button>}
         </div>
         {i < 0 && date === todayStr() && <div className="muted small">La hora se pone sola al anotar el primer dato.</div>}
         <div className="medida-eje small muted">Tipo de medición <span className="medida-pista">· puedes marcar más de uno</span></div>
         <div className="chips" role="group" aria-label="Tipo de medición">
-          {TIPOS_MEDIDA.map(([k, l]) => <button type="button" key={k} className={'chip ' + (tipos.includes(k) ? 'on' : '')} aria-pressed={tipos.includes(k)} onClick={() => poner(i, alternarTipo(x, k), momento)}>{l}</button>)}
+          {TIPOS_MEDIDA.map(([k, l]) => <button type="button" key={k} className={'chip ' + (tipos.includes(k) ? 'on' : '')} aria-pressed={tipos.includes(k)} onClick={() => poner(i, alternarTipo(x, k), base)}>{l}</button>)}
         </div>
         {tipos.includes('postprandial') && <>
           <div className="medida-eje small muted">Tiempo desde que terminé de comer</div>
           <div className="chips" role="group" aria-label="Tiempo desde que terminé de comer">
-            {MIN_COMIDA.map((n) => <button type="button" key={n} className={'chip ' + (x.min_comida === n ? 'on' : '')} aria-pressed={x.min_comida === n} onClick={() => poner(i, { min_comida: x.min_comida === n ? null : n }, momento)}>{etiquetaMinComida(n)}</button>)}
+            {MIN_COMIDA.map((n) => <button type="button" key={n} className={'chip ' + (x.min_comida === n ? 'on' : '')} aria-pressed={x.min_comida === n} onClick={() => poner(i, { min_comida: x.min_comida === n ? null : n }, base)}>{etiquetaMinComida(n)}</button>)}
           </div>
         </>}
         <div className="medida-campos">
-          {campo(x, i, 'fc', 'Frecuencia cardíaca (lpm)', <input type="number" inputMode="numeric" min={20} max={250} value={x.fc ?? ''} onChange={(e) => poner(i, { fc: num(e.target.value) }, momento)} />, momento)}
+          {campo(x, i, 'fc', 'Frecuencia cardíaca (lpm)', <input type="number" inputMode="numeric" min={20} max={250} value={x.fc ?? ''} onChange={(e) => poner(i, { fc: num(e.target.value) }, base)} />, base)}
           {campo(x, i, 'ta', 'Tensión arterial (mmHg)', (
             <div className="medida-ta">
-              <input type="number" inputMode="numeric" min={40} max={250} aria-label="Tensión sistólica (alta)" placeholder="Alta" value={x.pas ?? ''} onChange={(e) => poner(i, { pas: num(e.target.value) }, momento)} />
+              <input type="number" inputMode="numeric" min={40} max={250} aria-label="Tensión sistólica (alta)" placeholder="Alta" value={x.pas ?? ''} onChange={(e) => poner(i, { pas: num(e.target.value) }, base)} />
               <span aria-hidden="true">/</span>
-              <input type="number" inputMode="numeric" min={20} max={150} aria-label="Tensión diastólica (baja)" placeholder="Baja" value={x.pad ?? ''} onChange={(e) => poner(i, { pad: num(e.target.value) }, momento)} />
+              <input type="number" inputMode="numeric" min={20} max={150} aria-label="Tensión diastólica (baja)" placeholder="Baja" value={x.pad ?? ''} onChange={(e) => poner(i, { pad: num(e.target.value) }, base)} />
             </div>
-          ), momento)}
-          {campo(x, i, 'glucosa', 'Glucosa (mg/dl)', <input type="number" inputMode="numeric" min={20} max={600} value={x.glucosa ?? ''} onChange={(e) => poner(i, { glucosa: num(e.target.value) }, momento)} />, momento)}
-          {campo(x, i, 'spo2', 'Saturación de O₂ (%)', <input type="number" inputMode="numeric" min={50} max={100} value={x.spo2 ?? ''} onChange={(e) => poner(i, { spo2: num(e.target.value) }, momento)} />, momento)}
+          ), base)}
+          {campo(x, i, 'glucosa', 'Glucosa (mg/dl)', <input type="number" inputMode="numeric" min={20} max={600} value={x.glucosa ?? ''} onChange={(e) => poner(i, { glucosa: num(e.target.value) }, base)} />, base)}
+          {campo(x, i, 'spo2', 'Saturación de O₂ (%)', <input type="number" inputMode="numeric" min={50} max={100} value={x.spo2 ?? ''} onChange={(e) => poner(i, { spo2: num(e.target.value) }, base)} />, base)}
         </div>
         <div className="medida-eje small muted">Posición</div>
         <div className="chips" role="group" aria-label="Posición al medir">
-          {POSICIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.posicion === k ? 'on' : '')} aria-pressed={x.posicion === k} onClick={() => poner(i, { posicion: x.posicion === k ? null : k }, momento)}>{l}</button>)}
+          {POSICIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.posicion === k ? 'on' : '')} aria-pressed={x.posicion === k} onClick={() => poner(i, { posicion: x.posicion === k ? null : k }, base)}>{l}</button>)}
         </div>
         <div className="medida-eje small muted">Hidratación</div>
         <div className="chips" role="group" aria-label="Hidratación antes de medir">
-          {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k }, momento)}>{l}</button>)}
+          {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k }, base)}>{l}</button>)}
         </div>
         {x.de_oura && <div className="muted small" style={{ marginTop: '.4rem' }}>Empezó como pulso alto del anillo Oura.</div>}
         <label className="medida-nota">
           <span className="medida-eje small muted">Notas de esta toma</span>
-          <textarea rows={2} placeholder="Qué estaba pasando, qué había comido y cuándo, cómo me encontraba…" value={x.nota ?? ''} onChange={(e) => poner(i, { nota: e.target.value || null }, momento)} />
+          <textarea rows={2} placeholder="Qué estaba pasando, qué había comido y cuándo, cómo me encontraba…" value={x.nota ?? ''} onChange={(e) => poner(i, { nota: e.target.value || null }, base)} />
         </label>
         {avisos.length > 0 && <div className="medida-avisos">{avisos.map((a) => <span key={a} className="medida-aviso">{a}</span>)}</div>}
       </div>
@@ -113,8 +116,18 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
     ...deOura.map((a) => ({ hora: a.hora, a })),
   ].sort((p, q) => q.hora.localeCompare(p.hora))
 
-  const fijas = MOMENTOS.map(([k, l]) => { const i = xs.findIndex((x) => x.momento === k); return { k, l, i, x: i >= 0 ? xs[i] : undefined } })
-  const hechas = fijas.filter((f) => f.x && medidaConDatos(f.x)).length
+  const resumenDe = (x: Medida) => [
+    x.fc != null && `FC ${x.fc}`,
+    x.pas != null || x.pad != null ? `TA ${x.pas ?? '—'}/${x.pad ?? '—'}` : x.ta_no_capta && 'TA no la capta',
+    x.glucosa != null && `Glu ${x.glucosa}`,
+    x.spo2 != null && `Sat ${x.spo2} %`,
+  ].filter(Boolean).join(' · ') || 'Anotada'
+  const fijas = MOMENTOS.map(([k, l]) => {
+    const subs = subtomasDe(k).map((sub) => { const i = indiceDe(k, sub); return { sub, i, x: i >= 0 ? xs[i] : undefined } })
+    const con = subs.filter((s) => s.x && medidaConDatos(s.x))
+    return { k, l, subs, con, hecha: con.length === subs.length }
+  })
+  const hechas = fijas.filter((f) => f.hecha).length
   const esporadicas = orden.length
 
   return (
@@ -125,28 +138,26 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
       </div>
       <p className="muted small" style={{ margin: '.2rem 0 .3rem' }}>Frecuencia cardíaca, tensión arterial, glucosa y saturación. Toca un momento para rellenarlo.</p>
       <div className="fijas">
-        {fijas.map(({ k, l, i, x }) => {
+        {fijas.map(({ k, l, subs, con, hecha }) => {
           const abiertaEsta = abierta === k
-          const con = !!x && medidaConDatos(x)
-          const av = x ? avisosMedida(x) : []
-          const resumen = x && con ? [
-            x.fc != null && `FC ${x.fc}`,
-            x.pas != null || x.pad != null ? `TA ${x.pas ?? '—'}/${x.pad ?? '—'}` : x.ta_no_capta && 'TA no la capta',
-            x.glucosa != null && `Glu ${x.glucosa}`,
-            x.spo2 != null && `Sat ${x.spo2} %`,
-          ].filter(Boolean).join(' · ') : ''
+          const av = con.flatMap((s) => avisosMedida(s.x!))
           return (
-            <div key={k} className={'fija' + (con ? ' hecha' : '') + (abiertaEsta ? ' abierta' : '')}>
+            <div key={k} className={'fija' + (hecha ? ' hecha' : con.length ? ' a-medias' : '') + (abiertaEsta ? ' abierta' : '')}>
               <button type="button" className="fija-cab" aria-expanded={abiertaEsta} onClick={() => plegar(abiertaEsta ? null : k)}>
-                <span className="fija-marca" aria-hidden="true">{con ? '✓' : ''}</span>
+                <span className="fija-marca" aria-hidden="true">{hecha ? '✓' : con.length ? `${con.length}/${subs.length}` : ''}</span>
                 <span className="fija-nombre">{l}</span>
                 <span className="fija-resumen small">
-                  {con ? <>{x!.hora && <b>{x!.hora}</b>} {resumen || 'Anotada'}</> : <span className="muted">Sin registrar</span>}
+                  {con.length ? con.map((s, n) => (
+                    <span key={n} className="fija-linea">{s.sub ? <span className="muted">{s.sub}′ </span> : null}{s.x!.hora && <b>{s.x!.hora}</b>} {resumenDe(s.x!)}</span>
+                  )) : <span className="muted">Sin registrar</span>}
                   {av.length > 0 && <span className="fija-aviso" title={av.join(' · ')}> ⚠</span>}
                 </span>
                 <span className="fija-flecha" aria-hidden="true">{abiertaEsta ? '▴' : '▾'}</span>
               </button>
-              {abiertaEsta && formulario(x ?? { momento: k, tipos: tiposDeMomento(k) }, i, k)}
+              {abiertaEsta && <>
+                {k === 'poslevantarme' && <TestDePie inicio={d.test_pie?.inicio ?? null} hoy={date === todayStr()} empezar={(h) => set({ test_pie: { inicio: h } })} />}
+                {subs.map(({ sub, i, x }) => formulario(x ?? porDefectoMomento(k, sub), i, porDefectoMomento(k, sub), sub ? `A los ${sub} minutos de pie` : undefined))}
+              </>}
             </div>
           )
         })}

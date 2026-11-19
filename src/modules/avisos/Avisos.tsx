@@ -80,7 +80,7 @@ export default function Avisos() {
   return (
     <div>
       <h1>Avisos en el móvil</h1>
-      <p className="muted">Te llegan como las notificaciones de cualquier app, en la pantalla bloqueada, aunque la app esté cerrada. Se revisan cada cinco minutos con lo que hayas anotado: si comes o bebes sin anotarlo, el aviso llega igual.</p>
+      <p className="muted">Te llegan como las notificaciones de cualquier app, en la pantalla bloqueada, aunque la app esté cerrada. Se revisan cada minuto con lo que hayas anotado: si comes o bebes sin anotarlo, el aviso llega igual.</p>
 
       {estado && estado.ultimos.length > 0 && (
         <div className="card">

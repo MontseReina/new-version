@@ -774,6 +774,14 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .fija-aviso { color: var(--red); }
 .fija-flecha { color: var(--muted); }
 .fija .medida-fija-form { margin: 0 .5rem .5rem; background: var(--card); }
+.fija.a-medias .fija-marca { font-size: .6rem; border-color: var(--green); color: var(--green); }
+.fija-linea { display: block; }
+.medida-sub { font-weight: 600; margin-bottom: .3rem; }
+.test-pie { margin: 0 .5rem .5rem; padding: .6rem; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.test-pie.toca { border-color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+.test-pie-reloj { display: flex; justify-content: space-between; align-items: baseline; }
+.test-pie-tiempo { font-size: 1.8rem; font-variant-numeric: tabular-nums; }
+.test-pie-ahora { font-weight: 700; color: var(--red); margin: .2rem 0; }
 .toma-nota { font-style: italic; color: var(--muted); margin-top: .15rem; white-space: pre-wrap; }
 
 /* ---------- Pilar Oura Ring ---------- */

@@ -1,4 +1,4 @@
--- New Version — revisión de los avisos al móvil cada cinco minutos.
+-- New Version — revisión de los avisos al móvil cada minuto (desde la 0.24.0, por el test de pie; antes, cada cinco).
 -- Llama a la función `avisos` desde la base de datos (pg_cron + pg_net). Sin cambios de tablas.
 -- Ejecutar una vez en Supabase → SQL Editor. Se puede repetir: sustituye la tarea si ya existe.
 create extension if not exists pg_cron;
@@ -8,7 +8,7 @@ select cron.unschedule(jobid) from cron.job where jobname = 'avisos-new-version'
 
 select cron.schedule(
   'avisos-new-version',
-  '*/5 * * * *',
+  '* * * * *',
   $$
   select net.http_post(
     url := 'https://dyvztjrbnovuoblbtgmo.supabase.co/functions/v1/avisos',

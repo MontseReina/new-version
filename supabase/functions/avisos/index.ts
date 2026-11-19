@@ -1442,11 +1442,39 @@ function kcalDia(cfg, d, menu, ahoraMin) {
 }
 const fmtKcal = (n) => Math.round(n).toLocaleString("es-ES");
 //#endregion
+//#region src/modules/sintomas/logica.ts
+/** Momentos fijos con varias tomas: en «Poslevantarme», el test de bipedestación a los 5 y a los 10 minutos de pie. */
+const MINUTOS_DE_PIE = [5, 10];
+/** ¿Tiene la toma algo anotado además de la hora, el tipo y la posición (que pueden venir puestos)? */
+function medidaConDatos(m) {
+	return [
+		m.fc,
+		m.pas,
+		m.pad,
+		m.glucosa,
+		m.spo2
+	].some((v) => v != null) || !!m.ta_no_capta || !!(m.no_medible ?? []).length || !!m.hidratacion || !!m.nota;
+}
+const op = (...nombres) => nombres.map((n) => ({
+	id: slug(n),
+	nombre: n
+}));
+function slug(t) {
+	return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "x";
+}
+op("Ok", "Dolor de estómago", "Náuseas", "Hinchazón", "Gases"), op("Sin dolor", "Cólicos", "Ovulación", "Sensibilidad en los senos", "Cabeza", "Lumbares"), op("Agotamiento", "Cansancio", "Ni fu ni fa", "Ok", "Enérgica", "Alto rendimiento"), op("Ninguna", "Pegajosa", "Cremosa", "Clara de huevo", "Atípica"), op("Buena", "Acné", "Seca", "Grasa", "Con comezón"), op("Normal", "Bonito", "Seco", "Encrespado", "Con caída", "Cuero cabelludo graso", "Cuero cabelludo seco");
+//#endregion
 //#region src/modules/avisos/reglas.ts
 /** Avisos al móvil: qué aviso toca en cada momento. Lo usa la función del servidor `avisos`, que lo revisa
-*  cada cinco minutos, y la página Avisos para enseñar la lista. Sin datos personales: horas, pautas y
+*  cada minuto, y la página Avisos para enseñar la lista. Sin datos personales: horas, pautas y
 *  menús salen de los ajustes y registros de cada usuaria. */
 const AVISOS = [
+	{
+		id: "pie",
+		nombre: "Test de pie",
+		detalle: "A los 5 y a los 10 minutos de tocar «Me pongo de pie ahora» en Disautonomía → Poslevantarme. Suena también en las horas de silencio.",
+		porDefecto: true
+	},
 	{
 		id: "ayuno",
 		nombre: "Horas sin comer",
@@ -1505,11 +1533,28 @@ function horaLevantar(hc, d) {
 	const t = (d.horas ?? []).find((x) => x.k === k);
 	return aMin(t?.h);
 }
+/** Test de pie: a los 5 y a los 10 minutos de ponerse de pie, si esa toma aún no está anotada (durante 3 minutos). */
+function avisosPie(x) {
+	const ini = x.sintHoy?.test_pie?.inicio;
+	const p = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(ini ?? "");
+	if (!p) return [];
+	const pasado = (x.ahoraSeg ?? x.ahoraMin * 60) - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3] ?? 0));
+	const anotada = (n) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === "poslevantarme" && c.min_de_pie === n && medidaConDatos(c));
+	return MINUTOS_DE_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
+		clave: `pie-${ini}-${n}`,
+		id: "pie",
+		titulo: "Test de pie",
+		ruta: "disautonomia",
+		ttl: 180,
+		cuerpo: `Llevas ${n} minutos de pie: tómate ahora la tensión y el pulso 🩺`
+	}));
+}
 /** Todos los avisos que tocan ahora, antes de quitar los ya enviados. */
 function avisosAhora(x) {
 	const { ahoraMin: m, cfg, nutriCfg: nc } = x;
-	if (enSilencio(cfg, m)) return [];
-	const out = [];
+	const pie = activo(cfg, "pie") ? avisosPie(x) : [];
+	if (enSilencio(cfg, m)) return pie;
+	const out = [...pie];
 	const defs = tomasDe(nc);
 	const algunaHoy = defs.some((t) => hecha(x.nutriHoy.tomas?.[t.id]));
 	if (activo(cfg, "ayuno")) {
@@ -1648,7 +1693,7 @@ function filtrar(avisos, enviados, ahoraMin) {
 const discreto = (a) => ({
 	...a,
 	titulo: "New Version",
-	cuerpo: `Tienes un aviso de ${a.ruta === "hidratacion" ? "Hidratación" : "Nutrición"}.`
+	cuerpo: `Tienes un aviso de ${a.ruta === "hidratacion" ? "Hidratación" : a.ruta === "disautonomia" ? "Disautonomía" : "Nutrición"}.`
 });
 /** Más de estos días sin regla entre dos días con regla = empieza un ciclo nuevo. */
 const SALTO = 9;
@@ -1968,9 +2013,11 @@ function ahoraEn(tz, d = /* @__PURE__ */ new Date()) {
 		minute: "2-digit",
 		hourCycle: "h23"
 	}).formatToParts(d).map((x) => [x.type, x.value]));
+	const min = Number(p.hour) * 60 + Number(p.minute);
 	return {
 		hoy: `${p.year}-${p.month}-${p.day}`,
-		min: Number(p.hour) * 60 + Number(p.minute),
+		min,
+		seg: min * 60 + d.getSeconds(),
 		hm: `${p.hour}:${p.minute}`
 	};
 }
@@ -2039,16 +2086,17 @@ async function mandar(subs, a, ttl, claves) {
 /** Revisa los avisos de una usuaria y envía los que tocan ahora. */
 async function revisar(userId, fila) {
 	const { data: perfil } = await admin.from("profiles").select("timezone").eq("id", userId).maybeSingle();
-	const { hoy, min, hm } = ahoraEn(perfil?.timezone || "Europe/Madrid");
+	const { hoy, min, seg, hm } = ahoraEn(perfil?.timezone || "Europe/Madrid");
 	const { data: ajustes } = await admin.from("settings").select("data").eq("user_id", userId).maybeSingle();
 	const cfg = ajustes?.data ?? {};
 	const nutriCfg = cfg.nutricion ?? {};
 	const ayer = addDays(hoy, -1);
-	const [nutri, hidra, ciclo, temps] = await Promise.all([
+	const [nutri, hidra, ciclo, temps, sint] = await Promise.all([
 		diario(userId, "nutricion", ayer, hoy),
 		diario(userId, "hidratacion", hoy, hoy),
 		diario(userId, "ciclo", addDays(hoy, -400), hoy),
-		temperaturas(userId, addDays(hoy, -400), hoy)
+		temperaturas(userId, addDays(hoy, -400), hoy),
+		diario(userId, "sintomas", hoy, hoy)
 	]);
 	const mapa = Object.fromEntries(ciclo);
 	const info = infoDia(crearModelo(mapa, cfg.ciclo ?? {}, hoy, temps), mapa, hoy);
@@ -2056,6 +2104,8 @@ async function revisar(userId, fila) {
 	const todos = avisosAhora({
 		hoy,
 		ahoraMin: min,
+		ahoraSeg: seg,
+		sintHoy: sint.get(hoy) ?? null,
 		cfg: avisosCfg,
 		nutriCfg,
 		hidraCfg: cfg.hidratacion ?? null,
@@ -2071,7 +2121,7 @@ async function revisar(userId, fila) {
 	const ultimos = [...fila.state.ultimos ?? []];
 	const fallos = [];
 	for (const a of nuevos) {
-		const r = await mandar(subs, avisosCfg.texto === "discreto" ? discreto(a) : a, 3600, fila.secret.vapid);
+		const r = await mandar(subs, avisosCfg.texto === "discreto" ? discreto(a) : a, a.ttl ?? 3600, fila.secret.vapid);
 		subs = r.vivas;
 		fallos.push(...r.fallos);
 		enviados[a.clave] = min;
