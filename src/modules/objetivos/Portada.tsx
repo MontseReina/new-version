@@ -8,6 +8,7 @@ import { infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import { aMin, menuDe, type NutriCfg, type NutriDia } from '../nutricion/logica'
 import type { SuplCfg, SuplDia } from '../suplementos/logica'
+import type { SintDia } from '../sintomas/logica'
 import { global, grado, objetivosDe, type DescansoDia, type Marca, type ObjCfg } from './logica'
 
 const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
@@ -16,7 +17,7 @@ const DICE: { [k in Marca]: string } = { ok: 'cumplido', no: 'no cumplido', parc
 const pct = (x: number) => Math.round(x * 100) + ' %'
 const color = (x: number) => ({ ok: 'verde', parcial: 'amarillo', no: 'rojo' })[grado(x)]
 
-type Semana = { nutri: Map<string, NutriDia>; hidra: Map<string, HidraDia>; supl: Map<string, SuplDia>; descanso: Map<string, DescansoDia> }
+type Semana = { nutri: Map<string, NutriDia>; hidra: Map<string, HidraDia>; supl: Map<string, SuplDia>; descanso: Map<string, DescansoDia>; sint: Map<string, SintDia> }
 const mapa = <T,>(r: { day: string; value: T }[]) => new Map(r.map((x) => [x.day, x.value]))
 
 /** Objetivos de la semana (pilar Evaluaciones): los objetivos de cumplimiento de la semana (de lunes a domingo), con un recuadro por día. */
@@ -42,7 +43,8 @@ export function Portada() {
       listDaily<HidraDia>('hidratacion', lunes, fin),
       listDaily<SuplDia>('suplementos', lunes, fin),
       listDaily<DescansoDia>('descanso', lunes, fin),
-    ]).then(([n, h, s, d]) => alive && setSem({ nutri: mapa(n), hidra: mapa(h), supl: mapa(s), descanso: mapa(d) }), () => {})
+      listDaily<SintDia>('sintomas', lunes, fin),
+    ]).then(([n, h, s, d, si]) => alive && setSem({ nutri: mapa(n), hidra: mapa(h), supl: mapa(s), descanso: mapa(d), sint: mapa(si) }), () => {})
     return () => { alive = false }
   }, [lunes])
 

@@ -1442,6 +1442,30 @@ function kcalDia(cfg, d, menu, ahoraMin) {
 }
 const fmtKcal = (n) => Math.round(n).toLocaleString("es-ES");
 //#endregion
+//#region src/modules/sintomas/levantarse.ts
+const aMin = (h) => {
+	const p = /^(\d{1,2}):(\d{2})/.exec(h ?? "");
+	return p ? Number(p[1]) * 60 + Number(p[2]) : null;
+};
+/**
+* Hora (en minutos del día) a la que se levantó: la de la toma de constantes «Al levantarme» de Disautonomía
+* (su primera tensión del día, desde la 0.24.0). Sin ella, la del toque «al levantarme» de Hidratación.
+*/
+function horaLevantarse(sint, hc, hidra) {
+	const t = aMin((sint?.constantes ?? []).find((c) => c.momento === "levantarme")?.hora);
+	if (t != null) return {
+		min: t,
+		de: "tension"
+	};
+	const i = filaLevantar(hc);
+	const k = i >= 0 ? "pauta:" + i : "levantar";
+	const h = aMin((hidra?.horas ?? []).find((x) => x.k === k)?.h);
+	return h != null ? {
+		min: h,
+		de: "hidratacion"
+	} : null;
+}
+//#endregion
 //#region src/modules/sintomas/logica.ts
 /** Momentos fijos con varias tomas: en «Poslevantarme», el test de bipedestación a los 5 y a los 10 minutos de pie. */
 const MINUTOS_DE_PIE = [5, 10];
@@ -1486,30 +1510,6 @@ const GRUPOS_DISAUTONOMIA = [{
 	op("Normal", "Bonito", "Seco", "Encrespado", "Con caída", "Cuero cabelludo graso", "Cuero cabelludo seco"),
 	...GRUPOS_DISAUTONOMIA
 ];
-//#endregion
-//#region src/modules/sintomas/levantarse.ts
-const aMin = (h) => {
-	const p = /^(\d{1,2}):(\d{2})/.exec(h ?? "");
-	return p ? Number(p[1]) * 60 + Number(p[2]) : null;
-};
-/**
-* Hora (en minutos del día) a la que se levantó: la de la toma de constantes «Al levantarme» de Disautonomía
-* (su primera tensión del día, desde la 0.24.0). Sin ella, la del toque «al levantarme» de Hidratación.
-*/
-function horaLevantarse(sint, hc, hidra) {
-	const t = aMin((sint?.constantes ?? []).find((c) => c.momento === "levantarme")?.hora);
-	if (t != null) return {
-		min: t,
-		de: "tension"
-	};
-	const i = filaLevantar(hc);
-	const k = i >= 0 ? "pauta:" + i : "levantar";
-	const h = aMin((hidra?.horas ?? []).find((x) => x.k === k)?.h);
-	return h != null ? {
-		min: h,
-		de: "hidratacion"
-	} : null;
-}
 //#endregion
 //#region src/modules/avisos/reglas.ts
 /** Avisos al móvil: qué aviso toca en cada momento. Lo usa la función del servidor `avisos`, que lo revisa

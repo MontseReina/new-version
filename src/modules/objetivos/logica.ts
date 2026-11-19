@@ -5,6 +5,8 @@ import { levantarHecho, objetivo, total, type HidraCfg, type HidraDia } from '..
 import { kcalDia } from '../nutricion/kcal'
 import { aMin, ayuno, finDe, hecha, horarios, tomasDe, type MenuHoy, type NutriCfg, type NutriDia } from '../nutricion/logica'
 import { cumplimiento, type SuplCfg, type SuplDia } from '../suplementos/logica'
+import type { SintDia } from '../sintomas/logica'
+import { horaLevantarse } from '../sintomas/levantarse'
 
 /** Datos del descanso, que llegarán del anillo (Oura): no se teclean. `despertar` y `sueno_min` son de la
  *  noche que termina ese día; `dormir` es la hora a la que se acuesta la noche de ese día (si es de
@@ -34,6 +36,8 @@ export interface Datos {
   hidra: Map<string, HidraDia>
   supl: Map<string, SuplDia>
   descanso: Map<string, DescansoDia>
+  /** Registro de Disautonomía de cada día: la toma «Al levantarme» da la hora de levantarse (desde la 0.24.0). */
+  sint?: Map<string, SintDia>
   /** Menú de cada día (según el ciclo o el menú fijado), para las kilocalorías previstas. */
   menuDia?: (day: string) => MenuHoy | null
 }
@@ -86,8 +90,12 @@ const sinSaltar: Regla = (day, D) => {
   const h = horarios(D.nutriCfg, d, day, D.hoy, D.ahoraMin)
   return delDia(h.hechas / h.total, day, D)
 }
+/** Hora de levantarse: su primera tensión («Al levantarme» en Constantes); sin ella, el botón «al levantarme» de
+ *  Hidratación; y si no, el despertar de Oura. */
+const levantarse = (day: string, D: Datos) =>
+  horaLevantarse(D.sint?.get(day), D.hidraCfg, D.hidra.get(day))?.min ?? aMin(D.descanso.get(day)?.despertar)
 const desayuno: Regla = (day, D) => {
-  const w = aMin(D.descanso.get(day)?.despertar)
+  const w = levantarse(day, D)
   if (w == null) return 'nada'
   const max = D.objCfg.desayuno_max_min ?? DESAYUNO_MAX_MIN
   const p = primeraToma(D.nutriCfg, D.nutri.get(day) ?? {})
@@ -152,7 +160,7 @@ export function objetivosDe(lunes: string, D: Datos): Objetivo[] {
   return [
     fila('ayuno', `Ayuno de la noche de ${D.nutriCfg.ayuno_max_h ?? 12} horas justas`, 'nutricion', ayunoJusto),
     fila('comidas', 'No saltarme comidas', 'nutricion', sinSaltar),
-    fila('desayuno', `Desayunar en ${horaTxt(D.objCfg.desayuno_max_min ?? DESAYUNO_MAX_MIN)} desde que me despierto`, 'nutricion', desayuno, oura),
+    fila('desayuno', `Desayunar en ${horaTxt(D.objCfg.desayuno_max_min ?? DESAYUNO_MAX_MIN)} desde que me levanto`, 'nutricion', desayuno, 'Empieza con tu primera tensión («Al levantarme» en Disautonomía)'),
     fila('cena', `Cena terminada a las ${D.nutriCfg.cena_fin_max ?? '21:00'}`, 'nutricion', cenaAHora),
     fila('dormir', `Irme a dormir ${horaTxt(D.objCfg.dormir_tras_cena_min ?? DORMIR_TRAS_CENA_MIN)} después de cenar`, 'nutricion', dormir, oura),
     fila('hidratacion', 'Hidratación del día cumplida', 'hidratacion', hidratada),
