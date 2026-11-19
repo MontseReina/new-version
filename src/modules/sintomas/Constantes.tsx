@@ -1,14 +1,14 @@
 import { todayStr, nowHM } from '../../lib/dates'
 import { useState, type ReactNode } from 'react'
 import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
-import { TestDePie } from './TestDePie'
+import { TestDePie, ahoraHMS, programarPitidos } from './TestDePie'
 import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, porDefectoMomento, subtomasDe, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
 /**
  * Constantes del día. Arriba, las ocho mediciones fijas (al levantarme, poslevantarme… antes de irme a la cama), plegadas:
- * al abrir una se rellena igual que cualquier toma («Poslevantarme» lleva el test de pie, con tomas a los 5 y 10 minutos) y la toma se crea con la hora de ahora al anotar el primer dato.
+ * al abrir una se rellena igual que cualquier toma («Poslevantarme» lleva el test de pie, con tomas a los 5 y 10 minutos; su reloj empieza al anotar «Al levantarme») y la toma se crea con la hora de ahora al anotar el primer dato.
  * Debajo, las esporádicas: cada «Registrar» abre una toma nueva con la hora de ahora (en el registro de hoy).
  * Debajo, mezclados por hora, los ratos en que el anillo Oura midió el pulso a 100 lpm o más (solo lectura;
  * «Completar» los convierte en una toma propia para añadir tensión, glucosa, saturación o posición).
@@ -19,7 +19,15 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
   const horaAhora = () => (date === todayStr() ? { hora: nowHM() } : {})
   /** i = -1: medición fija todavía sin toma; se crea al anotar el primer dato. */
   const poner = (i: number, patch: Medida, base?: Medida) => {
-    if (i < 0 && base) return set({ constantes: [...xs, { ...horaAhora(), ...base, ...patch }] })
+    if (i < 0 && base) {
+      const nueva = { ...horaAhora(), ...base, ...patch }
+      // Al anotar la toma de «Al levantarme» (hoy) empieza solo el reloj del test de pie.
+      if (base.momento === 'levantarme' && date === todayStr()) {
+        programarPitidos()
+        return set({ constantes: [...xs, nueva], test_pie: { inicio: ahoraHMS() } })
+      }
+      return set({ constantes: [...xs, nueva] })
+    }
     set({ constantes: xs.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   }
   const quitar = (i: number) => set({ constantes: xs.filter((_, k) => k !== i) })
@@ -137,6 +145,7 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
         <span className="muted small">{hechas} de {MOMENTOS.length} fijas</span>
       </div>
       <p className="muted small" style={{ margin: '.2rem 0 .3rem' }}>Frecuencia cardíaca, tensión arterial, glucosa y saturación. Toca un momento para rellenarlo.</p>
+      <TestDePie modo="banner" inicio={d.test_pie?.inicio ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { inicio: h } })} />
       <div className="fijas">
         {fijas.map(({ k, l, subs, con, hecha }) => {
           const abiertaEsta = abierta === k
@@ -155,7 +164,7 @@ export function Constantes({ d, set, date, oura = [] }: { d: SintDia; set: (patc
                 <span className="fija-flecha" aria-hidden="true">{abiertaEsta ? '▴' : '▾'}</span>
               </button>
               {abiertaEsta && <>
-                {k === 'poslevantarme' && <TestDePie inicio={d.test_pie?.inicio ?? null} hoy={date === todayStr()} empezar={(h) => set({ test_pie: { inicio: h } })} />}
+                {k === 'poslevantarme' && <TestDePie modo="ficha" inicio={d.test_pie?.inicio ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { inicio: h } })} />}
                 {subs.map(({ sub, i, x }) => formulario(x ?? porDefectoMomento(k, sub), i, porDefectoMomento(k, sub), sub ? `A los ${sub} minutos de pie` : undefined))}
               </>}
             </div>

@@ -13,7 +13,7 @@ import { MINUTOS_DE_PIE, medidaConDatos, type SintDia } from '../sintomas/logica
 export type AvisoId = 'pie' | 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena'
 
 export const AVISOS: { id: AvisoId; nombre: string; detalle: string; porDefecto: boolean }[] = [
-  { id: 'pie', nombre: 'Test de pie', detalle: 'A los 5 y a los 10 minutos de tocar «Me pongo de pie ahora» en Disautonomía → Poslevantarme. Suena también en las horas de silencio.', porDefecto: true },
+  { id: 'pie', nombre: 'Test de pie', detalle: 'A los 5 y a los 10 minutos de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.', porDefecto: true },
   { id: 'ayuno', nombre: 'Horas sin comer', detalle: 'Media hora antes de cumplir las horas de ayuno, al cumplirlas y cada hora que pase después sin comer.', porDefecto: true },
   { id: 'primera', nombre: 'Primera toma del día', detalle: 'Si pasa una hora desde que te levantas sin ninguna toma. La hora de levantarte es la del botón «Vaso de agua y chupito de mar al levantarme» de Hidratación.', porDefecto: true },
   { id: 'agua', nombre: 'Agua a mediodía', detalle: 'A la hora que digas, si no llegas a la cantidad mínima.', porDefecto: true },

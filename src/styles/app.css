@@ -790,6 +790,7 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .fija-linea { display: block; }
 .medida-sub { font-weight: 600; margin-bottom: .3rem; }
 .test-pie { margin: 0 .5rem .5rem; padding: .6rem; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.test-pie.banner { margin: .4rem 0 .5rem; position: sticky; top: .5rem; z-index: 2; box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 12%, transparent); }
 .test-pie.toca { border-color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
 .test-pie-reloj { display: flex; justify-content: space-between; align-items: baseline; }
 .test-pie-tiempo { font-size: 1.8rem; font-variant-numeric: tabular-nums; }

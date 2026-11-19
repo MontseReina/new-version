@@ -1462,7 +1462,30 @@ const op = (...nombres) => nombres.map((n) => ({
 function slug(t) {
 	return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "x";
 }
-op("Ok", "Dolor de estómago", "Náuseas", "Hinchazón", "Gases"), op("Sin dolor", "Cólicos", "Ovulación", "Sensibilidad en los senos", "Cabeza", "Lumbares"), op("Agotamiento", "Cansancio", "Ni fu ni fa", "Ok", "Enérgica", "Alto rendimiento"), op("Ninguna", "Pegajosa", "Cremosa", "Clara de huevo", "Atípica"), op("Buena", "Acné", "Seca", "Grasa", "Con comezón"), op("Normal", "Bonito", "Seco", "Encrespado", "Con caída", "Cuero cabelludo graso", "Cuero cabelludo seco");
+const GRUPOS_DISAUTONOMIA = [{
+	id: "compresion",
+	nombre: "Compresión",
+	tipo: "varias",
+	neutra: true,
+	pagina: "disautonomia",
+	opciones: op("Sin compresión", "Medias", "Faja abdominal")
+}, {
+	id: "eds_compresiones",
+	nombre: "Ehlers-Danlos y compresiones",
+	tipo: "varias",
+	neutra: true,
+	pagina: "disautonomia",
+	opciones: op("Nada hoy", "Dolor abdominal después de comer", "Saciedad precoz", "Vómitos después de comer", "Alivio tumbada boca arriba o boca abajo", "Dolor pélvico que empeora de pie", "Sangre en la orina", "Rubor o enrojecimiento", "Sofocos", "Picor", "Habones (ronchas)", "Dermografismo (marcas al rascar)", "Congestión nasal", "Subluxación o luxación", "Dolor articular", "Hematomas sin golpe", "Piernas o manos moradas de pie", "Manos y pies fríos")
+}];
+[
+	op("Ok", "Dolor de estómago", "Náuseas", "Hinchazón", "Gases"),
+	op("Sin dolor", "Cólicos", "Ovulación", "Sensibilidad en los senos", "Cabeza", "Lumbares"),
+	op("Agotamiento", "Cansancio", "Ni fu ni fa", "Ok", "Enérgica", "Alto rendimiento"),
+	op("Ninguna", "Pegajosa", "Cremosa", "Clara de huevo", "Atípica"),
+	op("Buena", "Acné", "Seca", "Grasa", "Con comezón"),
+	op("Normal", "Bonito", "Seco", "Encrespado", "Con caída", "Cuero cabelludo graso", "Cuero cabelludo seco"),
+	...GRUPOS_DISAUTONOMIA
+];
 //#endregion
 //#region src/modules/avisos/reglas.ts
 /** Avisos al móvil: qué aviso toca en cada momento. Lo usa la función del servidor `avisos`, que lo revisa
@@ -1472,7 +1495,7 @@ const AVISOS = [
 	{
 		id: "pie",
 		nombre: "Test de pie",
-		detalle: "A los 5 y a los 10 minutos de tocar «Me pongo de pie ahora» en Disautonomía → Poslevantarme. Suena también en las horas de silencio.",
+		detalle: "A los 5 y a los 10 minutos de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.",
 		porDefecto: true
 	},
 	{

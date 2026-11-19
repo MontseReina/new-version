@@ -29,8 +29,8 @@ function SiNo({ v, label, poner }: { v?: boolean | null; label: string; poner: (
 }
 
 /**
- * Datos de cada episodio de disautonomía: pródromo, duración, pérdida de conocimiento (y cuánto), movimientos,
- * esfínteres, testigo, golpe, descarga adrenérgica, tiempo de recuperación y desencadenantes. Todo opcional.
+ * Datos de cada episodio de disautonomía: pródromo, duración (hasta recuperarse), pérdida de conocimiento (y cuánto),
+ * movimientos (descarga adrenérgica), dolor de barriga, náuseas, sudor frío y desencadenantes. Todo opcional.
  */
 export function DatosEpisodio({ x, quien, poner }: { x: Detalle; quien: string; poner: (patch: Detalle) => void }) {
   return (
@@ -59,10 +59,6 @@ export function DatosEpisodio({ x, quien, poner }: { x: Detalle; quien: string; 
           <SiNo v={x[k]} label={`${l} en ${quien}`} poner={(v) => poner({ [k]: v })} />
         </div>
       ))}
-      <div className="epi-fila">
-        <span>Tiempo de recuperación</span>
-        <CampoTiempo t={x.recuperacion} unidades={['min', 'h']} label={`Tiempo de recuperación de ${quien}`} poner={(t) => poner({ recuperacion: t })} />
-      </div>
       <label className="field epi-desenc">
         <span>Desencadenantes</span>
         <textarea rows={2} aria-label={`Desencadenantes de ${quien}`} placeholder="Lo que creo que ha podido desencadenarlo…" value={x.desencadenantes ?? ''} onChange={(e) => poner({ desencadenantes: e.target.value || null })} />
