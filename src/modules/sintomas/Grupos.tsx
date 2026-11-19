@@ -1,6 +1,7 @@
 import { Stepper } from '../../components/ui'
 import { todayStr } from '../../lib/dates'
 import { Bristol } from './Bristol'
+import { DatosEpisodio } from './DatosEpisodio'
 import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, episodiosOpcion, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintDia } from './logica'
 import { emojiOpcion } from './emojis'
 
@@ -154,6 +155,7 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
                             {DIEZ.map((n) => <button type="button" key={n} className={x.gravedad === n ? 'on' : ''} aria-pressed={x.gravedad === n} onClick={() => detalle(g, o.id, i, { gravedad: x.gravedad === n ? null : n })}>{n}</button>)}
                           </div>
                         </div>
+                        <DatosEpisodio x={x} quien={quien} poner={(patch) => detalle(g, o.id, i, patch)} />
                         <div className="field epi-hice">
                           <span>Qué hice</span>
                           {acciones.length > 0 && (

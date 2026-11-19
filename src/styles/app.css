@@ -727,6 +727,18 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .hidra-mini .midia-check { align-items: flex-start; }
 .hidra-mini .midia-check .midia-caja { margin-top: .1rem; }
 .epi-hice textarea { min-height: 3.2rem; }
+/* Datos de cada episodio: «Etiqueta: control» en filas */
+.epi-datos { margin: .5rem 0; border-top: 1px dashed var(--line); padding-top: .4rem; }
+.epi-fila { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: .35rem 0; }
+.epi-fila > span { font-size: .85rem; color: var(--muted); }
+.epi-fila > span::after { content: ':'; }
+.epi-fila > input[type="text"] { flex: 1; min-width: 0; }
+.epi-sub { padding-left: .8rem; }
+.epi-tiempo { display: flex; align-items: center; gap: .35rem; }
+.epi-tiempo input { width: 4.5rem; }
+.epi-sino button { min-width: 2.8rem; }
+.epi-desenc { margin: .4rem 0; }
+.epi-desenc textarea { width: 100%; }
 .medida { border: 1px solid var(--line); border-radius: 10px; padding: .6rem; margin: .6rem 0; background: var(--bg); }
 .medida-campos { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .6rem; margin-top: .4rem; }
 .medida-campos .field { margin: 0; }
@@ -847,3 +859,4 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .m-ovu:not(.oura) { background: #fff; }
 .ciclo-guion { list-style: none; padding-left: .4rem; margin: .1rem 0; }
 .ciclo-guion li::before { content: '– '; }
+.epi-tiempo .seg, .epi-sino { flex-wrap: nowrap; }

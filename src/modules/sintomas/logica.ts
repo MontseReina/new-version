@@ -33,6 +33,8 @@ export type SintCfg = {
   grupos?: Grupo[]
   /** Botones rápidos de «Qué hice» en cada episodio (lo que se tomó o se hizo). Viven en los ajustes de cada usuaria. */
   acciones?: string[]
+  /** Grupos de partida nuevos que ya se añadieron a sus grupos (para no volver a ponerlos si los quita). */
+  extras?: string[]
 }
 
 export type Detalle = {
@@ -43,6 +45,38 @@ export type Detalle = {
   acciones?: string[] | null
   /** Qué hice, con mis palabras. */
   hice?: string | null
+  /** Datos del episodio (desde la 0.24.0). Los sí/no quedan sin contestar (null) hasta que se toca uno. */
+  prodromo?: string | null
+  duracion?: Tiempo | null
+  conocimiento?: boolean | null
+  conocimiento_t?: Tiempo | null
+  movimientos?: boolean | null
+  esfinteres?: boolean | null
+  testigo?: boolean | null
+  golpe?: boolean | null
+  adrenergica?: boolean | null
+  recuperacion?: Tiempo | null
+  desencadenantes?: string | null
+}
+/** Un tiempo con su unidad, tal como se anota: «20 min», «2 h», «30 s». */
+export type Tiempo = { n?: number | null; u?: 'seg' | 'min' | 'h' | null }
+export const UNIDADES: ['seg' | 'min' | 'h', string][] = [['seg', 's'], ['min', 'min'], ['h', 'h']]
+export const textoTiempo = (t?: Tiempo | null) => (t?.n != null ? `${t.n} ${UNIDADES.find(([k]) => k === (t.u ?? 'min'))![1]}` : '')
+/** Sí/no del episodio, en el orden en que se enseñan. */
+export const SI_NO_EPISODIO: ['movimientos' | 'esfinteres' | 'testigo' | 'golpe' | 'adrenergica', string][] = [
+  ['movimientos', 'Movimientos'], ['esfinteres', 'Relajación de esfínteres'], ['testigo', 'Testigo'], ['golpe', 'Golpe'], ['adrenergica', 'Descarga adrenérgica'],
+]
+/** Datos del episodio en una línea, para los informes. */
+export function textoDetalle(x: Detalle): string {
+  const sn = (v: boolean | null | undefined, l: string) => (v == null ? '' : `${l}: ${v ? 'sí' : 'no'}`)
+  return [
+    x.prodromo && `pródromo: ${x.prodromo}`,
+    textoTiempo(x.duracion) && `duración ${textoTiempo(x.duracion)}`,
+    x.conocimiento == null ? '' : x.conocimiento ? `pérdida de conocimiento${textoTiempo(x.conocimiento_t) ? ` (${textoTiempo(x.conocimiento_t)})` : ''}` : 'sin pérdida de conocimiento',
+    ...SI_NO_EPISODIO.map(([k, l]) => sn(x[k], l.toLowerCase())),
+    textoTiempo(x.recuperacion) && `recuperación ${textoTiempo(x.recuperacion)}`,
+    x.desencadenantes && `desencadenantes: ${x.desencadenantes}`,
+  ].filter(Boolean).join(' · ')
 }
 
 /** Una toma de constantes a una hora. Todos los campos son opcionales: se anota lo que se haya medido. */
@@ -223,6 +257,27 @@ export function idLibre(nombre: string, usados: string[]) {
   return id
 }
 
+/** Grupos de Disautonomía de la 0.24.0: compresión del día y signos que orientan a Ehlers-Danlos, a compresiones
+ *  vasculares abdominales o a activación mastocitaria. Se añaden una vez a los grupos guardados de cada usuaria
+ *  (después los edita como los demás). */
+export const EXTRAS_024 = 'disautonomia-0.24.0'
+export const GRUPOS_DISAUTONOMIA: Grupo[] = [
+  { id: 'compresion', nombre: 'Compresión', tipo: 'varias', neutra: true, pagina: 'disautonomia', opciones: op('Sin compresión', 'Medias', 'Faja abdominal') },
+  { id: 'eds_compresiones', nombre: 'Ehlers-Danlos y compresiones', tipo: 'varias', neutra: true, pagina: 'disautonomia', opciones: op(
+    'Nada hoy',
+    'Dolor abdominal después de comer', 'Saciedad precoz', 'Vómitos después de comer', 'Alivio tumbada sobre el lado izquierdo o boca abajo',
+    'Dolor pélvico que empeora de pie', 'Sangre en la orina',
+    'Rubor o enrojecimiento', 'Picor', 'Habones (ronchas)', 'Dermografismo (marcas al rascar)', 'Congestión nasal',
+    'Subluxación o luxación', 'Dolor articular', 'Hematomas sin golpe', 'Piernas o manos moradas de pie', 'Manos y pies fríos',
+  ) },
+]
+/** Grupos de la usuaria con los de la 0.24.0 añadidos, o null si ya estaban (o si aún no tiene grupos guardados). */
+export function conGruposNuevos(c: SintCfg | null): Partial<SintCfg> | null {
+  if (!c || !Array.isArray(c.grupos) || (c.extras ?? []).includes(EXTRAS_024)) return null
+  const ids = new Set(c.grupos.map((g) => g.id))
+  return { grupos: [...c.grupos, ...GRUPOS_DISAUTONOMIA.filter((g) => !ids.has(g.id))], extras: [...(c.extras ?? []), EXTRAS_024] }
+}
+
 /** Grupos de partida, mientras la usuaria no guarde los suyos. */
 export const GRUPOS_BASE: Grupo[] = [
   { id: 'digestion', nombre: 'Digestión', tipo: 'varias', neutra: true, opciones: op('Ok', 'Dolor de estómago', 'Náuseas', 'Hinchazón', 'Gases') },
@@ -235,6 +290,7 @@ export const GRUPOS_BASE: Grupo[] = [
   { id: 'piel', nombre: 'Piel', tipo: 'varias', neutra: true, opciones: op('Buena', 'Acné', 'Seca', 'Grasa', 'Con comezón') },
   { id: 'cabello', nombre: 'Cabello', tipo: 'varias', neutra: true, opciones: op('Normal', 'Bonito', 'Seco', 'Encrespado', 'Con caída', 'Cuero cabelludo graso', 'Cuero cabelludo seco') },
   { id: 'otros', nombre: 'Otros signos y síntomas', tipo: 'texto' },
+  ...GRUPOS_DISAUTONOMIA,
 ]
 /** ¿Lleva el grupo una escala de 0 a 10 (sola o debajo de sus opciones)? */
 export const tieneEscala = (g: Grupo) => g.tipo === 'escala' || ((g.tipo === 'una' || g.tipo === 'varias') && !!g.con_escala)
@@ -309,7 +365,7 @@ export function leerGrupos(texto: string): Grupo[] | null {
 /** Nombre legible de una opción que ya no está en los grupos (se quitó): «taquicardia_en_reposo» → «Taquicardia en reposo». */
 export const nombreDeId = (id: string) => { const t = id.replace(/_\d+$/, '').replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1) }
 
-export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; gravedad: number | null; urgencias: boolean; acciones: string[]; hice: string }
+export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; gravedad: number | null; urgencias: boolean; acciones: string[]; hice: string; datos: string }
 /** Episodios anotados (opciones marcadas en los grupos 'detalle', como Disautonomía), en orden. */
 export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia }[]): Episodio[] {
   return grupos.filter((g) => g.tipo === 'detalle').flatMap((g) =>
@@ -317,7 +373,7 @@ export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia
       const xs = episodiosOpcion(d.value.det?.[g.id]?.[id])
       const nombre = g.opciones?.find((o) => o.id === id)?.nombre ?? nombreDeId(id)
       // Una opción marcada sin detalle cuenta como un episodio.
-      return (xs.length ? xs : [{} as Detalle]).map((det) => ({ dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias, acciones: det.acciones ?? [], hice: det.hice ?? '' }))
+      return (xs.length ? xs : [{} as Detalle]).map((det) => ({ dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias, acciones: det.acciones ?? [], hice: det.hice ?? '', datos: textoDetalle(det) }))
     })),
   ).sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora))
 }

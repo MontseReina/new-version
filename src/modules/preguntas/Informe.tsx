@@ -152,7 +152,7 @@ export default function Informe({ especialistas, preguntas, onClose }: { especia
               {episodios.map((e, i) => (
                 <tr key={i}>
                   <td>{fmtDate(e.dia)}{e.hora && ' · ' + e.hora}</td>
-                  <td>{e.nombre}{e.gravedad != null && ` · intensidad ${e.gravedad}/10`}{e.urgencias && ' · ingreso en urgencias'}{(e.acciones.length > 0 || e.hice) && ` · qué hice: ${[e.acciones.join(', '), e.hice].filter(Boolean).join('. ')}`}</td>
+                  <td>{e.nombre}{e.gravedad != null && ` · intensidad ${e.gravedad}/10`}{e.urgencias && ' · ingreso en urgencias'}{e.datos && ` · ${e.datos}`}{(e.acciones.length > 0 || e.hice) && ` · qué hice: ${[e.acciones.join(', '), e.hice].filter(Boolean).join('. ')}`}</td>
                 </tr>
               ))}
             </tbody></table>

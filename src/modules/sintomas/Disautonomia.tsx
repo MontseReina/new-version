@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DateNav } from '../../components/DateNav'
 import { Section } from '../../components/ui'
@@ -11,7 +12,10 @@ import { useOuraDia } from '../oura/useOuraDia'
 import { Constantes } from './Constantes'
 import { Editor } from './Editor'
 import { Grupos } from './Grupos'
-import { gruposDe, gruposDePagina, type SintCfg, type SintDia } from './logica'
+import { conGruposNuevos, gruposDe, gruposDePagina, type SintCfg, type SintDia } from './logica'
+
+/** Los grupos nuevos se añaden una sola vez por sesión, aunque la pantalla se pinte varias veces. */
+let anadidos = false
 
 /**
  * Disautonomía: frecuencia cardíaca del día de Oura (en pequeño), constantes con su hora, episodios (hora, intensidad, ingreso y qué hice), los grupos del día
@@ -22,6 +26,12 @@ export default function Disautonomia() {
   const date = useParams().date ?? todayStr()
   const { value: d, set, state, retry } = useDaily<SintDia>('sintomas', date)
   const [cfg, saveCfg] = useSettings<SintCfg>('sintomas')
+  useEffect(() => {
+    const nuevos = conGruposNuevos(cfg)
+    if (!nuevos || anadidos) return
+    anadidos = true
+    void saveCfg(nuevos)
+  }, [cfg, saveCfg])
   const hidra = useHidra(date)
   const oura = useOuraDia(date)
   const todos = gruposDe(cfg)
