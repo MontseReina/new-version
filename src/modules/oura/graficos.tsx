@@ -146,7 +146,7 @@ export function BarraFases({ profundo = 0, rem = 0, ligero = 0, despierta = 0 }:
 /* ---------- Curva por horas, se puede tocar ---------- */
 
 /** Índice del punto más cercano al dedo o al cursor. */
-function indiceEn(e: PointerEvent<SVGSVGElement>, n: number, L: number, R: number, W: number) {
+export function indiceEn(e: PointerEvent<SVGSVGElement>, n: number, L: number, R: number, W: number) {
   const r = e.currentTarget.getBoundingClientRect()
   const x = ((e.clientX - r.left) / r.width) * W
   return Math.max(0, Math.min(n - 1, Math.round(((x - L) / (W - L - R)) * (n - 1))))

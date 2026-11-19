@@ -155,7 +155,11 @@ function repartir(cuerpo: any): { porDia: Record<string, Doc>; metricas: string[
         const media = numero(p.Avg) ?? numero(p.avg) ?? numero(p.qty)
         if (media == null) continue
         const max = numero(p.Max) ?? numero(p.max) ?? media
-        ;(doc(t.dia).fc_puntos ??= []).push([t.hora, Math.round(media), Math.round(max)])
+        // Varias lecturas en el mismo minuto (Health Auto Export puede mandar por segundos): media de las medias y el máximo.
+        const fp = (doc(t.dia).fc_puntos ??= [])
+        const mismo = fp.find((x) => x[0] === t.hora)
+        if (mismo) { mismo[1] = Math.round((mismo[1] + media) / 2); mismo[2] = Math.max(mismo[2], Math.round(max)) }
+        else fp.push([t.hora, Math.round(media), Math.round(max)])
       } else if (nombre === 'resting_heart_rate') {
         const v = numero(p.qty)
         if (v == null) continue

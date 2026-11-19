@@ -7,10 +7,9 @@ import { useDaily } from '../../store/useDaily'
 import { useSettings } from '../../store/useSettings'
 import { EditarPauta, HidraCompacta } from '../hidratacion/Compacta'
 import { useHidra } from '../hidratacion/useHidra'
-import { FcDelDia } from '../oura/FcDelDia'
 import { useOuraDia } from '../oura/useOuraDia'
 import { ConectarReloj } from '../reloj/Conectar'
-import { RelojDelDia } from '../reloj/RelojDelDia'
+import { PulsoDelDia } from '../reloj/PulsoDelDia'
 import { useRelojDia } from '../reloj/useRelojDia'
 import { Constantes } from './Constantes'
 import { Editor } from './Editor'
@@ -21,7 +20,7 @@ import { conGruposNuevos, gruposDe, gruposDePagina, type SintCfg, type SintDia }
 let anadidos = false
 
 /**
- * Disautonomía: frecuencia cardíaca del día de Oura (en pequeño), resumen del reloj (pulso, variabilidad, saturación), constantes con su hora, episodios (hora, intensidad, ingreso y qué hice), los grupos del día
+ * Disautonomía: pulso del día del reloj y de Oura (curva con dos líneas y tabla), constantes con su hora, episodios (hora, intensidad, ingreso y qué hice), los grupos del día
  * que la usuaria haya puesto en esta pantalla (energía, neurología, emocional…) e hidratación reducida.
  * Escribe en el mismo registro diario que Ciclo menstrual ('sintomas'): lo ya anotado se conserva.
  */
@@ -52,10 +51,9 @@ export default function Disautonomia() {
         <div className="notice small">No se ha podido guardar. Revisa la conexión. <button type="button" className="btn sm secondary" onClick={() => void retry()}>Reintentar</button></div>
       )}
 
-      <FcDelDia fc={oura?.fc_dia} />
-      <RelojDelDia r={reloj} />
+      <PulsoDelDia reloj={reloj} oura={oura} />
       <fieldset className="sint" disabled={state === 'cargando'}>
-        <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} reloj={reloj?.ta} />
+        <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} relojDia={reloj} />
       </fieldset>
       <Grupos grupos={episodios} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />
       <Grupos grupos={resto} d={d} set={set} date={date} acciones={cfg?.acciones} disabled={state === 'cargando'} />

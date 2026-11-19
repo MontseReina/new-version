@@ -1,7 +1,7 @@
 import { todayStr, nowHM } from '../../lib/dates'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
-import type { TaReloj } from '../reloj/tipos'
+import type { RelojDia, TaReloj } from '../reloj/tipos'
 import { TestDePie, ahoraHMS, programarPitidos } from './TestDePie'
 import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, porDefectoMomento, subtomasDe, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
 
@@ -16,8 +16,25 @@ const num = (v: string) => (v === '' ? null : Number(v))
  * También mezcladas por hora, las tensiones que llegaron del reloj (Apple Salud): con un toque se guardan en la medición fija
  * que corresponda (o como esporádica), con el pulso del reloj si lo había; desde ahí se completan como cualquier toma.
  */
-export function Constantes({ d, set, date, oura = [], reloj = [] }: { d: SintDia; set: (patch: SintDia) => void; date: string; oura?: FcAlta[]; reloj?: TaReloj[] }) {
+export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: SintDia; set: (patch: SintDia) => void; date: string; oura?: FcAlta[]; relojDia?: RelojDia | null }) {
   const xs = d.constantes ?? []
+  const reloj = relojDia?.ta ?? []
+  const relojAltas = relojDia?.fc_altas ?? []
+  // «Siento taquicardia ahora»: cuando llega el pulso del reloj de ese momento (±5 min), se pone solo el más alto.
+  useEffect(() => {
+    const puntos = relojDia?.fc_puntos ?? []
+    if (!puntos.length) return
+    const m = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
+    let cambia = false
+    const nuevas = xs.map((x) => {
+      if (!x.taquicardia || x.fc != null || !x.hora) return x
+      const cerca = puntos.filter(([h]) => Math.abs(m(h) - m(x.hora!)) <= 5)
+      if (!cerca.length) return x
+      cambia = true
+      return { ...x, fc: Math.max(...cerca.map((p) => p[2])), fc_de_reloj: true }
+    })
+    if (cambia) set({ constantes: nuevas })
+  }, [relojDia, xs, set])
   const [abierta, setAbierta] = useState<Momento | null>(null)
   const [otraDe, setOtraDe] = useState<string | null>(null)
   const horaAhora = () => (date === todayStr() ? { hora: nowHM() } : {})
@@ -36,6 +53,7 @@ export function Constantes({ d, set, date, oura = [], reloj = [] }: { d: SintDia
   }
   const quitar = (i: number) => set({ constantes: xs.filter((_, k) => k !== i) })
   const nueva = () => set({ constantes: [...xs, horaAhora()] })
+  const taquicardia = () => set({ constantes: [...xs, { ...horaAhora(), taquicardia: true }] })
   // Al plegar una medición fija, se borran sus tomas sin nada anotado.
   const plegar = (m: Momento | null) => {
     const vacias = xs.filter((x) => abierta && x.momento === abierta && !medidaConDatos(x))
@@ -108,6 +126,7 @@ export function Constantes({ d, set, date, oura = [], reloj = [] }: { d: SintDia
         <div className="chips" role="group" aria-label="Hidratación antes de medir">
           {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k }, base)}>{l}</button>)}
         </div>
+        {x.taquicardia && <div className="small" style={{ marginTop: '.4rem' }}>❤️ <b>Sentí taquicardia</b>{x.fc_de_reloj ? <span className="muted"> · pulso puesto por el reloj</span> : x.fc == null ? <span className="muted"> · el pulso del reloj se pondrá solo cuando llegue</span> : null}</div>}
         {x.de_reloj && <div className="muted small" style={{ marginTop: '.4rem' }}>Tensión del reloj de las {x.de_reloj}.</div>}
         {x.de_oura && <div className="muted small" style={{ marginTop: '.4rem' }}>Empezó como pulso alto del anillo Oura.</div>}
         <label className="medida-nota">
@@ -122,6 +141,10 @@ export function Constantes({ d, set, date, oura = [], reloj = [] }: { d: SintDia
   const completados = new Set(xs.filter((x) => x.de_oura && x.hora).map((x) => x.hora))
   const deOura = oura.filter((a) => !completados.has(a.hora))
   const completar = (a: FcAlta) => set({ constantes: [...xs, { hora: a.hora, fc: a.fc, de_oura: true }] })
+  // Ratos de pulso alto del reloj que no están ya en una toma (completada desde aquí o de «Siento taquicardia» a esa hora).
+  const minHM = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
+  const altasReloj = relojAltas.filter((a) => !xs.some((x) => x.de_reloj === a.hora || (x.taquicardia && x.hora && minHM(x.hora) >= minHM(a.hora) - 2 && minHM(x.hora) <= minHM(a.hora) + a.min + 2)))
+  const completarReloj = (a: { hora: string; fc: number }) => set({ constantes: [...xs, { hora: a.hora, fc: a.fc, fc_de_reloj: true, de_reloj: a.hora }] })
   // Tensiones del reloj que aún no están en ninguna toma (ni guardadas desde aquí ni tecleadas a mano a la misma hora con la misma cifra).
   const minDe = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
   const yaEsta = (t: TaReloj) => xs.some((x) => x.de_reloj === t.hora || (x.hora && x.pas === t.pas && x.pad === t.pad && Math.abs(minDe(x.hora) - minDe(t.hora)) <= 5))
@@ -153,10 +176,11 @@ export function Constantes({ d, set, date, oura = [], reloj = [] }: { d: SintDia
     }
   }
   // Esporádicas: se enseñan de la más reciente a la más antigua; se guardan en el orden en que se anotan.
-  type Fila = { hora: string; x?: Medida; i?: number; a?: FcAlta }
+  type Fila = { hora: string; x?: Medida; i?: number; a?: FcAlta; ar?: { hora: string; fc: number; min: number } }
   const orden: Fila[] = [
     ...xs.map((x, i) => ({ hora: x.hora ?? '', x, i })).filter(({ x }) => !x.momento),
     ...deOura.map((a) => ({ hora: a.hora, a })),
+    ...altasReloj.map((ar) => ({ hora: ar.hora, ar })),
   ].sort((p, q) => q.hora.localeCompare(p.hora))
 
   const tarjetaReloj = (t: TaReloj) => {
@@ -238,10 +262,27 @@ export function Constantes({ d, set, date, oura = [], reloj = [] }: { d: SintDia
 
       <div className="row between" style={{ marginTop: '1rem' }}>
         <h4 style={{ margin: 0 }}>Esporádicas</h4>
-        <button type="button" className="btn sm" onClick={nueva}>+ Registrar</button>
+        <div className="row" style={{ gap: '.4rem' }}>
+          {date === todayStr() && <button type="button" className="btn sm secondary" onClick={taquicardia}>❤️ Siento taquicardia ahora</button>}
+          <button type="button" className="btn sm" onClick={nueva}>+ Registrar</button>
+        </div>
       </div>
       {esporadicas === 0 && <p className="muted small" style={{ marginBottom: 0 }}>Para tomas fuera de las fijas: durante un episodio, después de un esfuerzo… Cada una lleva su hora.</p>}
-      {orden.map(({ x, i, a }) => {
+      {orden.map(({ x, i, a, ar }) => {
+        if (ar) {
+          const avisosR = avisosMedida({ fc: ar.fc })
+          return (
+            <div className="medida medida-oura medida-reloj" key={'reloj-fc-' + ar.hora}>
+              <div className="row between">
+                <span className="small"><span className="muted">Hora</span> <b>{ar.hora}</b></span>
+                <span className="tag">Reloj · automático</span>
+              </div>
+              <div className="medida-oura-fc">Frecuencia cardíaca <b>{ar.fc} lpm</b> <span className="muted small">máximo durante {ar.min} min</span></div>
+              {avisosR.length > 0 && <div className="medida-avisos">{avisosR.map((t) => <span key={t} className="medida-aviso">{t}</span>)}</div>}
+              <button type="button" className="linkbtn small" onClick={() => completarReloj(ar)}>Completar con mis constantes</button>
+            </div>
+          )
+        }
         if (a) {
           const avisosA = avisosMedida({ fc: a.fc })
           return (

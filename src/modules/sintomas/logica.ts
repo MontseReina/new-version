@@ -108,6 +108,10 @@ export type Medida = {
   de_oura?: boolean | null
   /** Toma que llegó del reloj (Apple Salud): hora de la lectura del reloj, para no enseñarla dos veces (desde la 0.25.0). */
   de_reloj?: string | null
+  /** Toma abierta con «Siento taquicardia ahora» (desde la 0.25.0): el pulso del reloj de ese minuto se rellena solo. */
+  taquicardia?: boolean | null
+  /** El pulso de la toma lo puso el reloj (no se tecleó). */
+  fc_de_reloj?: boolean | null
   /** Medición fija del día a la que pertenece (desde la 0.24.0). Sin ella, es una toma esporádica. */
   momento?: Momento | null
   /** En «Poslevantarme»: minutos que llevaba de pie al medir (test de bipedestación, desde la 0.24.0). */

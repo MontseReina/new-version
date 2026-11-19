@@ -872,3 +872,10 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .reloj-pendientes { margin: .4rem 0 .6rem; padding: .5rem .6rem; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--primary-soft); }
 .reloj-pendientes .medida { background: var(--card); }
 .reloj-url code { display: block; word-break: break-all; padding: .4rem .5rem; margin-top: .3rem; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); }
+.curva-leyenda { display: flex; gap: .9rem; margin: .15rem 0 .1rem; }
+.curva-leyenda i { display: inline-block; width: .9rem; height: .2rem; border-radius: 2px; margin-right: .3rem; vertical-align: middle; }
+.pulso-tabla { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+.pulso-tabla th, .pulso-tabla td { padding: .3rem .25rem; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+.pulso-tabla thead th { border-top: 0; font-weight: 700; }
+.pulso-tabla tbody th { font-weight: 400; width: 44%; }
+.pulso-tabla td { font-weight: 600; white-space: nowrap; }
