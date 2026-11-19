@@ -262,7 +262,7 @@ export const GRUPOS_DISAUTONOMIA: Grupo[] = [
   { id: 'compresion', nombre: 'Compresión', tipo: 'varias', neutra: true, pagina: 'disautonomia', opciones: op('Sin compresión', 'Medias', 'Faja abdominal') },
   { id: 'eds_compresiones', nombre: 'Ehlers-Danlos y compresiones', tipo: 'varias', neutra: true, pagina: 'disautonomia', opciones: op(
     'Nada hoy',
-    'Dolor abdominal después de comer', 'Saciedad precoz', 'Vómitos después de comer', 'Alivio tumbada boca arriba o boca abajo',
+    'Dolor abdominal después de comer', 'Saciedad precoz', 'Vómitos después de comer', 'Alivio tumbada boca arriba', 'Alivio tumbada boca abajo', 'Alivio tumbada sobre el lado izquierdo',
     'Dolor pélvico que empeora de pie', 'Sangre en la orina',
     'Rubor o enrojecimiento', 'Sofocos', 'Picor', 'Habones (ronchas)', 'Dermografismo (marcas al rascar)', 'Congestión nasal',
     'Subluxación o luxación', 'Dolor articular', 'Hematomas sin golpe', 'Piernas o manos moradas de pie', 'Manos y pies fríos',
