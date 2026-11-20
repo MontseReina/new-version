@@ -37,6 +37,8 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
   }, [relojDia, xs, set])
   const [abierta, setAbierta] = useState<Momento | null>(null)
   const [otraDe, setOtraDe] = useState<string | null>(null)
+  /** Esporádica desplegada (índice en `constantes`); las demás salen plegadas en una línea. */
+  const [espAbierta, setEspAbierta] = useState<number | null>(null)
   const horaAhora = () => (date === todayStr() ? { hora: nowHM() } : {})
   /** i = -1: medición fija todavía sin toma; se crea al anotar el primer dato. */
   const poner = (i: number, patch: Medida, base?: Medida) => {
@@ -52,8 +54,8 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
     set({ constantes: xs.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   }
   const quitar = (i: number) => set({ constantes: xs.filter((_, k) => k !== i) })
-  const nueva = () => set({ constantes: [...xs, horaAhora()] })
-  const taquicardia = () => set({ constantes: [...xs, { ...horaAhora(), taquicardia: true }] })
+  const nueva = () => { setEspAbierta(xs.length); set({ constantes: [...xs, horaAhora()] }) }
+  const taquicardia = () => { setEspAbierta(xs.length); set({ constantes: [...xs, { ...horaAhora(), taquicardia: true }] }) }
   // Al plegar una medición fija, se borran sus tomas sin nada anotado.
   const plegar = (m: Momento | null) => {
     const vacias = xs.filter((x) => abierta && x.momento === abierta && !medidaConDatos(x))
@@ -127,7 +129,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
           {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k }, base)}>{l}</button>)}
         </div>
         {x.taquicardia && <div className="small" style={{ marginTop: '.4rem' }}>❤️ <b>Sentí taquicardia</b>{x.fc_de_reloj ? <span className="muted"> · pulso puesto por el reloj</span> : x.fc == null ? <span className="muted"> · el pulso del reloj se pondrá solo cuando llegue</span> : null}</div>}
-        {x.de_reloj && <div className="muted small" style={{ marginTop: '.4rem' }}>Tensión del reloj de las {x.de_reloj}.</div>}
+        {x.de_reloj && <div className="muted small" style={{ marginTop: '.4rem' }}>{x.pas != null ? 'Tensión' : 'Pulso'} del reloj de las {x.de_reloj}.</div>}
         {x.de_oura && <div className="muted small" style={{ marginTop: '.4rem' }}>Empezó como pulso alto del anillo Oura.</div>}
         <label className="medida-nota">
           <span className="medida-eje small muted">Notas de esta toma</span>
@@ -140,11 +142,11 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
   // Ratos de Oura que no se han completado ya a mano.
   const completados = new Set(xs.filter((x) => x.de_oura && x.hora).map((x) => x.hora))
   const deOura = oura.filter((a) => !completados.has(a.hora))
-  const completar = (a: FcAlta) => set({ constantes: [...xs, { hora: a.hora, fc: a.fc, de_oura: true }] })
+  const completar = (a: FcAlta) => { setEspAbierta(xs.length); set({ constantes: [...xs, { hora: a.hora, fc: a.fc, de_oura: true }] }) }
   // Ratos de pulso alto del reloj que no están ya en una toma (completada desde aquí o de «Siento taquicardia» a esa hora).
   const minHM = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
   const altasReloj = relojAltas.filter((a) => !xs.some((x) => x.de_reloj === a.hora || (x.taquicardia && x.hora && minHM(x.hora) >= minHM(a.hora) - 2 && minHM(x.hora) <= minHM(a.hora) + a.min + 2)))
-  const completarReloj = (a: { hora: string; fc: number }) => set({ constantes: [...xs, { hora: a.hora, fc: a.fc, fc_de_reloj: true, de_reloj: a.hora }] })
+  const completarReloj = (a: { hora: string; fc: number }) => { setEspAbierta(xs.length); set({ constantes: [...xs, { hora: a.hora, fc: a.fc, fc_de_reloj: true, de_reloj: a.hora }] }) }
   // Tensiones del reloj que aún no están en ninguna toma (ni guardadas desde aquí ni tecleadas a mano a la misma hora con la misma cifra).
   const minDe = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
   const yaEsta = (t: TaReloj) => xs.some((x) => x.de_reloj === t.hora || (x.hora && x.pas === t.pas && x.pad === t.pad && Math.abs(minDe(x.hora) - minDe(t.hora)) <= 5))
@@ -254,6 +256,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
               {abiertaEsta && <>
                 {k === 'poslevantarme' && <TestDePie modo="ficha" inicio={d.test_pie?.inicio ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { inicio: h } })} />}
                 {subs.map(({ sub, i, x }) => formulario(x ?? porDefectoMomento(k, sub), i, porDefectoMomento(k, sub), sub ? `A los ${sub} minutos de pie` : undefined))}
+                <button type="button" className="linkbtn small" style={{ margin: '.2rem .6rem .5rem' }} onClick={() => plegar(null)}>Plegar ▴</button>
               </>}
             </div>
           )
@@ -299,7 +302,22 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
           )
         }
         if (!x || i == null) return null
-        return formulario(x, i)
+        const abiertaE = espAbierta === i
+        const avE = avisosMedida(x)
+        return (
+          <div key={'esp-' + i} className={'fija esporadica' + (abiertaE ? ' abierta' : '')}>
+            <button type="button" className="fija-cab" aria-expanded={abiertaE} onClick={() => setEspAbierta(abiertaE ? null : i)}>
+              <span className="fija-marca" aria-hidden="true">{x.taquicardia ? '❤️' : x.de_reloj ? '⌚' : ''}</span>
+              <span className="fija-nombre">{x.hora ?? 'Sin hora'}</span>
+              <span className="fija-resumen small">{resumenDe(x)}{avE.length > 0 && <span className="fija-aviso"> ⚠</span>}</span>
+              <span className="fija-flecha" aria-hidden="true">{abiertaE ? '▴' : '▾'}</span>
+            </button>
+            {abiertaE && <>
+              {formulario(x, i)}
+              <button type="button" className="linkbtn small" style={{ margin: '.2rem .6rem .5rem' }} onClick={() => setEspAbierta(null)}>Plegar ▴</button>
+            </>}
+          </div>
+        )
       })}
     </div>
   )
