@@ -154,7 +154,8 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
   /** Guarda la tensión del reloj en una medición fija (k, sub) o, sin k, como esporádica. Si la fija ya tenía toma, se completa. */
   const asignarReloj = (t: TaReloj, k: Momento | null, sub: number | null) => {
     const datos: Medida = { pas: t.pas, pad: t.pad, de_reloj: t.hora, ...(t.fc != null ? { fc: t.fc } : {}) }
-    if (!k) return set({ constantes: [...xs, { hora: t.hora, ...datos }] })
+    // Como esporádica: se guarda y se despliega para añadir qué pasó (tipo, posición, notas…).
+    if (!k) { setEspAbierta(xs.length); return set({ constantes: [...xs, { hora: t.hora, ...datos }] }) }
     const i = indiceDe(k, sub)
     if (i >= 0) return set({ constantes: xs.map((x, n) => (n === i ? { ...x, ...datos, fc: x.fc ?? datos.fc ?? null, hora: x.hora ?? t.hora } : x)) })
     set({ constantes: [...xs, { ...porDefectoMomento(k, sub), hora: t.hora, ...datos }] })
@@ -167,14 +168,26 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
   })).filter((h) => h.libre)
   // Momento que se sugiere para cada tensión del reloj, por la hora y en orden: la primera de la mañana va a «Al levantarme»,
   // las siguientes a «Poslevantarme» 5′ y 10′; después, por franjas. Es solo una sugerencia: se puede elegir otro.
-  const FRANJAS: [number, Momento[]][] = [[9 * 60 + 30, ['levantarme', 'poslevantarme']], [12 * 60 + 30, ['media_manana']], [14 * 60 + 30, ['antes_comer']], [16 * 60 + 30, ['despues_comer']], [20 * 60, ['media_tarde']], [21 * 60 + 30, ['antes_cenar']], [24 * 60, ['antes_cama']]]
+  // Antes de las 5:00 (madrugada) no se sugiere ninguna fija: se ofrece como esporádica.
+  const FRANJAS: [number, Momento[]][] = [[5 * 60, []], [9 * 60 + 30, ['levantarme', 'poslevantarme']], [12 * 60 + 30, ['media_manana']], [14 * 60 + 30, ['antes_comer']], [16 * 60 + 30, ['despues_comer']], [20 * 60, ['media_tarde']], [21 * 60 + 30, ['antes_cenar']], [24 * 60, ['antes_cama']]]
   const sugerida = new Map<string, (typeof huecos)[number]>()
   {
     const libres = [...huecos]
+    // Hora de «Al levantarme» (la ya guardada o la sugerida) para elegir «Poslevantarme» 5′ o 10′ según los minutos pasados.
+    const lev = xs.find((x) => x.momento === 'levantarme' && x.hora)?.hora
+    let tLev: number | null = lev ? minDe(lev) : null
     for (const t of [...deReloj].sort((p, q) => p.hora.localeCompare(q.hora))) {
-      const franja = FRANJAS.find(([fin]) => minDe(t.hora) < fin)?.[1] ?? []
-      const n = libres.findIndex((h) => franja.includes(h.k))
-      if (n >= 0) { sugerida.set(t.hora, libres[n]); libres.splice(n, 1) }
+      const tm = minDe(t.hora)
+      const franja = FRANJAS.find(([fin]) => tm < fin)?.[1] ?? []
+      let n = libres.findIndex((h) => franja.includes(h.k))
+      if (n >= 0 && libres[n].k === 'poslevantarme' && tLev != null && tm - tLev >= 8) {
+        const diez = libres.findIndex((h) => h.k === 'poslevantarme' && h.sub === 10)
+        if (diez >= 0) n = diez
+      }
+      if (n >= 0) {
+        if (libres[n].k === 'levantarme') tLev = tm
+        sugerida.set(t.hora, libres[n]); libres.splice(n, 1)
+      }
     }
   }
   // Esporádicas: se enseñan de la más reciente a la más antigua; se guardan en el orden en que se anotan.
@@ -199,6 +212,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
         {avisosT.length > 0 && <div className="medida-avisos">{avisosT.map((v) => <span key={v} className="medida-aviso">{v}</span>)}</div>}
         <div className="row" style={{ gap: '.5rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
           {sug && <button type="button" className="btn sm" onClick={() => asignarReloj(t, sug.k, sug.sub)}>Guardar en «{sug.l}»</button>}
+          <button type="button" className={'btn sm' + (sug ? ' secondary' : '')} onClick={() => asignarReloj(t, null, null)}>Guardar como esporádica</button>
           <button type="button" className="linkbtn small" aria-expanded={otra} onClick={() => setOtraDe(otra ? null : t.hora)}>{sug ? 'Es otro momento' : 'Elegir el momento'} {otra ? '▴' : '▾'}</button>
         </div>
         {otra && <div className="chips" role="group" aria-label="Guardar la tensión del reloj en" style={{ marginTop: '.3rem' }}>
