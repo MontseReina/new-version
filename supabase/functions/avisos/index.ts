@@ -1449,13 +1449,19 @@ const aMin = (h) => {
 };
 /**
 * Hora (en minutos del día) a la que se levantó: la de la toma de constantes «Al levantarme» de Disautonomía
-* (su primera tensión del día, desde la 0.24.0). Sin ella, la del toque «al levantarme» de Hidratación.
+* (su primera tensión del día, desde la 0.24.0). Sin ella, la del botón «Me acabo de levantar» (inicio del test de pie,
+* desde la 0.25.3) y, si tampoco, la del toque «al levantarme» de Hidratación.
 */
 function horaLevantarse(sint, hc, hidra) {
 	const t = aMin((sint?.constantes ?? []).find((c) => c.momento === "levantarme")?.hora);
 	if (t != null) return {
 		min: t,
 		de: "tension"
+	};
+	const b = aMin(sint?.test_pie?.inicio);
+	if (b != null) return {
+		min: b,
+		de: "boton"
 	};
 	const i = filaLevantar(hc);
 	const k = i >= 0 ? "pauta:" + i : "levantar";
@@ -1519,7 +1525,7 @@ const AVISOS = [
 	{
 		id: "pie",
 		nombre: "Test de pie",
-		detalle: "A los 5 y a los 10 minutos de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.",
+		detalle: "A los 5 y a los 10 minutos de tocar «Me acabo de levantar» o de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.",
 		porDefecto: true
 	},
 	{

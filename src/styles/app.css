@@ -879,3 +879,5 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .pulso-tabla thead th { border-top: 0; font-weight: 700; }
 .pulso-tabla tbody th { font-weight: 400; width: 44%; }
 .pulso-tabla td { font-weight: 600; white-space: nowrap; }
+.levantarme-ya { margin: .3rem 0 .6rem; padding: .6rem; border-radius: var(--radius); background: var(--primary-soft); }
+.levantarme-ya .btn { width: 100%; }

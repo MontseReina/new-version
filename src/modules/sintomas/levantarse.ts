@@ -5,11 +5,14 @@ const aMin = (h?: string | null) => { const p = /^(\d{1,2}):(\d{2})/.exec(h ?? '
 
 /**
  * Hora (en minutos del día) a la que se levantó: la de la toma de constantes «Al levantarme» de Disautonomía
- * (su primera tensión del día, desde la 0.24.0). Sin ella, la del toque «al levantarme» de Hidratación.
+ * (su primera tensión del día, desde la 0.24.0). Sin ella, la del botón «Me acabo de levantar» (inicio del test de pie,
+ * desde la 0.25.3) y, si tampoco, la del toque «al levantarme» de Hidratación.
  */
-export function horaLevantarse(sint: SintDia | null | undefined, hc: HidraCfg | null, hidra: HidraDia | null | undefined): { min: number; de: 'tension' | 'hidratacion' } | null {
+export function horaLevantarse(sint: SintDia | null | undefined, hc: HidraCfg | null, hidra: HidraDia | null | undefined): { min: number; de: 'tension' | 'boton' | 'hidratacion' } | null {
   const t = aMin((sint?.constantes ?? []).find((c) => c.momento === 'levantarme')?.hora)
   if (t != null) return { min: t, de: 'tension' }
+  const b = aMin(sint?.test_pie?.inicio)
+  if (b != null) return { min: b, de: 'boton' }
   const i = filaLevantar(hc)
   const k = i >= 0 ? 'pauta:' + i : 'levantar'
   const h = aMin((hidra?.horas ?? []).find((x) => x.k === k)?.h)

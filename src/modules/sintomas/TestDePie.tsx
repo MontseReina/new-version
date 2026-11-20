@@ -64,11 +64,11 @@ export function TestDePie({ inicio, hoy, reiniciar, modo }: { inicio: string | n
       </div>
       {!inicio || !hoy ? (
         <p className="small" style={{ margin: '.2rem 0 0' }}>{hoy
-          ? 'El reloj empieza solo al anotar la toma de «Al levantarme». Después ponte de pie, quieta: te aviso a los 5 y a los 10 minutos.'
+          ? 'El reloj empieza al tocar «Me acabo de levantar» o al anotar la toma de «Al levantarme». Después ponte de pie, quieta: te aviso a los 5 y a los 10 minutos.'
           : 'Sin test de pie este día.'}</p>
       ) : (
         <>
-          <div className="small muted">Desde las {inicio.slice(0, 5)} (toma de «Al levantarme»)</div>
+          <div className="small muted">De pie desde las {inicio.slice(0, 5)}</div>
           {corriendo && (toca
             ? <div className="test-pie-ahora">Toma la tensión de los {toca} minutos</div>
             : siguiente ? <div className="small">Toma de los {siguiente} minutos en <b>{mmss(siguiente * 60 - seg!)}</b></div>

@@ -37,7 +37,7 @@ const nivel = (seg: number, maxH: number) => (seg > maxH * 3600 ? 'rojo' : seg >
  *  la hora como tope. Debajo, a la izquierda, el ayuno de la noche: desde la última comida de ayer hasta la primera
  *  toma de hoy, y ahí se para. A la derecha, el tiempo desde la última comida, siempre en marcha.
  *  `levantar`: minuto del día en que se levantó (null si aún no consta) y de dónde sale. */
-export function Reloj({ cfg, ayer, dia, levantar }: { cfg: NutriCfg; ayer: NutriDia | null; dia: NutriDia; levantar: { min: number; de: 'tension' | 'hidratacion' } | null }) {
+export function Reloj({ cfg, ayer, dia, levantar }: { cfg: NutriCfg; ayer: NutriDia | null; dia: NutriDia; levantar: { min: number; de: 'tension' | 'boton' | 'hidratacion' } | null }) {
   const [ahora, setAhora] = useState(() => new Date())
   useEffect(() => { const t = window.setInterval(() => setAhora(new Date()), 1000); return () => window.clearInterval(t) }, [])
   const maxH = cfg.ayuno_max_h ?? AYUNO_MAX_POR_DEFECTO
@@ -96,7 +96,7 @@ export function Reloj({ cfg, ayer, dia, levantar }: { cfg: NutriCfg; ayer: Nutri
     const minHasta = primera ? Math.max(primera.ini, levantar.min) : ahoraMin
     const seg = Math.max(0, (minHasta - levantar.min) * 60 + (enMarcha ? s : 0))
     const lv = seg > LEVANTAR_MAX_MIN * 60 ? 'rojo' : seg >= LEVANTAR_AVISO_MIN * 60 ? 'amarillo' : 'verde'
-    const de = levantar.de === 'tension' ? 'primera tensión' : 'botón «al levantarme» de Hidratación'
+    const de = levantar.de === 'tension' ? 'primera tensión' : levantar.de === 'boton' ? 'botón «Me acabo de levantar»' : 'botón «al levantarme» de Hidratación'
     arriba = (
       <div className={'reloj-uno ancho ' + lv} role="timer" aria-label={`Desde que me levanté: ${Math.floor(seg / 60)} minutos`}>
         <Aro seg={seg} maxH={LEVANTAR_MAX_MIN / 60} enMarcha={enMarcha} minutos />
