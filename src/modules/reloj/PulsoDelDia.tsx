@@ -45,12 +45,44 @@ function vfcOura(o: OuraDia | null): (number | null)[] {
   return suma.map((s, i) => (n[i] ? Math.round(s / n[i]) : null))
 }
 
+/** Pulso del día minuto a minuto (1440 casillas desde las 00:00). */
+const DIA_MIN = 1440
+/** Pulso a partir del cual una lectura se marca aparte en la curva (como los ratos de la tabla). */
+const FC_ALTA = 100
+/** Más de este hueco sin lecturas del reloj (minutos) corta la línea. */
+const FC_HUECO_MIN = 60
+
+/**
+ * Cada medición de pulso del reloj en su minuto: la línea va por el valor de la lectura y, si en ese minuto
+ * se llegó a 100 lpm o más, el máximo se marca con un círculo. Sin lecturas sueltas, la media de cada media hora.
+ */
+function fcRelojMinutos(r: RelojDia | null): { valores: (number | null)[]; picos: (number | null)[] } {
+  const valores: (number | null)[] = Array(DIA_MIN).fill(null)
+  const picos: (number | null)[] = Array(DIA_MIN).fill(null)
+  const fp = r?.fc_puntos ?? []
+  if (fp.length) {
+    for (const [h, med, max] of fp) {
+      const i = Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
+      if (!(i >= 0 && i < DIA_MIN)) continue
+      valores[i] = med
+      if (max >= FC_ALTA) picos[i] = max
+    }
+  } else (r?.fc_dia ?? []).forEach((v, k) => { if (v != null && k * 30 < DIA_MIN) valores[k * 30] = v })
+  return { valores, picos }
+}
+/** La curva de Oura (una media cada 30 minutos) en el mismo eje de minutos. */
+function fcOuraMinutos(o: OuraDia | null): (number | null)[] {
+  const v: (number | null)[] = Array(DIA_MIN).fill(null)
+  ;(o?.fc_dia ?? []).forEach((x, k) => { if (x != null && k * 30 < DIA_MIN) v[k * 30] = x })
+  return v
+}
+
 export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: RelojDia | null; oura: OuraDia | null; relojAyer?: RelojDia | null }) {
-  const fcR = r?.fc_dia ?? []
-  const fcO = o?.fc_dia ?? []
+  const { valores: fcR, picos: picosR } = fcRelojMinutos(r)
+  const fcO = fcOuraMinutos(o)
   const vfcR = (r?.vfc ?? []).map((p) => p[1])
   const satR = (r?.spo2 ?? []).map((p) => p[1])
-  const okO = nums(fcO)
+  const okO = nums(o?.fc_dia)
   const maxO = Math.max(...okO, ...(o?.fc_altas ?? []).map((a) => a.fc))
   const filas: { k: string; r: string | null; o: string | null; nota?: string }[] = [
     { k: 'Pulso en reposo', r: r?.fc?.reposo != null ? `${r.fc.reposo} lpm` : null, o: o?.noche?.fc_min != null ? `${o.noche.fc_min} lpm` : null, nota: 'Oura: el más bajo de la noche' },
@@ -73,10 +105,14 @@ export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: Re
   return (
     <div className="card pulso-dia">
       <h3 style={{ margin: 0 }}>❤️ Pulso del día <span className="tag">automático</span></h3>
-      {hayCurva && <CurvaDoble titulo="Frecuencia cardíaca" unidad="lpm" inicio="00:00" paso={30} alto={84}
-        series={[{ nombre: 'Reloj', valores: fcR, color: COLOR_RELOJ }, { nombre: 'Oura', valores: fcO, color: COLOR_OURA }]} />}
+      {hayCurva && <CurvaDoble titulo="Frecuencia cardíaca" unidad="lpm" inicio="00:00" paso={1} alto={96}
+        series={[
+          { nombre: 'Reloj', valores: fcR, picos: picosR, color: COLOR_RELOJ, unir: true, hueco: FC_HUECO_MIN, cerca: 20 },
+          { nombre: 'Oura', valores: fcO, color: COLOR_OURA, unir: true, hueco: 30, puntos: false, cerca: 15 },
+        ]} />}
+      {(r?.fc_puntos?.length ?? 0) > 0 && <p className="muted small" style={{ margin: '.1rem 0 0' }}>Cada punto rojo es una medición del reloj{picosR.some((p) => p != null) ? `; los círculos, lecturas a ${FC_ALTA} lpm o más` : ''}.</p>}
       {hayVfc && <CurvaDoble titulo="Variabilidad (VFC) de la noche" unidad="ms" inicio={vfcIni} paso={VFC_PASO} alto={84}
-        series={[{ nombre: 'Reloj', valores: vR, color: COLOR_RELOJ, unir: true }, { nombre: 'Oura', valores: vO, color: COLOR_OURA }]} />}
+        series={[{ nombre: 'Reloj', valores: vR, color: COLOR_RELOJ, unir: true, cerca: 3 }, { nombre: 'Oura', valores: vO, color: COLOR_OURA }]} />}
       {filas.length > 0 && (
         <table className="pulso-tabla small">
           <thead><tr><th /><th style={{ color: COLOR_RELOJ }}>Reloj</th><th style={{ color: COLOR_OURA }}>Oura</th></tr></thead>
