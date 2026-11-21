@@ -1,4 +1,5 @@
-import type { OuraDia } from '../oura/tipos'
+import { useState } from 'react'
+import { CONTEXTO_FC, type OuraDia } from '../oura/tipos'
 import { horaMas } from '../oura/graficos'
 import { CurvaDoble } from './CurvaDoble'
 import type { RelojDia } from './tipos'
@@ -78,7 +79,14 @@ function fcOuraMinutos(o: OuraDia | null): (number | null)[] {
 }
 
 export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: RelojDia | null; oura: OuraDia | null; relojAyer?: RelojDia | null }) {
+  const [foco, setFoco] = useState<{ casilla: number; vez: number } | null>(null)
   const { valores: fcR, picos: picosR } = fcRelojMinutos(r)
+  // Ratos a 100 lpm o más de los dos, por hora. Del reloj, un rato de 1 minuto es una lectura suelta.
+  const ratos = [
+    ...(r?.fc_altas ?? []).map((a) => ({ ...a, de: 'Reloj' as const, color: COLOR_RELOJ, contexto: undefined as string | undefined })),
+    ...(o?.fc_altas ?? []).map((a) => ({ ...a, de: 'Oura' as const, color: COLOR_OURA, contexto: a.contexto ? CONTEXTO_FC[a.contexto] : undefined })),
+  ].sort((a, b) => a.hora.localeCompare(b.hora))
+  const irA = (hm: string) => setFoco((f) => ({ casilla: Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5)), vez: (f?.vez ?? 0) + 1 }))
   const fcO = fcOuraMinutos(o)
   const vfcR = (r?.vfc ?? []).map((p) => p[1])
   const satR = (r?.spo2 ?? []).map((p) => p[1])
@@ -106,7 +114,7 @@ export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: Re
     <div className="card pulso-dia">
       <h3 style={{ margin: 0 }}>❤️ Pulso del día <span className="tag">automático</span></h3>
       {hayCurva && <CurvaDoble titulo="Frecuencia cardíaca" unidad="lpm" inicio="00:00" paso={1} alto={110}
-        ventanas={[{ etiqueta: '3 h', casillas: 180 }, { etiqueta: '6 h', casillas: 360 }, { etiqueta: 'Día', casillas: DIA_MIN }]}
+        ventanas={[{ etiqueta: '3 h', casillas: 180 }, { etiqueta: '6 h', casillas: 360 }, { etiqueta: 'Día', casillas: DIA_MIN }]} foco={foco}
         series={[
           { nombre: 'Reloj', valores: fcR, picos: picosR, color: COLOR_RELOJ, unir: true, hueco: FC_HUECO_MIN, cerca: 20 },
           { nombre: 'Oura', valores: fcO, color: COLOR_OURA, unir: true, hueco: 30, puntos: false, cerca: 15 },
@@ -127,6 +135,24 @@ export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: Re
             ))}
           </tbody>
         </table>
+      )}
+      {ratos.length > 0 && (
+        <div className="pulso-ratos">
+          <strong className="small">Ratos a {FC_ALTA} lpm o más</strong>
+          <ul>
+            {ratos.map((a, k) => (
+              <li key={a.de + a.hora + k}>
+                <button type="button" onClick={() => irA(a.hora)} title="Ver en la curva">
+                  <span className="pulso-ratos-hora">{a.hora}</span>
+                  <span style={{ color: a.color }}>{a.de}</span>
+                  <b>{a.fc} lpm</b>
+                  <span className="muted">{a.de === 'Reloj' && a.min <= 1 ? 'lectura suelta' : `${a.min} min`}{a.contexto ? ` · ${a.contexto}` : ''}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="muted small" style={{ margin: '.15rem 0 0' }}>Toca un rato para verlo en la curva.</p>
+        </div>
       )}
       {(vfcR.length > 0 || o?.noche?.vfc_media != null || hayVfc) && <p className="muted small" style={{ margin: '.3rem 0 0' }}>La variabilidad del reloj y la de Oura se calculan de forma distinta: compáralas por si suben o bajan a la vez, no por la cifra.</p>}
     </div>

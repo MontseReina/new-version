@@ -886,3 +886,9 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .curva-tramo .chip:disabled { opacity: .35; cursor: default; }
 .curva-tramo-horas { min-width: 7.5rem; text-align: center; font-weight: 600; }
 .curva-tramo-zoom { margin-left: auto; gap: .3rem; }
+.pulso-ratos { margin-top: .6rem; }
+.pulso-ratos ul { list-style: none; margin: .25rem 0 0; padding: 0; }
+.pulso-ratos li + li { border-top: 1px solid var(--line); }
+.pulso-ratos button { display: grid; grid-template-columns: 3.2rem 3.4rem 4.6rem 1fr; gap: .4rem; align-items: baseline; width: 100%; padding: .35rem .15rem; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.pulso-ratos button:hover { background: var(--primary-soft); }
+.pulso-ratos-hora { font-weight: 600; }

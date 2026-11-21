@@ -31,15 +31,18 @@ function proximo(vs: (number | null)[], i: number, cerca: number): number | null
 /** Tramo visible de la curva: `casillas` desde el principio; con varias opciones se elige con botones. */
 export type Ventana = { etiqueta: string; casillas: number }
 
-export function CurvaDoble({ series: todas, inicio: inicio0, paso, unidad, titulo, alto = 90, ventanas }: {
+export function CurvaDoble({ series: todas, inicio: inicio0, paso, unidad, titulo, alto = 90, ventanas, foco }: {
   series: Serie[]; inicio: string; paso: number; unidad: string; titulo: string; alto?: number
   /** Si se da, la curva enseña un tramo cada vez (la primera opción de entrada) con flechas para ir hacia atrás y hacia delante. */
   ventanas?: Ventana[]
+  /** Lleva la curva a esa casilla y la marca (p. ej. al tocar un rato de pulso alto). `vez` cambia en cada toque. */
+  foco?: { casilla: number; vez: number } | null
 }) {
   const [sel, setSel] = useState<number | null>(null)
   const [ref, W] = useAncho()
   const [vIdx, setVIdx] = useState(0)
   const [ini, setIni] = useState<number | null>(null)
+  const [focoVisto, setFocoVisto] = useState(0)
   const conTodas = todas.filter((s) => s.valores.some((v) => v != null))
   // La escala es la de todo el día, para que al pasar de tramo los valores se puedan comparar.
   const ok = conTodas.flatMap((s) => [...s.valores, ...(s.picos ?? [])].filter((v): v is number => v != null))
@@ -54,6 +57,10 @@ export function CurvaDoble({ series: todas, inicio: inicio0, paso, unidad, titul
   const v = ventanas?.length ? Math.min(total, ventanas[Math.min(vIdx, ventanas.length - 1)].casillas) : total
   const ultima = (() => { const vs = conTodas[0].valores; for (let i = vs.length - 1; i >= 0; i--) if (vs[i] != null) return i; return 0 })()
   const maxIni = Math.max(0, Math.ceil(total / v) * v - v)
+  if (foco && foco.vez !== focoVisto) {
+    const c = Math.max(0, Math.min(total - 1, foco.casilla)), i0 = Math.min(maxIni, Math.floor(c / v) * v)
+    setFocoVisto(foco.vez); setIni(i0); setSel(c - i0)
+  }
   const desde = Math.min(maxIni, ini ?? Math.floor(ultima / v) * v)
   const hasta = Math.min(total, desde + v)
   const mover = (d: number) => { setSel(null); setIni(Math.max(0, Math.min(maxIni, desde + d * v))) }
