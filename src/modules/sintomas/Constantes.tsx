@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { CONTEXTO_FC, type FcAlta } from '../oura/tipos'
 import type { RelojDia, TaReloj } from '../reloj/tipos'
 import { TestDePie, ahoraHMS, programarPitidos } from './TestDePie'
-import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, POSICIONES, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, porDefectoMomento, subtomasDe, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
+import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, POSICIONES, SINTOMAS_TEST, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, porDefectoMomento, subtomasDe, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
@@ -16,8 +16,19 @@ const num = (v: string) => (v === '' ? null : Number(v))
  * También mezcladas por hora, las tensiones que llegaron del reloj (Apple Salud): con un toque se guardan en la medición fija
  * que corresponda (o como esporádica), con el pulso del reloj si lo había; desde ahí se completan como cualquier toma.
  */
-export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: SintDia; set: (patch: SintDia) => void; date: string; oura?: FcAlta[]; relojDia?: RelojDia | null }) {
+export function Constantes({ d, set, date, oura = [], relojDia = null, momentos, esporadicas: conEsporadicas = true, titulo = '🩺 Constantes', intro }: {
+  d: SintDia; set: (patch: SintDia) => void; date: string; oura?: FcAlta[]; relojDia?: RelojDia | null
+  /** Mediciones fijas que se enseñan aquí (por defecto, todas). Con «Al levantarme» va también el arranque del test de pie. */
+  momentos?: Momento[]
+  /** ¿Se enseñan las esporádicas (y los ratos de pulso alto de Oura y del reloj)? */
+  esporadicas?: boolean
+  titulo?: string
+  intro?: string
+}) {
   const xs = d.constantes ?? []
+  const MOMS = momentos ? MOMENTOS.filter(([k]) => momentos.includes(k)) : MOMENTOS
+  const conTest = MOMS.some(([k]) => k === 'levantarme' || k === 'poslevantarme')
+  const tp = d.test_pie ?? {}
   const reloj = relojDia?.ta ?? []
   const relojAltas = relojDia?.fc_altas ?? []
   // «Siento taquicardia ahora»: cuando llega el pulso del reloj de ese momento (±5 min), se pone solo el más alto.
@@ -47,7 +58,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
       // Al anotar la toma de «Al levantarme» (hoy) empieza solo el reloj del test de pie.
       if (base.momento === 'levantarme' && date === todayStr()) {
         programarPitidos()
-        return set({ constantes: [...xs, nueva], test_pie: { inicio: ahoraHMS() } })
+        return set({ constantes: [...xs, nueva], test_pie: { ...tp, inicio: ahoraHMS(), sentada: null } })
       }
       return set({ constantes: [...xs, nueva] })
     }
@@ -124,6 +135,16 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
         <div className="chips" role="group" aria-label="Posición al medir">
           {POSICIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.posicion === k ? 'on' : '')} aria-pressed={x.posicion === k} onClick={() => poner(i, { posicion: x.posicion === k ? null : k }, base)}>{l}</button>)}
         </div>
+        {(x.momento === 'levantarme' || x.momento === 'poslevantarme') && <>
+          <div className="medida-eje small muted">¿Qué notas ahora?</div>
+          <div className="chips" role="group" aria-label="Qué notas al medir">
+            {SINTOMAS_TEST.map((n) => {
+              const on = (x.sintomas ?? []).includes(n)
+              const nuevos = on ? (x.sintomas ?? []).filter((y) => y !== n) : n === 'Nada' ? ['Nada'] : [...(x.sintomas ?? []).filter((y) => y !== 'Nada'), n]
+              return <button type="button" key={n} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => poner(i, { sintomas: nuevos.length ? nuevos : null }, base)}>{n}</button>
+            })}
+          </div>
+        </>}
         <div className="medida-eje small muted">Hidratación</div>
         <div className="chips" role="group" aria-label="Hidratación antes de medir">
           {HIDRATACIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.hidratacion === k ? 'on' : '')} aria-pressed={x.hidratacion === k} onClick={() => poner(i, { hidratacion: x.hidratacion === k ? null : k }, base)}>{l}</button>)}
@@ -161,7 +182,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
     set({ constantes: [...xs, { ...porDefectoMomento(k, sub), hora: t.hora, ...datos }] })
   }
   // Huecos de las fijas donde todavía no hay tensión: son los destinos que se ofrecen.
-  const huecos = MOMENTOS.flatMap(([k, l]) => subtomasDe(k).map((sub) => {
+  const huecos = MOMS.flatMap(([k, l]) => subtomasDe(k).map((sub) => {
     const i = indiceDe(k, sub)
     const x = i >= 0 ? xs[i] : undefined
     return { k, sub, l: sub ? `${l} ${sub}′` : l, libre: !x || (x.pas == null && x.pad == null && !x.ta_no_capta) }
@@ -190,6 +211,8 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
       }
     }
   }
+  // Sin esporádicas (hoja POTS), solo las tensiones del reloj que encajan en una de sus fijas.
+  const deRelojVer = conEsporadicas ? deReloj : deReloj.filter((t) => sugerida.has(t.hora))
   // Esporádicas: se enseñan de la más reciente a la más antigua; se guardan en el orden en que se anotan.
   type Fila = { hora: string; x?: Medida; i?: number; a?: FcAlta; ar?: { hora: string; fc: number; min: number } }
   const orden: Fila[] = [
@@ -228,7 +251,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
     x.glucosa != null && `Glu ${x.glucosa}`,
     x.spo2 != null && `Sat ${x.spo2} %`,
   ].filter(Boolean).join(' · ') || 'Anotada'
-  const fijas = MOMENTOS.map(([k, l]) => {
+  const fijas = MOMS.map(([k, l]) => {
     const subs = subtomasDe(k).map((sub) => { const i = indiceDe(k, sub); return { sub, i, x: i >= 0 ? xs[i] : undefined } })
     const con = subs.filter((s) => s.x && medidaConDatos(s.x))
     return { k, l, subs, con, hecha: con.length === subs.length }
@@ -239,21 +262,21 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
   return (
     <div className="card sint-grupo">
       <div className="row between">
-        <h3 style={{ margin: 0 }}>🩺 Constantes</h3>
-        <span className="muted small">{hechas} de {MOMENTOS.length} fijas</span>
+        <h3 style={{ margin: 0 }}>{titulo}</h3>
+        <span className="muted small">{hechas} de {MOMS.length} fijas</span>
       </div>
-      <p className="muted small" style={{ margin: '.2rem 0 .3rem' }}>Frecuencia cardíaca, tensión arterial, glucosa y saturación. Toca un momento para rellenarlo.</p>
-      <TestDePie modo="banner" inicio={d.test_pie?.inicio ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { inicio: h } })} />
-      {date === todayStr() && !d.test_pie?.inicio && (
+      <p className="muted small" style={{ margin: '.2rem 0 .3rem' }}>{intro ?? 'Frecuencia cardíaca, tensión arterial, glucosa y saturación. Toca un momento para rellenarlo.'}</p>
+      {conTest && <TestDePie modo="banner" inicio={tp.inicio ?? null} sentadaMin={tp.sentada?.min ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { ...tp, inicio: h, sentada: null } })} />}
+      {conTest && date === todayStr() && !tp.inicio && (
         <div className="levantarme-ya">
-          <button type="button" className="btn" onClick={() => { programarPitidos(); set({ test_pie: { inicio: ahoraHMS() } }) }}>🌅 Me acabo de levantar</button>
-          <p className="small muted" style={{ margin: '.3rem 0 0' }}>Tómate antes la tensión tumbada con el reloj y toca al ponerte de pie: te aviso a los 5 y a los 10 minutos. Las tensiones del reloj se guardan después en su momento.</p>
+          <button type="button" className="btn" onClick={() => { programarPitidos(); set({ test_pie: { ...tp, inicio: ahoraHMS(), sentada: null } }) }}>🌅 Me acabo de levantar</button>
+          <p className="small muted" style={{ margin: '.3rem 0 0' }}>Tómate antes la tensión tumbada con el reloj y toca al ponerte de pie: suena en cada toma (1, 3, 5 y 10 minutos). Las tensiones del reloj se guardan después en su momento.</p>
         </div>
       )}
-      {deReloj.length > 0 && (
+      {deRelojVer.length > 0 && (
         <div className="reloj-pendientes">
           <div className="medida-eje small"><b>⌚ Del reloj</b> <span className="muted">· comprueba el momento y guárdala con un toque</span></div>
-          {[...deReloj].sort((p, q) => p.hora.localeCompare(q.hora)).map(tarjetaReloj)}
+          {[...deRelojVer].sort((p, q) => p.hora.localeCompare(q.hora)).map(tarjetaReloj)}
         </div>
       )}
       <div className="fijas">
@@ -274,7 +297,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
                 <span className="fija-flecha" aria-hidden="true">{abiertaEsta ? '▴' : '▾'}</span>
               </button>
               {abiertaEsta && <>
-                {k === 'poslevantarme' && <TestDePie modo="ficha" inicio={d.test_pie?.inicio ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { inicio: h } })} />}
+                {k === 'poslevantarme' && <TestDePie modo="ficha" inicio={tp.inicio ?? null} sentadaMin={tp.sentada?.min ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { ...tp, inicio: h, sentada: null } })} />}
                 {subs.map(({ sub, i, x }) => formulario(x ?? porDefectoMomento(k, sub), i, porDefectoMomento(k, sub), sub ? `A los ${sub} minutos de pie` : undefined))}
                 <button type="button" className="linkbtn small" style={{ margin: '.2rem .6rem .5rem' }} onClick={() => plegar(null)}>Plegar ▴</button>
               </>}
@@ -283,6 +306,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
         })}
       </div>
 
+      {conEsporadicas && <>
       <div className="row between" style={{ marginTop: '1rem' }}>
         <h4 style={{ margin: 0 }}>Esporádicas</h4>
         <div className="row" style={{ gap: '.4rem' }}>
@@ -339,6 +363,7 @@ export function Constantes({ d, set, date, oura = [], relojDia = null }: { d: Si
           </div>
         )
       })}
+      </>}
     </div>
   )
 }

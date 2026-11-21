@@ -1473,8 +1473,8 @@ function horaLevantarse(sint, hc, hidra) {
 }
 //#endregion
 //#region src/modules/sintomas/logica.ts
-/** Momentos fijos con varias tomas: en «Poslevantarme», el test de bipedestación a los 5 y a los 10 minutos de pie. */
-const MINUTOS_DE_PIE = [5, 10];
+/** Minutos del test con aviso al móvil (el de 1 y 3 minutos suena solo en la app, que está abierta). */
+const MINUTOS_AVISO_PIE = [5, 10];
 /** ¿Tiene la toma algo anotado además de la hora, el tipo y la posición (que pueden venir puestos)? */
 function medidaConDatos(m) {
 	return [
@@ -1591,7 +1591,7 @@ function avisosPie(x) {
 	if (!p) return [];
 	const pasado = (x.ahoraSeg ?? x.ahoraMin * 60) - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3] ?? 0));
 	const anotada = (n) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === "poslevantarme" && c.min_de_pie === n && medidaConDatos(c));
-	return MINUTOS_DE_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
+	return MINUTOS_AVISO_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
 		clave: `pie-${ini}-${n}`,
 		id: "pie",
 		titulo: "Test de pie",

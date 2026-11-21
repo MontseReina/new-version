@@ -892,3 +892,45 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .pulso-ratos button { display: grid; grid-template-columns: 3.2rem 3.4rem 4.6rem 1fr; gap: .4rem; align-items: baseline; width: 100%; padding: .35rem .15rem; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .pulso-ratos button:hover { background: var(--primary-soft); }
 .pulso-ratos-hora { font-weight: 600; }
+
+/* Disautonomía por hojas (0.26.0) */
+.hojas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; background: var(--line); border-radius: var(--radius); padding: 4px; margin: .4rem 0 .8rem; position: sticky; top: .3rem; z-index: 3; }
+.hoja { min-height: 44px; border: none; border-radius: 9px; background: transparent; color: var(--text); font: inherit; font-size: .78rem; font-weight: 600; line-height: 1.15; padding: 0 2px; cursor: pointer; }
+.hoja.on { background: var(--ink-deep); color: #fff; }
+.test-orto .test-sentarse { margin: .7rem 0 .2rem; }
+.test-orto .test-sentada { margin: .7rem 0 .2rem; padding: .6rem; border-radius: 10px; border: 1px solid var(--red); background: color-mix(in srgb, var(--red) 7%, var(--card)); }
+.test-tabla { width: 100%; border-collapse: collapse; margin-top: .7rem; }
+.test-tabla th, .test-tabla td { text-align: left; padding: .4rem .3rem; border-top: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+.test-tabla thead th { border-top: none; color: var(--muted); font-weight: 600; }
+.test-tabla tbody th { font-weight: 500; }
+.test-tabla tr.alto td, .test-tabla tr.alto th { background: color-mix(in srgb, var(--amber) 14%, var(--card)); }
+.test-tabla tr.alto td:nth-child(2), .test-tabla tr.alto td:nth-child(3) { font-weight: 700; color: color-mix(in srgb, var(--amber) 70%, var(--text)); }
+.test-tabla tr.sentada th, .test-tabla tr.sentada td { background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+.test-graf { margin: .7rem 0 0; }
+.test-graf svg { width: 100%; height: auto; display: block; }
+.test-graf figcaption { margin-top: .2rem; }
+.test-graf-pie { fill: color-mix(in srgb, var(--primary-soft) 45%, var(--card)); }
+.test-graf-3 { fill: color-mix(in srgb, var(--primary-soft) 80%, var(--card)); }
+.test-graf-base { stroke: var(--muted); stroke-dasharray: 3 3; }
+.test-graf-umbral { stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.test-graf-90 { stroke: var(--red); stroke-dasharray: 2 3; }
+.test-graf-sentada { stroke: var(--red); stroke-width: 1.5; }
+.test-graf-reloj { fill: none; stroke: var(--red); stroke-width: 1.5; opacity: .7; }
+.test-graf-tomas { fill: none; stroke: var(--ink-deep); stroke-width: 2; }
+.test-graf-punto { fill: var(--ink-deep); }
+.test-graf-txt { font-size: 10px; fill: var(--muted); }
+.test-graf-txt.umbral { fill: color-mix(in srgb, var(--amber) 75%, var(--text)); }
+.test-graf-txt.rojo { fill: var(--red); }
+.test-resultado { margin-top: .8rem; }
+.test-res { display: flex; gap: .55rem; align-items: flex-start; padding: .55rem .65rem; border-radius: 10px; margin-bottom: .35rem; font-size: .92rem; line-height: 1.4; }
+.test-res-marca { font-weight: 800; min-width: 1rem; }
+.test-res-ok { background: color-mix(in srgb, var(--green) 12%, var(--card)); }
+.test-res-ok .test-res-marca { color: var(--green); }
+.test-res-aviso { background: color-mix(in srgb, var(--amber) 16%, var(--card)); }
+.test-res-aviso .test-res-marca { color: color-mix(in srgb, var(--amber) 70%, var(--text)); }
+.test-res-nada { background: var(--bg); }
+.tsi-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.tsi-tile { display: flex; flex-direction: column; gap: .15rem; padding: .6rem; border-radius: 10px; background: var(--bg); }
+.tsi-tile b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.tsi-barra { fill: var(--green); }
+.tsi-barra.alta { fill: var(--amber); }

@@ -8,7 +8,7 @@ import {
   type MenuHoy, type NutriCfg, type NutriDia,
 } from '../nutricion/logica'
 import { DORMIR_TRAS_CENA_MIN, type ObjCfg } from '../objetivos/logica'
-import { MINUTOS_DE_PIE, medidaConDatos, type SintDia } from '../sintomas/logica'
+import { MINUTOS_AVISO_PIE, medidaConDatos, type SintDia } from '../sintomas/logica'
 import { horaLevantarse } from '../sintomas/levantarse'
 
 export type AvisoId = 'pie' | 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena'
@@ -93,7 +93,7 @@ export function avisosPie(x: Contexto): Aviso[] {
   if (!p) return []
   const pasado = (x.ahoraSeg ?? x.ahoraMin * 60) - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3] ?? 0))
   const anotada = (n: number) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === 'poslevantarme' && c.min_de_pie === n && medidaConDatos(c))
-  return MINUTOS_DE_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
+  return MINUTOS_AVISO_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
     clave: `pie-${ini}-${n}`, id: 'pie' as const, titulo: 'Test de pie', ruta: 'disautonomia', ttl: 180,
     cuerpo: `Llevas ${n} minutos de pie: tómate ahora la tensión y el pulso 🩺`,
   }))
