@@ -28,20 +28,48 @@ function proximo(vs: (number | null)[], i: number, cerca: number): number | null
  * Curva de dos (o más) series con la misma escala de tiempo, p. ej. el pulso del día del reloj y el de Oura
  * (un valor cada `paso` minutos desde `inicio`). Al tocar sale la hora y el valor de cada serie.
  */
-export function CurvaDoble({ series, inicio, paso, unidad, titulo, alto = 90 }: {
+/** Tramo visible de la curva: `casillas` desde el principio; con varias opciones se elige con botones. */
+export type Ventana = { etiqueta: string; casillas: number }
+
+export function CurvaDoble({ series: todas, inicio: inicio0, paso, unidad, titulo, alto = 90, ventanas }: {
   series: Serie[]; inicio: string; paso: number; unidad: string; titulo: string; alto?: number
+  /** Si se da, la curva enseña un tramo cada vez (la primera opción de entrada) con flechas para ir hacia atrás y hacia delante. */
+  ventanas?: Ventana[]
 }) {
   const [sel, setSel] = useState<number | null>(null)
   const [ref, W] = useAncho()
-  const conDatos = series.filter((s) => s.valores.some((v) => v != null))
-  const ok = conDatos.flatMap((s) => [...s.valores, ...(s.picos ?? [])].filter((v): v is number => v != null))
+  const [vIdx, setVIdx] = useState(0)
+  const [ini, setIni] = useState<number | null>(null)
+  const conTodas = todas.filter((s) => s.valores.some((v) => v != null))
+  // La escala es la de todo el día, para que al pasar de tramo los valores se puedan comparar.
+  const ok = conTodas.flatMap((s) => [...s.valores, ...(s.picos ?? [])].filter((v): v is number => v != null))
   if (!ok.length) return null
   const H = alto, L = 26, R = 6, T = 8, B = 6
   let lo = Math.min(...ok), hi = Math.max(...ok)
   if (hi - lo < 4) { lo -= 2; hi += 2 }
   const pad = (hi - lo) * 0.12
   lo = Math.floor(lo - pad); hi = Math.ceil(hi + pad)
-  const n = Math.max(...conDatos.map((s) => s.valores.length))
+  const total = Math.max(...conTodas.map((s) => s.valores.length))
+  // Tramo visible. De entrada, el que tiene la última lectura de la primera serie con datos.
+  const v = ventanas?.length ? Math.min(total, ventanas[Math.min(vIdx, ventanas.length - 1)].casillas) : total
+  const ultima = (() => { const vs = conTodas[0].valores; for (let i = vs.length - 1; i >= 0; i--) if (vs[i] != null) return i; return 0 })()
+  const maxIni = Math.max(0, Math.ceil(total / v) * v - v)
+  const desde = Math.min(maxIni, ini ?? Math.floor(ultima / v) * v)
+  const hasta = Math.min(total, desde + v)
+  const mover = (d: number) => { setSel(null); setIni(Math.max(0, Math.min(maxIni, desde + d * v))) }
+  const cambiarVentana = (k: number) => {
+    if (!ventanas) return
+    const nv = Math.min(total, ventanas[k].casillas)
+    const centro = sel != null ? desde + sel : desde + Math.floor((hasta - desde) / 2)
+    setSel(null); setVIdx(k); setIni(Math.floor(Math.min(centro, total - 1) / nv) * nv)
+  }
+  const series = conTodas.map((s) => ({ ...s, valores: s.valores.slice(desde, hasta), picos: s.picos?.slice(desde, hasta) }))
+  const conDatos = series
+  const inicio = horaMas(inicio0, desde * paso)
+  const n = Math.max(1, hasta - desde)
+  const enTramo = v < total
+  const finHm = horaMas(inicio0, hasta * paso)
+  const fin = finHm === inicio0 && hasta >= total ? (inicio0 === '00:00' ? '24:00' : finHm) : finHm
   const X = (i: number) => L + ((W - L - R) * i) / Math.max(1, n - 1)
   const Y = (v: number) => T + (H - T - B) * (1 - (v - lo) / (hi - lo))
   const camino = (s: Serie) => {
@@ -77,6 +105,20 @@ export function CurvaDoble({ series, inicio, paso, unidad, titulo, alto = 90 }: 
           )
         })}
       </div>
+      {ventanas && ventanas.length > 0 && (
+        <div className="curva-tramo small">
+          <button type="button" className="chip" onClick={() => mover(-1)} disabled={!enTramo || desde <= 0} aria-label="Horas anteriores">◀</button>
+          <span className="curva-tramo-horas">{enTramo ? `${inicio} – ${fin}` : 'Todo el día'}</span>
+          <button type="button" className="chip" onClick={() => mover(1)} disabled={!enTramo || desde >= maxIni} aria-label="Horas siguientes">▶</button>
+          {ventanas.length > 1 && (
+            <span className="chips curva-tramo-zoom">
+              {ventanas.map((w, k) => (
+                <button key={w.etiqueta} type="button" className={'chip' + (k === vIdx ? ' on' : '')} onClick={() => cambiarVentana(k)}>{w.etiqueta}</button>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
       <svg className="oura-svg toque" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${titulo}: ${conDatos.map((s) => s.nombre).join(' y ')}`}
         onPointerMove={(e) => setSel(indiceEn(e, n, L, R, W))} onPointerDown={(e) => setSel(indiceEn(e, n, L, R, W))}>
         {[lo, hi].map((v) => (
@@ -86,7 +128,7 @@ export function CurvaDoble({ series, inicio, paso, unidad, titulo, alto = 90 }: 
           </g>
         ))}
         {conDatos.map((s) => <path key={s.nombre} d={camino(s)} fill="none" stroke={s.color} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />)}
-        {conDatos.filter((s) => s.puntos ?? s.unir).map((s) => s.valores.map((v, i) => v != null && <circle key={s.nombre + i} cx={X(i)} cy={Y(v)} r="1.8" fill={s.color} />))}
+        {conDatos.filter((s) => s.puntos ?? s.unir).map((s) => s.valores.map((v, i) => v != null && <circle key={s.nombre + i} cx={X(i)} cy={Y(v)} r={enTramo ? 2.6 : 1.8} fill={s.color} />))}
         {conDatos.map((s) => s.picos?.map((p, i) => p != null && (
           <circle key={s.nombre + 'p' + i} cx={X(i)} cy={Y(p)} r="3.2" fill="var(--card)" stroke={s.color} strokeWidth="1.8" />
         )))}

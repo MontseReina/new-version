@@ -105,7 +105,8 @@ export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: Re
   return (
     <div className="card pulso-dia">
       <h3 style={{ margin: 0 }}>❤️ Pulso del día <span className="tag">automático</span></h3>
-      {hayCurva && <CurvaDoble titulo="Frecuencia cardíaca" unidad="lpm" inicio="00:00" paso={1} alto={96}
+      {hayCurva && <CurvaDoble titulo="Frecuencia cardíaca" unidad="lpm" inicio="00:00" paso={1} alto={110}
+        ventanas={[{ etiqueta: '3 h', casillas: 180 }, { etiqueta: '6 h', casillas: 360 }, { etiqueta: 'Día', casillas: DIA_MIN }]}
         series={[
           { nombre: 'Reloj', valores: fcR, picos: picosR, color: COLOR_RELOJ, unir: true, hueco: FC_HUECO_MIN, cerca: 20 },
           { nombre: 'Oura', valores: fcO, color: COLOR_OURA, unir: true, hueco: 30, puntos: false, cerca: 15 },
