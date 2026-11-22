@@ -15,8 +15,10 @@ import { Constantes } from './Constantes'
 import { Editor } from './Editor'
 import { Grupos } from './Grupos'
 import { ReposoTSI } from './ReposoTSI'
+import { Taquicardias } from './Taquicardias'
+import { TensionesDia } from './TensionesDia'
 import { TestOrtostatico } from './TestOrtostatico'
-import { conGruposNuevos, gruposDe, gruposDePagina, type SintCfg, type SintDia } from './logica'
+import { MOMENTOS_DIA, MOMENTOS_TEST, conGruposNuevos, gruposDe, gruposDePagina, type SintCfg, type SintDia } from './logica'
 
 /** Los grupos nuevos se añaden una sola vez por sesión, aunque la pantalla se pinte varias veces. */
 let anadidos = false
@@ -31,8 +33,8 @@ function hojaGuardada(): Hoja {
 
 /**
  * Disautonomía, en cinco hojas (desde la 0.26.0):
- * POTS (test de pie: tomas, «Me he sentado», FC y resultado) · Hipotensión (tensión del test y tensiones del día) · TSI (FC en reposo)
- * · FC del día (pulso del reloj y de Oura) · Episodio (episodios, los demás grupos del día e hidratación reducida).
+ * POTS (test de pie: tomas, FC y resultado) · Hipotensión (tensión del test, tensiones del día y su resultado) · TSI (FC en reposo)
+ * · FC del día (pulso del reloj y de Oura, ratos altos y «Siento taquicardia ahora») · Episodio (episodios, los demás grupos del día e hidratación reducida).
  * Escribe en el mismo registro diario que Ciclo menstrual ('sintomas'): lo ya anotado se conserva.
  */
 export default function Disautonomia() {
@@ -71,20 +73,24 @@ export default function Disautonomia() {
 
       {hoja === 'pots' && <fieldset className="sint" disabled={state === 'cargando'}>
         <TestOrtostatico d={d} set={set} date={date} reloj={reloj} vista="pots" />
-        <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} relojDia={reloj} momentos={['levantarme', 'poslevantarme']} esporadicas={false}
+        <Constantes d={d} set={set} date={date} relojDia={reloj} momentos={MOMENTOS_TEST} esporadicas={false}
           titulo="🩺 Tomas del test" intro="Tumbada («Al levantarme») y de pie al 1, 3, 5 y 10 minutos («Poslevantarme»). En cada toma: FC, tensión y qué notas." />
       </fieldset>}
 
       {hoja === 'hipotension' && <fieldset className="sint" disabled={state === 'cargando'}>
         <TestOrtostatico d={d} set={set} date={date} reloj={reloj} vista="hipotension" />
-        <Constantes d={d} set={set} date={date} oura={oura?.fc_altas} relojDia={reloj} momentos={['media_manana', 'antes_comer', 'despues_comer', 'media_tarde', 'antes_cenar', 'antes_cama']}
-          titulo="🩺 Tensiones del día" intro="Antes y después de comer, el resto de mediciones fijas y las esporádicas (por síntomas, para controlar los hidroelectrolíticos…)." />
+        <Constantes d={d} set={set} date={date} relojDia={reloj} momentos={MOMENTOS_DIA}
+          titulo="🩺 Tensiones del día" intro="Antes y después de desayunar, comer y cenar, media mañana, media tarde, antes de irme a la cama y las esporádicas (por síntomas, para controlar los hidroelectrolíticos…)." />
+        <TensionesDia d={d} />
       </fieldset>}
 
       {hoja === 'tsi' && <ReposoTSI date={date} reloj={reloj} oura={oura} />}
 
       {hoja === 'fc' && <>
         <PulsoDelDia reloj={reloj} oura={oura} relojAyer={relojAyer} />
+        <fieldset className="sint" disabled={state === 'cargando'}>
+          <Taquicardias d={d} set={set} date={date} reloj={reloj} />
+        </fieldset>
         {!reloj && !oura && <p className="muted small">Sin pulso del reloj ni de Oura este día.</p>}
         <Section title="⌚ Conectar el reloj">
           <ConectarReloj />

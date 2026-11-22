@@ -118,6 +118,9 @@ export type Medida = {
   min_de_pie?: number | null
   /** Qué notaba al medir (tomas del test de pie, desde la 0.26.0), con los nombres de `SINTOMAS_TEST`. */
   sintomas?: string[] | null
+  /** Esporádica clasificada en un momento del día (desde la 0.27.0): cuando ese momento fijo ya tiene toma, o para
+   *  situar una toma suelta. No ocupa la medición fija. */
+  cuando?: Momento | null
 }
 /** Test de pie del día (desde la 0.26.0, además de la hora de inicio): lo hecho antes y si lo cortó sentándose o tumbándose. */
 export type TestPie = {
@@ -130,21 +133,31 @@ export type TestPie = {
   mareo_inicial?: boolean | null
 }
 /** Mediciones fijas del día, en su orden. */
-export type Momento = 'levantarme' | 'poslevantarme' | 'media_manana' | 'antes_comer' | 'despues_comer' | 'media_tarde' | 'antes_cenar' | 'antes_cama'
+export type Momento = 'levantarme' | 'poslevantarme' | 'antes_desayunar' | 'despues_desayunar' | 'media_manana' | 'antes_comer' | 'despues_comer' | 'media_tarde' | 'antes_cenar' | 'despues_cenar' | 'antes_cama'
 export const MOMENTOS: [Momento, string][] = [
   ['levantarme', 'Al levantarme'],
   ['poslevantarme', 'Poslevantarme'],
+  ['antes_desayunar', 'Antes de desayunar'],
+  ['despues_desayunar', 'Después de desayunar'],
   ['media_manana', 'Media mañana'],
   ['antes_comer', 'Antes de comer'],
   ['despues_comer', 'Después de comer'],
   ['media_tarde', 'Media tarde'],
   ['antes_cenar', 'Antes de cenar'],
+  ['despues_cenar', 'Después de cenar'],
   ['antes_cama', 'Antes de irme a la cama'],
 ]
+/** Mediciones fijas del test de pie (hoja POTS) y del resto del día (hoja Hipotensión), desde la 0.27.0. */
+export const MOMENTOS_TEST: Momento[] = ['levantarme', 'poslevantarme']
+export const MOMENTOS_DIA: Momento[] = ['antes_desayunar', 'despues_desayunar', 'media_manana', 'antes_comer', 'despues_comer', 'media_tarde', 'antes_cenar', 'despues_cenar', 'antes_cama']
+/** Parejas antes / después de cada comida, para la hipotensión postprandial. */
+export const PAREJAS_COMIDA: [string, Momento, Momento][] = [['Desayuno', 'antes_desayunar', 'despues_desayunar'], ['Comida', 'antes_comer', 'despues_comer'], ['Cena', 'antes_cenar', 'despues_cenar']]
+const esDespues = (m: Momento) => m === 'despues_desayunar' || m === 'despues_comer' || m === 'despues_cenar'
 export const etiquetaMomento = (m?: Momento | null) => (m ? MOMENTOS.find(([k]) => k === m)?.[1] ?? '' : '')
 /** Momento con sus minutos de pie: «Poslevantarme (5 min de pie)». */
 export const etiquetaToma = (m: Medida) => {
   const e = etiquetaMomento(m.momento)
+  if (!e && m.cuando) return `${etiquetaMomento(m.cuando)} (esporádica)`
   return e && m.min_de_pie ? `${e} (${m.min_de_pie} min de pie)` : e
 }
 /** Momentos fijos con varias tomas: en «Poslevantarme», el test de bipedestación al 1, 3, 5 y 10 minutos de pie
@@ -157,11 +170,11 @@ export const ANTES_TEST = ['Sin beber aún', 'Ampolla o agua', 'Sal', 'Hidroelec
 /** Síntomas que se marcan en cada toma del test de pie. */
 export const SINTOMAS_TEST = ['Mareo', 'Palpitaciones', 'Visión borrosa', 'Temblor', 'Náusea', 'Calor', 'Frío', 'Debilidad', 'Niebla mental', 'Nada']
 export const subtomasDe = (m: Momento): (number | null)[] => (m === 'poslevantarme' ? MINUTOS_DE_PIE : [null])
-/** Cómo nace una medición fija: habitual (la de después de comer, además postprandial); al levantarme, tumbada; poslevantarme, de pie. */
+/** Cómo nace una medición fija: habitual (las de después de desayunar, comer y cenar, además postprandial); al levantarme, tumbada; poslevantarme, de pie. */
 export function porDefectoMomento(m: Momento, minDePie: number | null): Medida {
   return {
     momento: m,
-    tipos: m === 'despues_comer' ? ['habitual', 'postprandial'] : ['habitual'],
+    tipos: esDespues(m) ? ['habitual', 'postprandial'] : ['habitual'],
     ...(m === 'levantarme' ? { posicion: 'tumbada' as const } : m === 'poslevantarme' ? { posicion: 'de_pie' as const } : {}),
     ...(minDePie ? { min_de_pie: minDePie } : {}),
   }
@@ -485,3 +498,27 @@ export function resultadoTest(d: SintDia, relojPuntos: [string, number, number][
 }
 /** ¿Cumple la caída el criterio de hipotensión ortostática (≥20 de alta o ≥10 de baja)? */
 export const caidaHO = (c: { pas: number | null; pad: number | null }) => (c.pas != null && c.pas >= 20) || (c.pad != null && c.pad >= 10)
+
+/** Tensiones del día fuera del test de pie (hoja Hipotensión, desde la 0.27.0): las fijas del día y las esporádicas. */
+export type ResultadoDia = {
+  /** Tomas con tensión alta, en orden de hora. */
+  tomas: { hora: string; etiqueta: string; pas: number; pad: number | null }[]
+  pasMin: { pas: number; hora: string; etiqueta: string } | null
+  /** Tomas con la alta por debajo de 90 (o «no la capta»). */
+  bajo90: number
+  noCapta: number
+  /** Antes y después de cada comida: caída de la alta (positiva si baja). */
+  comidas: { comida: string; antes: number; despues: number; caida: number; min?: number | null }[]
+}
+export function resultadoDia(d: SintDia): ResultadoDia {
+  const xs = (d.constantes ?? []).filter((x) => !MOMENTOS_TEST.includes(x.momento as Momento))
+  const tomas = xs.filter((x) => x.pas != null).map((x) => ({ hora: x.hora ?? '', etiqueta: etiquetaToma(x) || 'Esporádica', pas: x.pas!, pad: x.pad ?? null }))
+    .sort((a, b) => a.hora.localeCompare(b.hora))
+  const pasMin = tomas.reduce<ResultadoDia['pasMin']>((m, t) => (!m || t.pas < m.pas ? { pas: t.pas, hora: t.hora, etiqueta: t.etiqueta } : m), null)
+  const fija = (k: Momento) => xs.find((x) => x.momento === k && x.pas != null)
+  const comidas = PAREJAS_COMIDA.flatMap(([comida, a, b]) => {
+    const x = fija(a), y = fija(b)
+    return x && y ? [{ comida, antes: x.pas!, despues: y.pas!, caida: x.pas! - y.pas!, min: y.min_comida }] : []
+  })
+  return { tomas, pasMin, bajo90: tomas.filter((t) => t.pas < 90).length, noCapta: xs.filter((x) => x.ta_no_capta).length, comidas }
+}
