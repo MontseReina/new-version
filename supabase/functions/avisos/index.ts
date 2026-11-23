@@ -1525,7 +1525,7 @@ const AVISOS = [
 	{
 		id: "pie",
 		nombre: "Test de pie",
-		detalle: "A los 5 y a los 10 minutos de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.",
+		detalle: "A los 5 y a los 10 minutos de anotar la toma tumbada del test de pie («Al levantarme» o «Tarde · tumbada») en Disautonomía → POTS. Llega también en las horas de silencio.",
 		porDefecto: true
 	},
 	{
@@ -1586,11 +1586,14 @@ function horaLevantar(hc, d, sint) {
 }
 /** Test de pie: a los 5 y a los 10 minutos de ponerse de pie, si esa toma aún no está anotada (durante 3 minutos). */
 function avisosPie(x) {
-	const ini = x.sintHoy?.test_pie?.inicio;
+	return [avisosPieDe(x, "test_pie", "poslevantarme"), avisosPieDe(x, "test_pie_tarde", "tarde_de_pie")].flat();
+}
+function avisosPieDe(x, campo, dePie) {
+	const ini = x.sintHoy?.[campo]?.inicio;
 	const p = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(ini ?? "");
 	if (!p) return [];
 	const pasado = (x.ahoraSeg ?? x.ahoraMin * 60) - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3] ?? 0));
-	const anotada = (n) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === "poslevantarme" && c.min_de_pie === n && medidaConDatos(c));
+	const anotada = (n) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === dePie && c.min_de_pie === n && medidaConDatos(c));
 	return MINUTOS_AVISO_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
 		clave: `pie-${ini}-${n}`,
 		id: "pie",
