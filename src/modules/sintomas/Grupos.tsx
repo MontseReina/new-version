@@ -3,7 +3,7 @@ import { Stepper } from '../../components/ui'
 import { todayStr } from '../../lib/dates'
 import { Bristol } from './Bristol'
 import { DatosEpisodio } from './DatosEpisodio'
-import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, episodiosOpcion, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintDia, textoTiempo } from './logica'
+import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, episodiosOpcion, tieneEscala, tiposEpisodio, type Deposicion, type Detalle, type Grupo, type SintDia, textoTiempo } from './logica'
 import { emojiOpcion } from './emojis'
 
 const DIEZ = Array.from({ length: 10 }, (_, i) => i + 1)
@@ -62,10 +62,16 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
     }
     set({ sel: { ...(d.sel ?? {}), [g.id]: sel }, det: { ...(d.det ?? {}), [g.id]: dg } })
   }
-  /** Cambia el tipo de un episodio: lo pasa, con todo lo escrito, a la otra opción. */
-  const cambiarTipo = (g: Grupo, de: string, i: number, a: string) => {
-    if (de === a) return
-    quitar(g, de, i, { id: a, x: episodios(g, de)[i] })
+  /** Marca o desmarca un tipo en un episodio (puede tener varios, siempre al menos uno).
+   *  Se guarda bajo su primer tipo; si se desmarca ese, pasa con todo lo escrito al siguiente. */
+  const tocarTipo = (g: Grupo, de: string, i: number, t: string) => {
+    const x = episodios(g, de)[i]
+    const ts = tiposEpisodio(de, x)
+    const nuevos = ts.includes(t) ? ts.filter((y) => y !== t) : [...ts, t]
+    if (!nuevos.length) return
+    const resto = nuevos.slice(1)
+    if (nuevos[0] === de) detalle(g, de, i, { tipos: resto.length ? resto : null })
+    else quitar(g, de, i, { id: nuevos[0], x: { ...x, tipos: resto.length ? resto : null } })
   }
 
   const heces = d.heces ?? []
@@ -92,11 +98,13 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
       <>
         {lista.length === 0 && <p className="muted small" style={{ margin: '0 0 .4rem' }}>Hoy sin episodios.</p>}
         {lista.map(({ o, i, x }, n) => {
-          const quien = `episodio ${n + 1} (${o.nombre})`
+          const ts = tiposEpisodio(o.id, x)
+          const nombres = ts.map((t) => opciones.find((y) => y.id === t)?.nombre ?? t).join(' + ')
+          const quien = `episodio ${n + 1} (${nombres})`
           if (x.guardado) return (
             <div className="depo epi-plegado" key={`${o.id}-${i}`}>
               <div className="row between">
-                <span className="small"><strong>Episodio {n + 1} · {o.nombre}</strong>{' · '}{resumenEpisodio(x)}</span>
+                <span className="small"><strong>Episodio {n + 1} · {nombres}</strong>{' · '}{resumenEpisodio(x)}</span>
                 <button type="button" className="linkbtn" aria-expanded={false} aria-label={`Desplegar ${quien}`} onClick={() => detalle(g, o.id, i, { guardado: null })}>Desplegar ▾</button>
               </div>
             </div>
@@ -108,9 +116,9 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
                 <button type="button" className="linkbtn" onClick={() => quitar(g, o.id, i)}>Quitar</button>
               </div>
               <div className="field epi-tipo">
-                <span>Tipo</span>
-                <div className="chips" role="group" aria-label={`Tipo del episodio ${n + 1}`}>
-                  {opciones.map((t) => <button type="button" key={t.id} className={'chip ' + (t.id === o.id ? 'on' : '')} aria-pressed={t.id === o.id} onClick={() => cambiarTipo(g, o.id, i, t.id)}>{nombreTipo(t)}</button>)}
+                <span>Tipo <span className="muted small">(puedes marcar varios)</span></span>
+                <div className="chips" role="group" aria-label={`Tipos del episodio ${n + 1}`}>
+                  {opciones.map((t) => { const on = ts.includes(t.id); return <button type="button" key={t.id} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => tocarTipo(g, o.id, i, t.id)}>{nombreTipo(t)}</button> })}
                 </div>
               </div>
               <div className="row" style={{ marginTop: '.3rem' }}>
@@ -148,7 +156,7 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
         {eligiendo === g.id ? (
           <div className="depo">
             <div className="row between">
-              <strong className="small">Nuevo episodio · ¿qué tipo?</strong>
+              <strong className="small">Nuevo episodio · ¿qué tipo? <span className="muted">(dentro puedes añadir más)</span></strong>
               <button type="button" className="linkbtn" onClick={() => setEligiendo(null)}>Cancelar</button>
             </div>
             <div className="chips" style={{ marginTop: '.4rem' }}>

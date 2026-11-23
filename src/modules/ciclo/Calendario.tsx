@@ -50,7 +50,7 @@ export const textoMarca = (m?: ReturnType<typeof marcaDia>) =>
 
 /** Leyenda de las siglas que aparecen («DN nocturna»…), del ingreso y de la ovulación. */
 export function LeyendaEpisodios({ lista }: { lista: Episodio[] }) {
-  const tipos = [...new Map(lista.map((e) => [sigla(e.nombre), e.nombre])).entries()]
+  const tipos = [...new Map(lista.flatMap((e) => e.tipos.map((t) => [sigla(t), t] as const))).entries()]
   if (!tipos.length) return null
   return (
     <div className="ciclo-leyenda epi-leyenda" aria-hidden="true">

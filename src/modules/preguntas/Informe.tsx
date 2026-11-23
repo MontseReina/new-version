@@ -5,7 +5,7 @@ import { useSettings } from '../../store/useSettings'
 import { FASES, infoDia } from '../ciclo/logica'
 import { useCiclo } from '../ciclo/useCiclo'
 import { objetivo, total, type HidraCfg, type HidraDia } from '../hidratacion/logica'
-import { COMIDAS, conOpciones, episodiosDe, gruposDe, lineaMedida, tieneEscala, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
+import { COMIDAS, conOpciones, diaConTipo, episodiosDe, gruposDe, lineaMedida, tieneEscala, type Grupo, type SintCfg, type SintDia } from '../sintomas/logica'
 import { MOMENTOS, cumplimiento, vigente, type SuplCfg, type SuplDia } from '../suplementos/logica'
 import { pendientesDe, type Pregunta } from './store'
 
@@ -20,7 +20,7 @@ const MOMENTO: { [k: string]: string } = Object.fromEntries(MOMENTOS)
 function diasPorOpcion(g: Grupo, dias: Dias<SintDia>): string {
   const ops = (g.opciones ?? []).slice(g.tipo === 'varias' && g.neutra ? 1 : 0)
   return ops
-    .map((o) => [o.nombre, dias.filter((d) => d.value.sel?.[g.id]?.includes(o.id)).length] as const)
+    .map((o) => [o.nombre, dias.filter((d) => diaConTipo(g, d.value, o.id)).length] as const)
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1])
     .map(([nombre, n]) => `${nombre}: ${pl(n, 'día', 'días')}`)

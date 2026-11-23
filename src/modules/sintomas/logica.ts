@@ -57,6 +57,17 @@ export type Detalle = {
   desencadenantes?: string | null
   /** Episodio terminado y plegado con «Guardar» (desde la 0.27.1); solo afecta a cómo se ve. */
   guardado?: boolean | null
+  /** Otros tipos del mismo episodio, además de la opción bajo la que se guarda (desde la 0.27.2):
+   *  un episodio puede ser a la vez «Mareos» y «Ansiedad», por ejemplo. */
+  tipos?: string[] | null
+}
+
+/** Todos los tipos (ids) de un episodio: la opción bajo la que se guarda y los demás que lleve. */
+export const tiposEpisodio = (id: string, x: Detalle) => [id, ...(x.tipos ?? []).filter((t) => t !== id)]
+/** Si un día tiene algún episodio de un tipo, aunque esté guardado bajo otra opción. */
+export function diaConTipo(g: Grupo, d: SintDia, id: string) {
+  if (d.sel?.[g.id]?.includes(id)) return true
+  return Object.values(d.det?.[g.id] ?? {}).some((x) => episodiosOpcion(x).some((e) => (e.tipos ?? []).includes(id)))
 }
 /** Un tiempo con su unidad, tal como se anota: «20 min», «2 h», «30 s». */
 export type Tiempo = { n?: number | null; u?: 'seg' | 'min' | 'h' | null }
@@ -422,15 +433,15 @@ export function leerGrupos(texto: string): Grupo[] | null {
 /** Nombre legible de una opción que ya no está en los grupos (se quitó): «taquicardia_en_reposo» → «Taquicardia en reposo». */
 export const nombreDeId = (id: string) => { const t = id.replace(/_\d+$/, '').replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1) }
 
-export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; gravedad: number | null; urgencias: boolean; acciones: string[]; hice: string; datos: string }
+export type Episodio = { dia: string; hora: string; grupo: string; nombre: string; tipos: string[]; gravedad: number | null; urgencias: boolean; acciones: string[]; hice: string; datos: string }
 /** Episodios anotados (opciones marcadas en los grupos 'detalle', como Disautonomía), en orden. */
 export function episodiosDe(grupos: Grupo[], dias: { day: string; value: SintDia }[]): Episodio[] {
   return grupos.filter((g) => g.tipo === 'detalle').flatMap((g) =>
     dias.flatMap((d) => (d.value.sel?.[g.id] ?? []).flatMap((id) => {
       const xs = episodiosOpcion(d.value.det?.[g.id]?.[id])
-      const nombre = g.opciones?.find((o) => o.id === id)?.nombre ?? nombreDeId(id)
-      // Una opción marcada sin detalle cuenta como un episodio.
-      return (xs.length ? xs : [{} as Detalle]).map((det) => ({ dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias, acciones: det.acciones ?? [], hice: det.hice ?? '', datos: textoDetalle(det) }))
+      const nom = (t: string) => g.opciones?.find((o) => o.id === t)?.nombre ?? nombreDeId(t)
+      // Una opción marcada sin detalle cuenta como un episodio. Con varios tipos, el nombre los une: «Mareos + Ansiedad».
+      return (xs.length ? xs : [{} as Detalle]).map((det) => { const tipos = tiposEpisodio(id, det).map(nom); return { dia: d.day, hora: det.hora ?? '', grupo: g.nombre, nombre: tipos.join(' + '), tipos, gravedad: det.gravedad ?? null, urgencias: !!det.urgencias, acciones: det.acciones ?? [], hice: det.hice ?? '', datos: textoDetalle(det) } })
     })),
   ).sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora))
 }
@@ -448,8 +459,8 @@ export function marcaDia(xs: Episodio[]) {
   const gs = xs.map((e) => e.gravedad).filter((g): g is number => g != null)
   return {
     n: xs.length,
-    siglas: [...new Set(xs.map((e) => sigla(e.nombre)))],
-    nombres: [...new Set(xs.map((e) => e.nombre))],
+    siglas: [...new Set(xs.flatMap((e) => e.tipos.map(sigla)))],
+    nombres: [...new Set(xs.flatMap((e) => e.tipos))],
     gravedad: gs.length ? Math.max(...gs) : null,
     ingreso: xs.some((e) => e.urgencias),
   }
