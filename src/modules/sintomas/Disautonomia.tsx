@@ -18,7 +18,7 @@ import { ReposoTSI } from './ReposoTSI'
 import { Taquicardias } from './Taquicardias'
 import { TensionesDia } from './TensionesDia'
 import { TestOrtostatico } from './TestOrtostatico'
-import { MOMENTOS_DIA, MOMENTOS_TEST, conGruposNuevos, gruposDe, gruposDePagina, type SintCfg, type SintDia } from './logica'
+import { MOMENTOS_DIA, MOMENTOS_TEST, MOMENTOS_TEST_TARDE, medidaConDatos, conGruposNuevos, gruposDe, gruposDePagina, type SintCfg, type SintDia } from './logica'
 
 /** Los grupos nuevos se añaden una sola vez por sesión, aunque la pantalla se pinte varias veces. */
 let anadidos = false
@@ -56,6 +56,8 @@ export default function Disautonomia() {
   const episodios = grupos.filter((g) => g.tipo === 'detalle')
   const resto = grupos.filter((g) => g.tipo !== 'detalle')
   const [hoja, setHoja] = useState<Hoja>(hojaGuardada)
+  // La tarjeta de hipotensión del test de la tarde sale solo los días que se hizo.
+  const conTestTarde = (d.constantes ?? []).some((x) => MOMENTOS_TEST_TARDE.includes(x.momento!) && medidaConDatos(x))
   const elegir = (h: Hoja) => { setHoja(h); try { localStorage.setItem(CLAVE_HOJA, h) } catch { /* sin guardar la hoja */ } }
   const estado = state === 'cargando' ? 'Cargando…' : state === 'guardando' ? 'Guardando…' : state === 'error' ? 'Sin guardar' : 'Guardado'
 
@@ -75,10 +77,14 @@ export default function Disautonomia() {
         <TestOrtostatico d={d} set={set} date={date} reloj={reloj} vista="pots" />
         <Constantes d={d} set={set} date={date} relojDia={reloj} momentos={MOMENTOS_TEST} esporadicas={false}
           titulo="🩺 Tomas del test" intro="Tumbada («Al levantarme») y de pie al 1, 3, 5 y 10 minutos («Poslevantarme»). En cada toma: FC, tensión y qué notas." />
+        <TestOrtostatico d={d} set={set} date={date} reloj={reloj} vista="pots" sesion="tarde" />
+        <Constantes d={d} set={set} date={date} relojDia={reloj} momentos={MOMENTOS_TEST_TARDE} esporadicas={false}
+          titulo="🩺 Tomas del test de la tarde" intro="Tumbada («Tarde · tumbada») y de pie al 1, 3, 5 y 10 minutos («Tarde · de pie»). En cada toma: FC, tensión y qué notas." />
       </fieldset>}
 
       {hoja === 'hipotension' && <fieldset className="sint" disabled={state === 'cargando'}>
         <TestOrtostatico d={d} set={set} date={date} reloj={reloj} vista="hipotension" />
+        {conTestTarde && <TestOrtostatico d={d} set={set} date={date} reloj={reloj} vista="hipotension" sesion="tarde" />}
         <Constantes d={d} set={set} date={date} relojDia={reloj} momentos={MOMENTOS_DIA}
           titulo="🩺 Tensiones del día" intro="Antes y después de desayunar, comer y cenar, media mañana, media tarde, antes de irme a la cama y las esporádicas (por síntomas, para controlar los hidroelectrolíticos…)." />
         <TensionesDia d={d} />

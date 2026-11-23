@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import type { FcAlta } from '../oura/tipos'
 import type { RelojDia, TaReloj } from '../reloj/tipos'
 import { TestDePie, ahoraHMS, programarPitidos } from './TestDePie'
-import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, MOMENTOS_DIA, POSICIONES, SINTOMAS_TEST, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, porDefectoMomento, subtomasDe, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
+import { HIDRATACIONES, MIN_COMIDA, MOMENTOS, MOMENTOS_DIA, MOMENTOS_TEST_TARDE, SESIONES_TEST, esMomentoTest, etiquetaMomento, POSICIONES, SINTOMAS_TEST, TIPOS_MEDIDA, alternarTipo, avisosMedida, etiquetaMinComida, medidaConDatos, tiposDe, porDefectoMomento, subtomasDe, type CampoMedida, type Medida, type Momento, type SintDia } from './logica'
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
@@ -26,8 +26,11 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
 }) {
   const xs = d.constantes ?? []
   const MOMS = momentos ? MOMENTOS.filter(([k]) => momentos.includes(k)) : MOMENTOS
-  const conTest = MOMS.some(([k]) => k === 'levantarme' || k === 'poslevantarme')
-  const tp = d.test_pie ?? {}
+  const conTest = MOMS.some(([k]) => esMomentoTest(k))
+  // Test de pie de esta tarjeta: el de la tarde si enseña sus tomas; si no, el de la mañana.
+  const S = SESIONES_TEST[MOMS.some(([k]) => MOMENTOS_TEST_TARDE.includes(k)) ? 'tarde' : 'manana']
+  const tp = d[S.campo] ?? {}
+  const ponerTest = (v: typeof tp) => set({ [S.campo]: v })
   const reloj = relojDia?.ta ?? []
   const [abierta, setAbierta] = useState<Momento | null>(null)
   const [otraDe, setOtraDe] = useState<string | null>(null)
@@ -38,10 +41,10 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
   const poner = (i: number, patch: Medida, base?: Medida) => {
     if (i < 0 && base) {
       const nueva = { ...horaAhora(), ...base, ...patch }
-      // Al anotar la toma de «Al levantarme» (hoy) empieza solo el reloj del test de pie.
-      if (base.momento === 'levantarme' && date === todayStr()) {
+      // Al anotar la toma tumbada del test («Al levantarme» o «Tarde · tumbada», hoy) empieza solo el reloj del test de pie.
+      if (base.momento === S.tumbada && date === todayStr()) {
         programarPitidos()
-        return set({ constantes: [...xs, nueva], test_pie: { ...tp, inicio: ahoraHMS(), sentada: null } })
+        return set({ constantes: [...xs, nueva], [S.campo]: { ...tp, inicio: ahoraHMS(), sentada: null } })
       }
       return set({ constantes: [...xs, nueva] })
     }
@@ -117,7 +120,7 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
         <div className="chips" role="group" aria-label="Posición al medir">
           {POSICIONES.map(([k, l]) => <button type="button" key={k} className={'chip ' + (x.posicion === k ? 'on' : '')} aria-pressed={x.posicion === k} onClick={() => poner(i, { posicion: x.posicion === k ? null : k }, base)}>{l}</button>)}
         </div>
-        {(x.momento === 'levantarme' || x.momento === 'poslevantarme') && <>
+        {esMomentoTest(x.momento) && <>
           <div className="medida-eje small muted">¿Qué notas ahora?</div>
           <div className="chips" role="group" aria-label="Qué notas al medir">
             {SINTOMAS_TEST.map((n) => {
@@ -151,10 +154,13 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
   // Tensiones del reloj que aún no están en ninguna toma (ni guardadas desde aquí ni tecleadas a mano a la misma hora con la misma cifra).
   const minDe = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
   const yaEsta = (t: TaReloj) => xs.some((x) => x.de_reloj === t.hora || (x.hora && x.pas === t.pas && x.pad === t.pad && Math.abs(minDe(x.hora) - minDe(t.hora)) <= 5))
-  // En la hoja del día (sin el test), las tensiones del rato del test de pie se quedan en la hoja POTS.
-  const iniTest = tp.inicio ? minDe(tp.inicio) : null
-  const delTest = (t: TaReloj) => iniTest != null && minDe(t.hora) >= iniTest - 20 && minDe(t.hora) <= iniTest + 15
-  const deReloj = reloj.filter((t) => !yaEsta(t) && (conTest || !delTest(t)))
+  // En la hoja del día (sin el test), las tensiones del rato de cada test de pie se quedan en la hoja POTS;
+  // y en la tarjeta de un test, las del rato del otro test se quedan en la suya.
+  const enRato = (ini: string | null | undefined, t: TaReloj) => !!ini && minDe(t.hora) >= minDe(ini) - 20 && minDe(t.hora) <= minDe(ini) + 15
+  const otroIni = S.campo === 'test_pie' ? d.test_pie_tarde?.inicio : d.test_pie?.inicio
+  const deReloj = reloj.filter((t) => !yaEsta(t) && (conTest
+    ? !enRato(otroIni, t)
+    : !enRato(d.test_pie?.inicio, t) && !enRato(d.test_pie_tarde?.inicio, t)))
   /** Guarda la tensión del reloj en una medición fija (k, sub) o, sin k, como esporádica. Si la fija ya tenía toma, se completa. */
   const asignarReloj = (t: TaReloj, k: Momento | null, sub: number | null) => {
     const datos: Medida = { pas: t.pas, pad: t.pad, de_reloj: t.hora, ...(t.fc != null ? { fc: t.fc } : {}) }
@@ -199,6 +205,19 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
       if (n >= 0) {
         if (libres[n].k === 'levantarme') tLev = tm
         sugerida.set(t.hora, libres[n]); libres.splice(n, 1)
+      }
+    }
+    // Test de la tarde: en su rato, la tensión de antes de ponerse de pie va a «Tarde · tumbada» y las de después,
+    // al minuto de pie libre más cercano.
+    const iniT = d.test_pie_tarde?.inicio
+    if (S.campo === 'test_pie_tarde' && iniT) {
+      const i0 = minDe(iniT)
+      for (const t of [...deReloj].sort((p, q) => p.hora.localeCompare(q.hora))) {
+        if (!enRato(iniT, t) || sugerida.has(t.hora)) continue
+        const m = minDe(t.hora) - i0
+        const cands = libres.map((h, k) => ({ h, k })).filter(({ h }) => (m <= 0 ? h.k === 'tarde_tumbada' : h.k === 'tarde_de_pie'))
+          .sort((a, b) => Math.abs((a.h.sub ?? 0) - m) - Math.abs((b.h.sub ?? 0) - m))
+        if (cands.length) { sugerida.set(t.hora, cands[0].h); libres.splice(cands[0].k, 1) }
       }
     }
   }
@@ -256,7 +275,7 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
         <span className="muted small">{hechas} de {MOMS.length} fijas</span>
       </div>
       <p className="muted small" style={{ margin: '.2rem 0 .3rem' }}>{intro ?? 'Frecuencia cardíaca, tensión arterial, glucosa y saturación. Toca un momento para rellenarlo.'}</p>
-      {conTest && <TestDePie modo="banner" inicio={tp.inicio ?? null} sentadaMin={tp.sentada?.min ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { ...tp, inicio: h, sentada: null } })} />}
+      {conTest && <TestDePie modo="banner" tumbada={etiquetaMomento(S.tumbada)} inicio={tp.inicio ?? null} sentadaMin={tp.sentada?.min ?? null} hoy={date === todayStr()} reiniciar={(h) => ponerTest({ ...tp, inicio: h, sentada: null })} />}
       {deRelojVer.length > 0 && (
         <div className="reloj-pendientes">
           <div className="medida-eje small"><b>⌚ Del reloj</b> <span className="muted">· comprueba el momento y guárdala con un toque</span></div>
@@ -281,7 +300,7 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
                 <span className="fija-flecha" aria-hidden="true">{abiertaEsta ? '▴' : '▾'}</span>
               </button>
               {abiertaEsta && <>
-                {k === 'poslevantarme' && <TestDePie modo="ficha" inicio={tp.inicio ?? null} sentadaMin={tp.sentada?.min ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { ...tp, inicio: h, sentada: null } })} />}
+                {k === S.dePie && <TestDePie modo="ficha" tumbada={etiquetaMomento(S.tumbada)} inicio={tp.inicio ?? null} sentadaMin={tp.sentada?.min ?? null} hoy={date === todayStr()} reiniciar={(h) => ponerTest({ ...tp, inicio: h, sentada: null })} />}
                 {subs.map(({ sub, i, x }) => formulario(x ?? porDefectoMomento(k, sub), i, porDefectoMomento(k, sub), sub ? `A los ${sub} minutos de pie` : undefined))}
                 <button type="button" className="linkbtn small" style={{ margin: '.2rem .6rem .5rem' }} onClick={() => plegar(null)}>Plegar ▴</button>
               </>}

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { todayStr } from '../../lib/dates'
 import type { RelojDia } from '../reloj/tipos'
-import { caidaHO, resultadoTest, type LecturaTest, type ResultadoTest, type SintDia, type TestPie } from './logica'
+import { SESIONES_TEST, caidaHO, etiquetaMomento, resultadoTest, type LecturaTest, type ResultadoTest, type SesionTest, type SintDia, type TestPie } from './logica'
 
 const conSigno = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0')
 /** Caída de tensión como cambio: una caída de 6 se enseña «−6»; una subida, «+4». */
@@ -60,10 +60,13 @@ function Grafica({ r, vista }: { r: ResultadoTest; vista: 'pots' | 'hipotension'
  * de la frecuencia cardíaca y el resultado (subida de FC). En la hoja Hipotensión: la tabla y la gráfica de la tensión y el resultado
  * (caída en los 3 primeros minutos y después). Las tomas se anotan en las mediciones fijas «Al levantarme» y «Poslevantarme».
  */
-export function TestOrtostatico({ d, set, date, reloj, vista }: { d: SintDia; set: (patch: SintDia) => void; date: string; reloj: RelojDia | null; vista: 'pots' | 'hipotension' }) {
-  const tp: TestPie = d.test_pie ?? {}
-  const poner = (patch: Partial<TestPie>) => set({ test_pie: { ...tp, ...patch } })
-  const r = resultadoTest(d, reloj?.fc_puntos ?? [])
+export function TestOrtostatico({ d, set, date, reloj, vista, sesion = 'manana' }: { d: SintDia; set: (patch: SintDia) => void; date: string; reloj: RelojDia | null; vista: 'pots' | 'hipotension'; sesion?: SesionTest }) {
+  const S = SESIONES_TEST[sesion]
+  const tarde = sesion === 'tarde'
+  const lTumb = etiquetaMomento(S.tumbada), lPie = etiquetaMomento(S.dePie)
+  const tp: TestPie = d[S.campo] ?? {}
+  const poner = (patch: Partial<TestPie>) => set({ [S.campo]: { ...tp, ...patch } })
+  const r = resultadoTest(d, reloj?.fc_puntos ?? [], sesion)
   const hoy = date === todayStr()
   const sen = tp.sentada
   const tomas = r.lecturas.filter((l) => l.de !== 'reloj')
@@ -75,15 +78,17 @@ export function TestOrtostatico({ d, set, date, reloj, vista }: { d: SintDia; se
     <div className="card sint-grupo test-orto">
       {vista === 'pots' ? (
         <>
-          <h3 style={{ margin: 0 }}>🧍 POTS · frecuencia cardíaca de pie</h3>
-          <p className="muted small" style={{ margin: '.2rem 0 .5rem' }}>Tumbada al menos 5 minutos y luego 10 minutos de pie, quieta. Tomas tumbada («Al levantarme») y al 1, 3, 5 y 10 minutos («Poslevantarme»). Con el mismo test se rellena la hoja Hipotensión: no hay que repetirlo.</p>
+          <h3 style={{ margin: 0 }}>{tarde ? '🌇 POTS · test de pie de la tarde' : '🧍 POTS · frecuencia cardíaca de pie'}</h3>
+          <p className="muted small" style={{ margin: '.2rem 0 .5rem' }}>{tarde
+            ? 'Igual que el de la mañana: túmbate al menos 5 minutos antes de la toma tumbada («Tarde · tumbada») y luego 10 minutos de pie, quieta, con tomas al 1, 3, 5 y 10 minutos («Tarde · de pie»). Mejor lejos de las comidas (2 horas después): después de comer la tensión baja por sí sola. Sus tensiones salen también en la hoja Hipotensión, debajo de las de la mañana.'
+            : 'Tumbada al menos 5 minutos y luego 10 minutos de pie, quieta. Tomas tumbada («Al levantarme») y al 1, 3, 5 y 10 minutos («Poslevantarme»). Con el mismo test se rellena la hoja Hipotensión: no hay que repetirlo.'}</p>
 
           {sen && <p className="small muted" style={{ margin: '0 0 .4rem' }}>Test cortado en el minuto {sen.min} ({sen.hora}). <button type="button" className="linkbtn small" onClick={() => poner({ sentada: null })}>Deshacer</button></p>}
         </>
       ) : (
         <>
-          <h3 style={{ margin: 0 }}>📉 Hipotensión · test de pie</h3>
-          <p className="muted small" style={{ margin: '.2rem 0 .5rem' }}>Usa las tensiones del mismo test de pie (hoja POTS). Clásica: en los 3 primeros minutos. Tardía: pasados los 3 minutos.</p>
+          <h3 style={{ margin: 0 }}>📉 Hipotensión · test de pie {S.nombre}</h3>
+          <p className="muted small" style={{ margin: '.2rem 0 .5rem' }}>Usa las tensiones del mismo test de pie {S.nombre} (hoja POTS). Clásica: en los 3 primeros minutos. Tardía: pasados los 3 minutos.</p>
           <div className="medida-eje small"><b>Al ponerte de pie, en los primeros segundos</b></div>
           <p className="small" style={{ margin: '.1rem 0 .3rem' }}>¿Te mareaste al incorporarte y se te pasó en menos de 1 minuto?</p>
           <div className="chips" role="group" aria-label="Mareo al incorporarme">
@@ -122,7 +127,7 @@ export function TestOrtostatico({ d, set, date, reloj, vista }: { d: SintDia; se
           <Grafica r={r} vista={vista} />
           <div className="test-resultado">
             <h4 style={{ margin: '0 0 .4rem' }}>Resultado de este test</h4>
-            {!b && <Linea nivel="nada">Falta la toma tumbada («Al levantarme»): sin ella no se puede calcular {vista === 'pots' ? 'la subida' : 'la caída'}.</Linea>}
+            {!b && <Linea nivel="nada">Falta la toma tumbada («{lTumb}»): sin ella no se puede calcular {vista === 'pots' ? 'la subida' : 'la caída'}.</Linea>}
             {vista === 'pots' && b && <>
               {r.dFc == null ? <Linea nivel="nada">Faltan tomas de pie con frecuencia cardíaca.</Linea>
                 : r.dFc >= 30 ? <Linea nivel="aviso"><b>Subida de FC de {conSigno(r.dFc)} lpm</b>{r.n30 >= 2 ? `, sostenida (${r.n30} lecturas de pie a +30 o más).` : ', pero solo en una lectura: no se puede decir que sea sostenida.'}</Linea>
@@ -138,12 +143,12 @@ export function TestOrtostatico({ d, set, date, reloj, vista }: { d: SintDia; se
             </>}
             {sen && <Linea nivel="aviso"><b>Test cortado en el minuto {sen.min}</b>{(sen.motivo ?? []).length ? ` (${sen.motivo!.join(', ').toLowerCase()})` : ''}. Un test cortado por síntomas también es información para tu médico.</Linea>}
                         <p className="small muted" style={{ margin: '.4rem 0 0' }}>{vista === 'pots'
-              ? 'Patrón a valorar por tu médico, no un diagnóstico. Criterio de POTS (consenso HRS 2015 y NIH 2019): subida de FC de 30 lpm o más en los 10 minutos de pie, sostenida, sin hipotensión ortostática y con síntomas desde hace 6 meses o más. Un test solo no basta: cuenta cuántas mañanas se repite.'
+              ? 'Patrón a valorar por tu médico, no un diagnóstico. Criterio de POTS (consenso HRS 2015 y NIH 2019): subida de FC de 30 lpm o más en los 10 minutos de pie, sostenida, sin hipotensión ortostática y con síntomas desde hace 6 meses o más. Un test solo no basta: cuenta cuántos días se repite.'
               : 'Patrón a valorar por tu médico, no un diagnóstico. Criterio (guía ESC 2018 de síncope, consenso HRS 2015): caída de 20 mmHg o más de la alta o de 10 o más de la baja, o tensión alta por debajo de 90 que reproduce los síntomas.'}</p>
           </div>
         </>
       ) : (
-        <p className="small muted" style={{ margin: '.6rem 0 0' }}>{hoy ? 'Aún no hay tomas del test de hoy. Anótalas abajo, en «Al levantarme» y «Poslevantarme».' : 'Sin test de pie este día.'}</p>
+        <p className="small muted" style={{ margin: '.6rem 0 0' }}>{hoy ? `Aún no hay tomas del test ${S.nombre} de hoy. Anótalas abajo, en «${lTumb}» y «${lPie}».` : `Sin test de pie ${S.nombre} este día.`}</p>
       )}
     </div>
   )
