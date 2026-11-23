@@ -78,8 +78,18 @@ function fcOuraMinutos(o: OuraDia | null): (number | null)[] {
   return v
 }
 
-export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: RelojDia | null; oura: OuraDia | null; relojAyer?: RelojDia | null }) {
+/** Clave de la observación de un rato: de dónde viene y su hora (así no se pierde si cambia el orden de la lista). */
+export const claveRato = (de: 'Reloj' | 'Oura', hora: string) => `${de === 'Reloj' ? 'reloj' : 'oura'}|${hora}`
+
+export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null, obs, onObs, bloqueado = false }: {
+  reloj: RelojDia | null; oura: OuraDia | null; relojAyer?: RelojDia | null
+  /** Observaciones escritas de cada rato a 100 lpm o más (sin ellas, la lista no deja escribir). */
+  obs?: { [clave: string]: string }
+  onObs?: (clave: string, texto: string | null) => void
+  bloqueado?: boolean
+}) {
   const [foco, setFoco] = useState<{ casilla: number; vez: number } | null>(null)
+  const [editando, setEditando] = useState<string | null>(null)
   const { valores: fcR, picos: picosR } = fcRelojMinutos(r)
   // Ratos a 100 lpm o más de los dos, por hora. Del reloj, un rato de 1 minuto es una lectura suelta.
   const ratos = [
@@ -140,18 +150,41 @@ export function PulsoDelDia({ reloj: r, oura: o, relojAyer = null }: { reloj: Re
         <div className="pulso-ratos">
           <strong className="small">Ratos a {FC_ALTA} lpm o más</strong>
           <ul>
-            {ratos.map((a, k) => (
-              <li key={a.de + a.hora + k}>
-                <button type="button" onClick={() => irA(a.hora)} title="Ver en la curva">
-                  <span className="pulso-ratos-hora">{a.hora}</span>
-                  <span style={{ color: a.color }}>{a.de}</span>
-                  <b>{a.fc} lpm</b>
-                  <span className="muted">{a.de === 'Reloj' && a.min <= 1 ? 'lectura suelta' : `${a.min} min`}{a.contexto ? ` · ${a.contexto}` : ''}</span>
-                </button>
-              </li>
-            ))}
+            {ratos.map((a, k) => {
+              const c = claveRato(a.de, a.hora)
+              const nota = obs?.[c] ?? ''
+              const ed = editando === c
+              return (
+                <li key={a.de + a.hora + k}>
+                  <div className="pulso-rato-fila">
+                    <button type="button" className="pulso-rato" onClick={() => irA(a.hora)} title="Ver en la curva">
+                      <span className="pulso-ratos-hora">{a.hora}</span>
+                      <span style={{ color: a.color }}>{a.de}</span>
+                      <b>{a.fc} lpm</b>
+                      <span className="muted">{a.de === 'Reloj' && a.min <= 1 ? 'lectura suelta' : `${a.min} min`}{a.contexto ? ` · ${a.contexto}` : ''}</span>
+                    </button>
+                    {onObs && (
+                      <button type="button" className={'pulso-rato-nota' + (nota ? ' con' : '')} aria-expanded={ed} disabled={bloqueado}
+                        aria-label={`${nota ? 'Ver o cambiar la observación' : 'Añadir observación'} del rato de las ${a.hora}`}
+                        onClick={() => setEditando(ed ? null : c)}>
+                        {nota ? '📝' : '✎ Nota'}
+                      </button>
+                    )}
+                  </div>
+                  {nota && !ed && <p className="pulso-rato-texto small">{nota}</p>}
+                  {ed && onObs && (
+                    <div className="pulso-rato-form">
+                      <textarea rows={2} autoFocus disabled={bloqueado} aria-label={`Observación del rato de las ${a.hora}`}
+                        placeholder="Qué estaba haciendo, postura, si había comido, cómo me sentía…"
+                        value={nota} onChange={(e) => onObs(c, e.target.value || null)} />
+                      <button type="button" className="linkbtn small" onClick={() => setEditando(null)}>Listo ▴</button>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
-          <p className="muted small" style={{ margin: '.15rem 0 0' }}>Toca un rato para verlo en la curva.</p>
+          <p className="muted small" style={{ margin: '.15rem 0 0' }}>Toca un rato para verlo en la curva{onObs ? ' y «✎ Nota» para apuntar qué pasaba' : ''}.</p>
         </div>
       )}
       {(vfcR.length > 0 || o?.noche?.vfc_media != null || hayVfc) && <p className="muted small" style={{ margin: '.3rem 0 0' }}>La variabilidad del reloj y la de Oura se calculan de forma distinta: compáralas por si suben o bajan a la vez, no por la cifra.</p>}

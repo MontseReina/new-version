@@ -87,7 +87,12 @@ export default function Disautonomia() {
       {hoja === 'tsi' && <ReposoTSI date={date} reloj={reloj} oura={oura} />}
 
       {hoja === 'fc' && <>
-        <PulsoDelDia reloj={reloj} oura={oura} relojAyer={relojAyer} />
+        <PulsoDelDia reloj={reloj} oura={oura} relojAyer={relojAyer} obs={d.obs_ratos} bloqueado={state === 'cargando'}
+          onObs={(clave, texto) => set((a) => {
+            const o = { ...(a.obs_ratos ?? {}) }
+            if (texto) o[clave] = texto; else delete o[clave]
+            return { obs_ratos: o }
+          })} />
         <fieldset className="sint" disabled={state === 'cargando'}>
           <Taquicardias d={d} set={set} date={date} reloj={reloj} />
         </fieldset>
