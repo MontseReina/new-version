@@ -77,11 +77,13 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
       </div>
     )
   }
+  // La clave de una medición fija no cambia al crearse su toma (antes pasaba de «nueva» al índice y el formulario se
+  // volvía a montar: se perdía el foco y lo que se seguía tecleando, la hora incluida).
   const formulario = (x: Medida, i: number, base?: Medida, titulo?: string) => {
     const avisos = avisosMedida(x)
     const tipos = tiposDe(x)
     return (
-      <div className={'medida' + (base ? ' medida-fija-form' : '')} key={i < 0 ? 'nueva-' + (titulo ?? '') : i}>
+      <div className={'medida' + (base ? ' medida-fija-form' : '')} key={base ? `fija-${base.momento}-${base.min_de_pie ?? ''}` : 'esp-' + i}>
         {titulo && <div className="medida-sub">{titulo}</div>}
         <div className="row between">
           <label className="row small" style={{ gap: '.4rem' }}>
