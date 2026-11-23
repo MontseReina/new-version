@@ -892,8 +892,15 @@ i.completo { background: var(--green); } i.parcial { background: var(--amber); }
 .pulso-ratos { margin-top: .6rem; }
 .pulso-ratos ul { list-style: none; margin: .25rem 0 0; padding: 0; }
 .pulso-ratos li + li { border-top: 1px solid var(--line); }
-.pulso-ratos button { display: grid; grid-template-columns: 3.2rem 3.4rem 4.6rem 1fr; gap: .4rem; align-items: baseline; width: 100%; padding: .35rem .15rem; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
-.pulso-ratos button:hover { background: var(--primary-soft); }
+.pulso-rato-fila { display: flex; align-items: center; gap: .3rem; }
+.pulso-ratos .pulso-rato { display: grid; grid-template-columns: 3.2rem 3.4rem 4.6rem 1fr; gap: .4rem; align-items: baseline; width: 100%; padding: .35rem .15rem; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.pulso-ratos .pulso-rato:hover { background: var(--primary-soft); }
+.pulso-ratos .pulso-rato { flex: 1; min-width: 0; }
+.pulso-rato-nota { flex: none; min-height: 36px; padding: 0 .55rem; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--muted); font: inherit; font-size: .8rem; cursor: pointer; }
+.pulso-rato-nota.con { color: var(--text); border-color: var(--primary); background: var(--primary-soft); }
+.pulso-rato-texto { margin: 0 0 .4rem 3.6rem; color: var(--text); font-style: italic; white-space: pre-wrap; }
+.pulso-rato-form { display: grid; gap: .25rem; margin: 0 0 .5rem 3.6rem; }
+.pulso-rato-form textarea { width: 100%; font: inherit; }
 .pulso-ratos-hora { font-weight: 600; }
 
 /* Disautonomía por hojas (0.26.0) */

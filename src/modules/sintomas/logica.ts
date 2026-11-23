@@ -292,6 +292,8 @@ export type SintDia = {
   texto?: { [grupo: string]: string }
   /** Tomas de constantes del día (frecuencia cardíaca, tensión, glucosa, saturación), cada una con su hora. */
   constantes?: Medida[]
+  /** Observaciones de los ratos a 100 lpm o más del pulso del día (reloj u Oura), por clave `reloj|HH:MM` u `oura|HH:MM`. */
+  obs_ratos?: { [clave: string]: string }
 }
 
 const op = (...nombres: string[]): Opcion[] => nombres.map((n) => ({ id: slug(n), nombre: n }))
