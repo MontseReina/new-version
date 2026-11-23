@@ -54,8 +54,6 @@ export type Detalle = {
   dolor_barriga?: boolean | null
   nauseas?: boolean | null
   sudor_frio?: boolean | null
-  /** Disfagia (desde la 0.27.1). */
-  disfagia?: boolean | null
   desencadenantes?: string | null
   /** Episodio terminado y plegado con «Guardar» (desde la 0.27.1); solo afecta a cómo se ve. */
   guardado?: boolean | null
@@ -65,8 +63,8 @@ export type Tiempo = { n?: number | null; u?: 'seg' | 'min' | 'h' | null }
 export const UNIDADES: ['seg' | 'min' | 'h', string][] = [['seg', 's'], ['min', 'min'], ['h', 'h']]
 export const textoTiempo = (t?: Tiempo | null) => (t?.n != null ? `${t.n} ${UNIDADES.find(([k]) => k === (t.u ?? 'min'))![1]}` : '')
 /** Sí/no del episodio, en el orden en que se enseñan. */
-export const SI_NO_EPISODIO: ['movimientos' | 'dolor_barriga' | 'nauseas' | 'disfagia' | 'sudor_frio', string][] = [
-  ['movimientos', 'Movimientos (descarga adrenérgica)'], ['dolor_barriga', 'Dolor de barriga'], ['nauseas', 'Náuseas'], ['disfagia', 'Disfagia (dificultad para tragar)'], ['sudor_frio', 'Sudor frío'],
+export const SI_NO_EPISODIO: ['movimientos' | 'dolor_barriga' | 'nauseas' | 'sudor_frio', string][] = [
+  ['movimientos', 'Movimientos (descarga adrenérgica)'], ['dolor_barriga', 'Dolor de barriga'], ['nauseas', 'Náuseas'], ['sudor_frio', 'Sudor frío'],
 ]
 /** Datos del episodio en una línea, para los informes. */
 export function textoDetalle(x: Detalle): string {
@@ -305,17 +303,36 @@ export const GRUPOS_DISAUTONOMIA: Grupo[] = [
   { id: 'compresion', nombre: 'Compresión', tipo: 'varias', neutra: true, pagina: 'disautonomia', opciones: op('Sin compresión', 'Medias', 'Faja abdominal') },
   { id: 'eds_compresiones', nombre: 'Ehlers-Danlos y compresiones', tipo: 'varias', neutra: true, pagina: 'disautonomia', opciones: op(
     'Nada hoy',
-    'Dolor abdominal después de comer', 'Saciedad precoz', 'Vómitos después de comer', 'Alivio tumbada boca arriba', 'Alivio tumbada boca abajo', 'Alivio tumbada sobre el lado izquierdo',
+    'Dolor abdominal después de comer', 'Saciedad precoz', 'Vómitos después de comer', 'Disfagia', 'Alivio tumbada boca arriba', 'Alivio tumbada boca abajo', 'Alivio tumbada sobre el lado izquierdo',
     'Dolor pélvico que empeora de pie', 'Sangre en la orina',
     'Rubor o enrojecimiento', 'Sofocos', 'Picor', 'Habones (ronchas)', 'Dermografismo (marcas al rascar)', 'Congestión nasal',
     'Subluxación o luxación', 'Dolor articular', 'Hematomas sin golpe', 'Piernas o manos moradas de pie', 'Manos y pies fríos',
   ) },
 ]
-/** Grupos de la usuaria con los de la 0.24.0 añadidos, o null si ya estaban (o si aún no tiene grupos guardados). */
+/** 0.27.1: «Disfagia» en «Ehlers-Danlos y compresiones», detrás de «Vómitos después de comer». */
+export const EXTRAS_0271 = 'disautonomia-0.27.1-disfagia'
+/** Grupos de la usuaria con las novedades de la 0.24.0 y la 0.27.1 añadidas una sola vez, o null si no hay nada
+ *  que añadir (o si aún no tiene grupos guardados). */
 export function conGruposNuevos(c: SintCfg | null): Partial<SintCfg> | null {
-  if (!c || !Array.isArray(c.grupos) || (c.extras ?? []).includes(EXTRAS_024)) return null
-  const ids = new Set(c.grupos.map((g) => g.id))
-  return { grupos: [...c.grupos, ...GRUPOS_DISAUTONOMIA.filter((g) => !ids.has(g.id))], extras: [...(c.extras ?? []), EXTRAS_024] }
+  if (!c || !Array.isArray(c.grupos)) return null
+  let grupos = c.grupos
+  const extras = [...(c.extras ?? [])]
+  if (!extras.includes(EXTRAS_024)) {
+    const ids = new Set(grupos.map((g) => g.id))
+    grupos = [...grupos, ...GRUPOS_DISAUTONOMIA.filter((g) => !ids.has(g.id))]
+    extras.push(EXTRAS_024)
+  }
+  if (!extras.includes(EXTRAS_0271)) {
+    grupos = grupos.map((g) => {
+      if (g.id !== 'eds_compresiones' || (g.opciones ?? []).some((o) => o.id === 'disfagia')) return g
+      const ops = [...(g.opciones ?? [])]
+      const tras = ops.findIndex((o) => o.id === 'vomitos_despues_de_comer')
+      ops.splice(tras < 0 ? ops.length : tras + 1, 0, { id: 'disfagia', nombre: 'Disfagia' })
+      return { ...g, opciones: ops }
+    })
+    extras.push(EXTRAS_0271)
+  }
+  return extras.length === (c.extras ?? []).length ? null : { grupos, extras }
 }
 
 /** Grupos de partida, mientras la usuaria no guarde los suyos. */
