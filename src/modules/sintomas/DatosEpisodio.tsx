@@ -30,7 +30,7 @@ function SiNo({ v, label, poner }: { v?: boolean | null; label: string; poner: (
 
 /**
  * Datos de cada episodio de disautonomía: pródromo, duración (hasta recuperarse), pérdida de conocimiento (y cuánto),
- * movimientos (descarga adrenérgica), dolor de barriga, náuseas, sudor frío y desencadenantes. Todo opcional.
+ * movimientos (descarga adrenérgica), dolor de barriga, náuseas, disfagia, sudor frío y desencadenantes. Todo opcional.
  */
 export function DatosEpisodio({ x, quien, poner }: { x: Detalle; quien: string; poner: (patch: Detalle) => void }) {
   return (

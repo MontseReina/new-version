@@ -2,11 +2,19 @@ import { Stepper } from '../../components/ui'
 import { todayStr } from '../../lib/dates'
 import { Bristol } from './Bristol'
 import { DatosEpisodio } from './DatosEpisodio'
-import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, episodiosOpcion, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintDia } from './logica'
+import { COMIDAS, HECES_COLORES, HECES_MARCAS, ORINA_COLORES, ORINA_NOMBRES, alternar, episodiosOpcion, tieneEscala, type Deposicion, type Detalle, type Grupo, type SintDia, textoTiempo } from './logica'
 import { emojiOpcion } from './emojis'
 
 const DIEZ = Array.from({ length: 10 }, (_, i) => i + 1)
 const ahora = () => new Date().toTimeString().slice(0, 5)
+/** Una línea con lo esencial de un episodio plegado: hora, intensidad, duración e ingreso. */
+const resumenEpisodio = (x: Detalle) => [
+  x.hora,
+  x.gravedad != null && `intensidad ${x.gravedad}/10`,
+  textoTiempo(x.duracion) && `duró ${textoTiempo(x.duracion)}`,
+  x.conocimiento && 'pérdida de conocimiento',
+  x.urgencias && '🚑 urgencias',
+].filter(Boolean).join(' · ') || 'sin datos'
 
 /** Grupos de síntomas del día, para marcar con un toque. Lo usan Disautonomía y Ciclo menstrual:
  *  los dos escriben en el mismo registro diario ('sintomas'), cada uno con sus grupos. */
@@ -134,6 +142,14 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
                   <strong className="small">{o.nombre}{varios && ` · ${xs.length} episodios`}</strong>
                   {xs.map((x, i) => {
                     const quien = varios ? `${o.nombre}, episodio ${i + 1}` : o.nombre
+                    if (x.guardado) return (
+                      <div className={'epi-plegado' + (varios ? ' epi-bloque' : '')} key={i}>
+                        <div className="row between">
+                          <span className="small"><strong>{varios ? `Episodio ${i + 1}` : 'Episodio'}</strong>{' · '}{resumenEpisodio(x)}</span>
+                          <button type="button" className="linkbtn" aria-expanded={false} aria-label={`Desplegar ${quien}`} onClick={() => detalle(g, o.id, i, { guardado: null })}>Desplegar ▾</button>
+                        </div>
+                      </div>
+                    )
                     return (
                       <div className={varios ? 'epi-bloque' : ''} key={i}>
                         {varios && (
@@ -167,6 +183,9 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
                             </div>
                           )}
                           <textarea aria-label={`Qué hice en ${quien}`} rows={2} placeholder="Qué tomé, qué hice, cómo evolucionó…" value={x.hice ?? ''} onChange={(e) => detalle(g, o.id, i, { hice: e.target.value || null })} />
+                        </div>
+                        <div className="row epi-guardar">
+                          <button type="button" className="btn sm" aria-label={`Guardar y plegar ${quien}`} onClick={() => detalle(g, o.id, i, { guardado: true })}>Guardar</button>
                         </div>
                       </div>
                     )
