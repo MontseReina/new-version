@@ -14,7 +14,7 @@ import { horaLevantarse } from '../sintomas/levantarse'
 export type AvisoId = 'pie' | 'ayuno' | 'primera' | 'agua' | 'kcal' | 'dormir' | 'pendiente' | 'cena'
 
 export const AVISOS: { id: AvisoId; nombre: string; detalle: string; porDefecto: boolean }[] = [
-  { id: 'pie', nombre: 'Test de pie', detalle: 'A los 5 y a los 10 minutos de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.', porDefecto: true },
+  { id: 'pie', nombre: 'Test de pie', detalle: 'A los 5 y a los 10 minutos de anotar la toma tumbada del test de pie («Al levantarme» o «Tarde · tumbada») en Disautonomía → POTS. Llega también en las horas de silencio.', porDefecto: true },
   { id: 'ayuno', nombre: 'Horas sin comer', detalle: 'Media hora antes de cumplir las horas de ayuno, al cumplirlas y cada hora que pase después sin comer.', porDefecto: true },
   { id: 'primera', nombre: 'Primera toma del día', detalle: 'A los 45 minutos de levantarte (recordatorio) y a la hora, si aún no hay ninguna toma. La hora de levantarte es la de tu primera tensión («Al levantarme» en Disautonomía → Constantes); sin ella, la del botón «al levantarme» de Hidratación.', porDefecto: true },
   { id: 'agua', nombre: 'Agua a mediodía', detalle: 'A la hora que digas, si no llegas a la cantidad mínima.', porDefecto: true },
@@ -88,11 +88,15 @@ export function horaLevantar(hc: HidraCfg | null, d: HidraDia, sint?: SintDia | 
 
 /** Test de pie: a los 5 y a los 10 minutos de ponerse de pie, si esa toma aún no está anotada (durante 3 minutos). */
 export function avisosPie(x: Contexto): Aviso[] {
-  const ini = x.sintHoy?.test_pie?.inicio
+  // El de la mañana y, desde la 0.28.0, el de la tarde.
+  return [avisosPieDe(x, 'test_pie', 'poslevantarme'), avisosPieDe(x, 'test_pie_tarde', 'tarde_de_pie')].flat()
+}
+function avisosPieDe(x: Contexto, campo: 'test_pie' | 'test_pie_tarde', dePie: 'poslevantarme' | 'tarde_de_pie'): Aviso[] {
+  const ini = x.sintHoy?.[campo]?.inicio
   const p = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(ini ?? '')
   if (!p) return []
   const pasado = (x.ahoraSeg ?? x.ahoraMin * 60) - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3] ?? 0))
-  const anotada = (n: number) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === 'poslevantarme' && c.min_de_pie === n && medidaConDatos(c))
+  const anotada = (n: number) => (x.sintHoy?.constantes ?? []).some((c) => c.momento === dePie && c.min_de_pie === n && medidaConDatos(c))
   return MINUTOS_AVISO_PIE.filter((n) => pasado >= n * 60 && pasado < n * 60 + 180 && !anotada(n)).map((n) => ({
     clave: `pie-${ini}-${n}`, id: 'pie' as const, titulo: 'Test de pie', ruta: 'disautonomia', ttl: 180,
     cuerpo: `Llevas ${n} minutos de pie: tómate ahora la tensión y el pulso 🩺`,

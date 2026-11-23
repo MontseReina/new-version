@@ -146,7 +146,7 @@ export type TestPie = {
   mareo_inicial?: boolean | null
 }
 /** Mediciones fijas del día, en su orden. */
-export type Momento = 'levantarme' | 'poslevantarme' | 'antes_desayunar' | 'despues_desayunar' | 'media_manana' | 'antes_comer' | 'despues_comer' | 'media_tarde' | 'antes_cenar' | 'despues_cenar' | 'antes_cama'
+export type Momento = 'levantarme' | 'poslevantarme' | 'tarde_tumbada' | 'tarde_de_pie' | 'antes_desayunar' | 'despues_desayunar' | 'media_manana' | 'antes_comer' | 'despues_comer' | 'media_tarde' | 'antes_cenar' | 'despues_cenar' | 'antes_cama'
 export const MOMENTOS: [Momento, string][] = [
   ['levantarme', 'Al levantarme'],
   ['poslevantarme', 'Poslevantarme'],
@@ -159,9 +159,23 @@ export const MOMENTOS: [Momento, string][] = [
   ['antes_cenar', 'Antes de cenar'],
   ['despues_cenar', 'Después de cenar'],
   ['antes_cama', 'Antes de irme a la cama'],
+  ['tarde_tumbada', 'Tarde · tumbada'],
+  ['tarde_de_pie', 'Tarde · de pie'],
 ]
 /** Mediciones fijas del test de pie (hoja POTS) y del resto del día (hoja Hipotensión), desde la 0.27.0. */
 export const MOMENTOS_TEST: Momento[] = ['levantarme', 'poslevantarme']
+/** Segundo test de pie, por la tarde (desde la 0.28.0): tumbada y de pie al 1, 3, 5 y 10 minutos, igual que el de la mañana. */
+export const MOMENTOS_TEST_TARDE: Momento[] = ['tarde_tumbada', 'tarde_de_pie']
+export type SesionTest = 'manana' | 'tarde'
+/** Momentos, campo del día y etiquetas de cada test de pie. */
+export const SESIONES_TEST: { [k in SesionTest]: { tumbada: Momento; dePie: Momento; campo: 'test_pie' | 'test_pie_tarde'; nombre: string } } = {
+  manana: { tumbada: 'levantarme', dePie: 'poslevantarme', campo: 'test_pie', nombre: 'de la mañana' },
+  tarde: { tumbada: 'tarde_tumbada', dePie: 'tarde_de_pie', campo: 'test_pie_tarde', nombre: 'de la tarde' },
+}
+/** ¿Es una toma de alguno de los dos tests de pie? */
+export const esMomentoTest = (m?: Momento | null) => !!m && (MOMENTOS_TEST.includes(m) || MOMENTOS_TEST_TARDE.includes(m))
+export const esTumbadaTest = (m?: Momento | null) => m === 'levantarme' || m === 'tarde_tumbada'
+export const esDePieTest = (m?: Momento | null) => m === 'poslevantarme' || m === 'tarde_de_pie'
 export const MOMENTOS_DIA: Momento[] = ['antes_desayunar', 'despues_desayunar', 'media_manana', 'antes_comer', 'despues_comer', 'media_tarde', 'antes_cenar', 'despues_cenar', 'antes_cama']
 /** Parejas antes / después de cada comida, para la hipotensión postprandial. */
 export const PAREJAS_COMIDA: [string, Momento, Momento][] = [['Desayuno', 'antes_desayunar', 'despues_desayunar'], ['Comida', 'antes_comer', 'despues_comer'], ['Cena', 'antes_cenar', 'despues_cenar']]
@@ -182,13 +196,13 @@ export const MINUTOS_AVISO_PIE = [5, 10]
 export const ANTES_TEST = ['Sin beber aún', 'Ampolla o agua', 'Sal', 'Hidroelectrolíticos fast', 'Hidroelectrolíticos de rescate', 'Medias o faja', 'Café', 'Medicación']
 /** Síntomas que se marcan en cada toma del test de pie. */
 export const SINTOMAS_TEST = ['Mareo', 'Palpitaciones', 'Visión borrosa', 'Temblor', 'Náusea', 'Calor', 'Frío', 'Debilidad', 'Niebla mental', 'Nada']
-export const subtomasDe = (m: Momento): (number | null)[] => (m === 'poslevantarme' ? MINUTOS_DE_PIE : [null])
+export const subtomasDe = (m: Momento): (number | null)[] => (esDePieTest(m) ? MINUTOS_DE_PIE : [null])
 /** Cómo nace una medición fija: habitual (las de después de desayunar, comer y cenar, además postprandial); al levantarme, tumbada; poslevantarme, de pie. */
 export function porDefectoMomento(m: Momento, minDePie: number | null): Medida {
   return {
     momento: m,
     tipos: esDespues(m) ? ['habitual', 'postprandial'] : ['habitual'],
-    ...(m === 'levantarme' ? { posicion: 'tumbada' as const } : m === 'poslevantarme' ? { posicion: 'de_pie' as const } : {}),
+    ...(esTumbadaTest(m) ? { posicion: 'tumbada' as const } : esDePieTest(m) ? { posicion: 'de_pie' as const } : {}),
     ...(minDePie ? { min_de_pie: minDePie } : {}),
   }
 }
@@ -271,6 +285,8 @@ export type Comida = (typeof COMIDAS)[number][0]
 export type SintDia = {
   /** Test de bipedestación de la mañana: hora (HH:MM:SS) a la que se puso de pie, para avisar en cada toma. */
   test_pie?: TestPie | null
+  /** Test de pie de la tarde (desde la 0.28.0): mismos campos que el de la mañana. */
+  test_pie_tarde?: TestPie | null
   /** Opciones marcadas de cada grupo, por id. */
   sel?: { [grupo: string]: string[] }
   /** Hora, gravedad y urgencias de cada episodio de las opciones marcadas en los grupos 'detalle'
@@ -492,16 +508,18 @@ const minDia = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
  * el pulso del reloj mientras estaba de pie (hasta que se sentó, o 10 minutos) y la toma ya sentada. Con eso calcula la subida
  * de FC y las caídas de tensión. Son patrones para que los valore el médico, no un diagnóstico.
  */
-export function resultadoTest(d: SintDia, relojPuntos: [string, number, number][] = []): ResultadoTest {
+export function resultadoTest(d: SintDia, relojPuntos: [string, number, number][] = [], sesion: SesionTest = 'manana'): ResultadoTest {
+  const S = SESIONES_TEST[sesion]
+  const tp = d[S.campo] ?? null
   const xs = d.constantes ?? []
-  const basal = xs.find((x) => x.momento === 'levantarme' && medidaConDatos(x)) ?? null
-  const tomas = xs.filter((x) => x.momento === 'poslevantarme' && x.min_de_pie && medidaConDatos(x)).sort((a, b) => a.min_de_pie! - b.min_de_pie!)
-  const sentada = d.test_pie?.sentada ?? null
+  const basal = xs.find((x) => x.momento === S.tumbada && medidaConDatos(x)) ?? null
+  const tomas = xs.filter((x) => x.momento === S.dePie && x.min_de_pie && medidaConDatos(x)).sort((a, b) => a.min_de_pie! - b.min_de_pie!)
+  const sentada = tp?.sentada ?? null
   const fin = sentada?.min ?? 10
   const lecturas: LecturaTest[] = []
   if (basal) lecturas.push({ min: -1, etiqueta: 'Tumbada', fc: basal.fc, pas: basal.pas, pad: basal.pad, sintomas: basal.sintomas ?? [], de: 'toma' })
   for (const t of tomas) if (t.min_de_pie! <= fin) lecturas.push({ min: t.min_de_pie!, etiqueta: `De pie ${t.min_de_pie}′`, fc: t.fc, pas: t.pas, pad: t.pad, sintomas: t.sintomas ?? [], de: 'toma' })
-  const ini = d.test_pie?.inicio
+  const ini = tp?.inicio
   const reloj: LecturaTest[] = []
   if (ini) {
     const m0 = minDia(ini)
@@ -545,7 +563,7 @@ export type ResultadoDia = {
   comidas: { comida: string; antes: number; despues: number; caida: number; min?: number | null }[]
 }
 export function resultadoDia(d: SintDia): ResultadoDia {
-  const xs = (d.constantes ?? []).filter((x) => !MOMENTOS_TEST.includes(x.momento as Momento))
+  const xs = (d.constantes ?? []).filter((x) => !esMomentoTest(x.momento))
   const tomas = xs.filter((x) => x.pas != null).map((x) => ({ hora: x.hora ?? '', etiqueta: etiquetaToma(x) || 'Esporádica', pas: x.pas!, pad: x.pad ?? null }))
     .sort((a, b) => a.hora.localeCompare(b.hora))
   const pasMin = tomas.reduce<ResultadoDia['pasMin']>((m, t) => (!m || t.pas < m.pas ? { pas: t.pas, hora: t.hora, etiqueta: t.etiqueta } : m), null)

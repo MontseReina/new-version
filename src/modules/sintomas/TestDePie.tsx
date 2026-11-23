@@ -41,11 +41,11 @@ export function programarPitidos() {
 }
 
 /**
- * Test de bipedestación de la mañana. El reloj empieza solo al anotar la toma de «Al levantarme» (tumbada) y avisa
+ * Test de bipedestación (el de la mañana y, desde la 0.28.0, el de la tarde). El reloj empieza solo al anotar la toma tumbada y avisa
  * en cada toma (1, 3, 5 y 10 minutos) con pitidos en la app (si sigue abierta); a los 5 y 10, también con un aviso al móvil (función `avisos`).
  * `banner`: arriba de Constantes, solo mientras corre el reloj. `ficha`: dentro de «Poslevantarme», siempre.
  */
-export function TestDePie({ inicio, hoy, reiniciar, modo, sentadaMin = null }: { inicio: string | null; hoy: boolean; reiniciar: (hms: string) => void; modo: 'banner' | 'ficha'; sentadaMin?: number | null }) {
+export function TestDePie({ inicio, hoy, reiniciar, modo, sentadaMin = null, tumbada = 'Al levantarme' }: { inicio: string | null; hoy: boolean; reiniciar: (hms: string) => void; modo: 'banner' | 'ficha'; sentadaMin?: number | null; /** Nombre de la toma tumbada que arranca el reloj. */ tumbada?: string }) {
   const [ahora, setAhora] = useState(() => aSeg(ahoraHMS()))
   const seg = inicio && hoy ? ahora - aSeg(inicio) : null
   const corriendo = seg != null && seg >= 0 && seg < FIN + 120 && sentadaMin == null
@@ -70,7 +70,7 @@ export function TestDePie({ inicio, hoy, reiniciar, modo, sentadaMin = null }: {
       </div>
       {!inicio || !hoy ? (
         <p className="small" style={{ margin: '.2rem 0 0' }}>{hoy
-          ? 'El reloj empieza al anotar la toma de «Al levantarme». Después ponte de pie, quieta: suena en cada toma (1, 3, 5 y 10 minutos).'
+          ? `El reloj empieza al anotar la toma de «${tumbada}». Después ponte de pie, quieta: suena en cada toma (1, 3, 5 y 10 minutos).`
           : 'Sin test de pie este día.'}</p>
       ) : (
         <>
