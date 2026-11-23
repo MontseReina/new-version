@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Stepper } from '../../components/ui'
 import { todayStr } from '../../lib/dates'
 import { Bristol } from './Bristol'
@@ -19,15 +20,7 @@ const resumenEpisodio = (x: Detalle) => [
 /** Grupos de síntomas del día, para marcar con un toque. Lo usan Disautonomía y Ciclo menstrual:
  *  los dos escriben en el mismo registro diario ('sintomas'), cada uno con sus grupos. */
 export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grupos: Grupo[]; d: SintDia; set: (patch: SintDia) => void; date: string; acciones?: string[]; disabled?: boolean }) {
-  const marcar = (g: Grupo, id: string) => {
-    const sel = { ...(d.sel ?? {}), [g.id]: alternar(g, d.sel?.[g.id] ?? [], id) }
-    if (g.tipo !== 'detalle') { set({ sel }); return }
-    // Al marcar se propone la hora actual (si es el registro de hoy); al desmarcar se borra su detalle.
-    const dg = { ...(d.det?.[g.id] ?? {}) }
-    if (sel[g.id].includes(id)) dg[id] = [nuevoEpisodio()]
-    else delete dg[id]
-    set({ sel, det: { ...(d.det ?? {}), [g.id]: dg } })
-  }
+  const marcar = (g: Grupo, id: string) => set({ sel: { ...(d.sel ?? {}), [g.id]: alternar(g, d.sel?.[g.id] ?? [], id) } })
   const nuevoEpisodio = (): Detalle => (date === todayStr() ? { hora: ahora() } : {})
   /** Episodios de una opción marcada (al menos uno). */
   const episodios = (g: Grupo, id: string) => {
@@ -38,6 +31,42 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
     set({ det: { ...(d.det ?? {}), [g.id]: { ...(d.det?.[g.id] ?? {}), [id]: xs } } })
   const detalle = (g: Grupo, id: string, i: number, patch: Detalle) =>
     ponerEpisodios(g, id, episodios(g, id).map((x, k) => (k === i ? { ...x, ...patch } : x)))
+  /** Grupo en el que se está eligiendo el tipo de un episodio nuevo. */
+  const [eligiendo, setEligiendo] = useState<string | null>(null)
+  /** Todos los episodios del día de un grupo, de cualquier tipo, ordenados por hora (sin hora, al final). */
+  const episodiosDia = (g: Grupo) => (g.opciones ?? [])
+    .filter((o) => (d.sel?.[g.id] ?? []).includes(o.id))
+    .flatMap((o) => episodios(g, o.id).map((x, i) => ({ o, i, x })))
+    .sort((a, b) => (a.x.hora || '99:99').localeCompare(b.x.hora || '99:99'))
+  /** Crea un episodio del tipo elegido. */
+  const nuevo = (g: Grupo, id: string) => {
+    const marcadas = d.sel?.[g.id] ?? []
+    const xs = marcadas.includes(id) ? [...episodios(g, id), nuevoEpisodio()] : [nuevoEpisodio()]
+    set({
+      sel: { ...(d.sel ?? {}), [g.id]: marcadas.includes(id) ? marcadas : [...marcadas, id] },
+      det: { ...(d.det ?? {}), [g.id]: { ...(d.det?.[g.id] ?? {}), [id]: xs } },
+    })
+    setEligiendo(null)
+  }
+  /** Quita un episodio; si era el único de su tipo, el tipo deja de estar marcado ese día. */
+  const quitar = (g: Grupo, id: string, i: number, extra?: { id: string; x: Detalle }) => {
+    const marcadas = d.sel?.[g.id] ?? []
+    const dg = { ...(d.det?.[g.id] ?? {}) }
+    let sel = marcadas
+    const resto = episodios(g, id).filter((_, k) => k !== i)
+    if (resto.length) dg[id] = resto
+    else { delete dg[id]; sel = sel.filter((y) => y !== id) }
+    if (extra) {
+      dg[extra.id] = sel.includes(extra.id) ? [...episodios(g, extra.id), extra.x] : [extra.x]
+      if (!sel.includes(extra.id)) sel = [...sel, extra.id]
+    }
+    set({ sel: { ...(d.sel ?? {}), [g.id]: sel }, det: { ...(d.det ?? {}), [g.id]: dg } })
+  }
+  /** Cambia el tipo de un episodio: lo pasa, con todo lo escrito, a la otra opción. */
+  const cambiarTipo = (g: Grupo, de: string, i: number, a: string) => {
+    if (de === a) return
+    quitar(g, de, i, { id: a, x: episodios(g, de)[i] })
+  }
 
   const heces = d.heces ?? []
   const ponerDepo = (i: number, patch: Deposicion) => set({ heces: heces.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
@@ -50,6 +79,89 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
           {[0, ...DIEZ].map((n) => <button type="button" key={n} className={v === n ? 'on' : ''} aria-pressed={v === n} onClick={() => set({ escala: { ...(d.escala ?? {}), [g.id]: v === n ? null : n } })}>{n}</button>)}
         </div>
         {(g.min_txt || g.max_txt) && <div className="muted small" style={{ marginTop: '.3rem' }}>{[g.min_txt && `0 ${g.min_txt}`, g.max_txt && `10 ${g.max_txt}`].filter(Boolean).join(' · ')}</div>}
+      </>
+    )
+  }
+  /** Grupos de episodios (Disautonomía): cada episodio lleva dentro su tipo, su hora y sus datos.
+   *  Arriba no hay chips generales: se abre un episodio y dentro se elige qué fue. */
+  const episodiosGrupo = (g: Grupo) => {
+    const lista = episodiosDia(g)
+    const opciones = g.opciones ?? []
+    const nombreTipo = (o: { nombre: string }) => <>{emojiOpcion(g, o.nombre) && <span className="chip-emoji" aria-hidden="true">{emojiOpcion(g, o.nombre)} </span>}{o.nombre}</>
+    return (
+      <>
+        {lista.length === 0 && <p className="muted small" style={{ margin: '0 0 .4rem' }}>Hoy sin episodios.</p>}
+        {lista.map(({ o, i, x }, n) => {
+          const quien = `episodio ${n + 1} (${o.nombre})`
+          if (x.guardado) return (
+            <div className="depo epi-plegado" key={`${o.id}-${i}`}>
+              <div className="row between">
+                <span className="small"><strong>Episodio {n + 1} · {o.nombre}</strong>{' · '}{resumenEpisodio(x)}</span>
+                <button type="button" className="linkbtn" aria-expanded={false} aria-label={`Desplegar ${quien}`} onClick={() => detalle(g, o.id, i, { guardado: null })}>Desplegar ▾</button>
+              </div>
+            </div>
+          )
+          return (
+            <div className="depo" key={`${o.id}-${i}`}>
+              <div className="row between">
+                <strong className="small">Episodio {n + 1}</strong>
+                <button type="button" className="linkbtn" onClick={() => quitar(g, o.id, i)}>Quitar</button>
+              </div>
+              <div className="field epi-tipo">
+                <span>Tipo</span>
+                <div className="chips" role="group" aria-label={`Tipo del episodio ${n + 1}`}>
+                  {opciones.map((t) => <button type="button" key={t.id} className={'chip ' + (t.id === o.id ? 'on' : '')} aria-pressed={t.id === o.id} onClick={() => cambiarTipo(g, o.id, i, t.id)}>{nombreTipo(t)}</button>)}
+                </div>
+              </div>
+              <div className="row" style={{ marginTop: '.3rem' }}>
+                <label className="row small" style={{ gap: '.4rem' }}>
+                  <span className="muted">Hora</span>
+                  <input type="time" aria-label={`Hora del ${quien}`} style={{ width: '7.5rem' }} value={x.hora ?? ''} onChange={(e) => detalle(g, o.id, i, { hora: e.target.value || null })} />
+                </label>
+                <button type="button" className={'chip alerta ' + (x.urgencias ? 'on' : '')} aria-pressed={!!x.urgencias} onClick={() => detalle(g, o.id, i, { urgencias: !x.urgencias })}>🚑 Ingreso en urgencias</button>
+              </div>
+              <div className="escala-fila">
+                <span>Intensidad</span>
+                <div className="seg escala fina diez" role="group" aria-label={`Intensidad del ${quien}, de 1 a 10`}>
+                  {DIEZ.map((k) => <button type="button" key={k} className={x.gravedad === k ? 'on' : ''} aria-pressed={x.gravedad === k} onClick={() => detalle(g, o.id, i, { gravedad: x.gravedad === k ? null : k })}>{k}</button>)}
+                </div>
+              </div>
+              <DatosEpisodio x={x} quien={quien} poner={(patch) => detalle(g, o.id, i, patch)} />
+              <div className="field epi-hice">
+                <span>Qué hice</span>
+                {acciones.length > 0 && (
+                  <div className="chips">
+                    {acciones.map((a) => {
+                      const on = (x.acciones ?? []).includes(a)
+                      return <button type="button" key={a} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => detalle(g, o.id, i, { acciones: on ? (x.acciones ?? []).filter((y) => y !== a) : [...(x.acciones ?? []), a] })}>{a}</button>
+                    })}
+                  </div>
+                )}
+                <textarea aria-label={`Qué hice en el ${quien}`} rows={2} placeholder="Qué tomé, qué hice, cómo evolucionó…" value={x.hice ?? ''} onChange={(e) => detalle(g, o.id, i, { hice: e.target.value || null })} />
+              </div>
+              <div className="row epi-guardar">
+                <button type="button" className="btn sm" aria-label={`Guardar y plegar el ${quien}`} onClick={() => detalle(g, o.id, i, { guardado: true })}>Guardar</button>
+              </div>
+            </div>
+          )
+        })}
+        {eligiendo === g.id ? (
+          <div className="depo">
+            <div className="row between">
+              <strong className="small">Nuevo episodio · ¿qué tipo?</strong>
+              <button type="button" className="linkbtn" onClick={() => setEligiendo(null)}>Cancelar</button>
+            </div>
+            <div className="chips" style={{ marginTop: '.4rem' }}>
+              {opciones.map((t) => <button type="button" key={t.id} className="chip" onClick={() => nuevo(g, t.id)}>{nombreTipo(t)}</button>)}
+              {!opciones.length && <span className="muted small">Sin tipos todavía. Añádelos en «Editar mis grupos».</span>}
+            </div>
+          </div>
+        ) : (
+          <div className="row" style={{ marginTop: '.5rem' }}>
+            <button type="button" className="btn sm secondary" onClick={() => setEligiendo(g.id)}>+ Nuevo episodio</button>
+          </div>
+        )}
+        {tieneEscala(g) && <div style={{ marginTop: '.6rem' }}>{escala(g)}</div>}
       </>
     )
   }
@@ -124,6 +236,7 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
         return <textarea aria-label={g.nombre} placeholder="Escribe lo que quieras anotar de hoy" value={d.texto?.[g.id] ?? ''} onChange={(e) => set({ texto: { ...(d.texto ?? {}), [g.id]: e.target.value } })} />
       default: {
         const marcadas = d.sel?.[g.id] ?? []
+        if (g.tipo === 'detalle') return episodiosGrupo(g)
         return (
           <>
             <div className="chips">
@@ -134,68 +247,6 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
               {!g.opciones?.length && <span className="muted small">Sin opciones todavía. Añádelas en «Editar mis grupos».</span>}
             </div>
             {tieneEscala(g) && <div style={{ marginTop: '.6rem' }}>{escala(g)}</div>}
-            {g.tipo === 'detalle' && (g.opciones ?? []).filter((o) => marcadas.includes(o.id)).map((o) => {
-              const xs = episodios(g, o.id)
-              const varios = xs.length > 1
-              return (
-                <div className="depo" key={o.id}>
-                  <strong className="small">{o.nombre}{varios && ` · ${xs.length} episodios`}</strong>
-                  {xs.map((x, i) => {
-                    const quien = varios ? `${o.nombre}, episodio ${i + 1}` : o.nombre
-                    if (x.guardado) return (
-                      <div className={'epi-plegado' + (varios ? ' epi-bloque' : '')} key={i}>
-                        <div className="row between">
-                          <span className="small"><strong>{varios ? `Episodio ${i + 1}` : 'Episodio'}</strong>{' · '}{resumenEpisodio(x)}</span>
-                          <button type="button" className="linkbtn" aria-expanded={false} aria-label={`Desplegar ${quien}`} onClick={() => detalle(g, o.id, i, { guardado: null })}>Desplegar ▾</button>
-                        </div>
-                      </div>
-                    )
-                    return (
-                      <div className={varios ? 'epi-bloque' : ''} key={i}>
-                        {varios && (
-                          <div className="row between">
-                            <span className="small muted">Episodio {i + 1}</span>
-                            <button type="button" className="linkbtn" onClick={() => ponerEpisodios(g, o.id, xs.filter((_, k) => k !== i))}>Quitar</button>
-                          </div>
-                        )}
-                        <div className="row" style={{ marginTop: '.3rem' }}>
-                          <label className="row small" style={{ gap: '.4rem' }}>
-                            <span className="muted">Hora</span>
-                            <input type="time" aria-label={`Hora de ${quien}`} style={{ width: '7.5rem' }} value={x.hora ?? ''} onChange={(e) => detalle(g, o.id, i, { hora: e.target.value || null })} />
-                          </label>
-                          <button type="button" className={'chip alerta ' + (x.urgencias ? 'on' : '')} aria-pressed={!!x.urgencias} onClick={() => detalle(g, o.id, i, { urgencias: !x.urgencias })}>🚑 Ingreso en urgencias</button>
-                        </div>
-                        <div className="escala-fila">
-                          <span>Intensidad</span>
-                          <div className="seg escala fina diez" role="group" aria-label={`Intensidad de ${quien}, de 1 a 10`}>
-                            {DIEZ.map((n) => <button type="button" key={n} className={x.gravedad === n ? 'on' : ''} aria-pressed={x.gravedad === n} onClick={() => detalle(g, o.id, i, { gravedad: x.gravedad === n ? null : n })}>{n}</button>)}
-                          </div>
-                        </div>
-                        <DatosEpisodio x={x} quien={quien} poner={(patch) => detalle(g, o.id, i, patch)} />
-                        <div className="field epi-hice">
-                          <span>Qué hice</span>
-                          {acciones.length > 0 && (
-                            <div className="chips">
-                              {acciones.map((a) => {
-                                const on = (x.acciones ?? []).includes(a)
-                                return <button type="button" key={a} className={'chip ' + (on ? 'on' : '')} aria-pressed={on} onClick={() => detalle(g, o.id, i, { acciones: on ? (x.acciones ?? []).filter((y) => y !== a) : [...(x.acciones ?? []), a] })}>{a}</button>
-                              })}
-                            </div>
-                          )}
-                          <textarea aria-label={`Qué hice en ${quien}`} rows={2} placeholder="Qué tomé, qué hice, cómo evolucionó…" value={x.hice ?? ''} onChange={(e) => detalle(g, o.id, i, { hice: e.target.value || null })} />
-                        </div>
-                        <div className="row epi-guardar">
-                          <button type="button" className="btn sm" aria-label={`Guardar y plegar ${quien}`} onClick={() => detalle(g, o.id, i, { guardado: true })}>Guardar</button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  <div className="row" style={{ marginTop: '.5rem' }}>
-                    <button type="button" className="btn sm secondary" onClick={() => ponerEpisodios(g, o.id, [...xs, nuevoEpisodio()])}>+ Añadir otro episodio</button>
-                  </div>
-                </div>
-              )
-            })}
           </>
         )
       }
