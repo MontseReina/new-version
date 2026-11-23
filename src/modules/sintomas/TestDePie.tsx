@@ -70,7 +70,7 @@ export function TestDePie({ inicio, hoy, reiniciar, modo, sentadaMin = null }: {
       </div>
       {!inicio || !hoy ? (
         <p className="small" style={{ margin: '.2rem 0 0' }}>{hoy
-          ? 'El reloj empieza al tocar «Me acabo de levantar» o al anotar la toma de «Al levantarme». Después ponte de pie, quieta: suena en cada toma (1, 3, 5 y 10 minutos).'
+          ? 'El reloj empieza al anotar la toma de «Al levantarme». Después ponte de pie, quieta: suena en cada toma (1, 3, 5 y 10 minutos).'
           : 'Sin test de pie este día.'}</p>
       ) : (
         <>

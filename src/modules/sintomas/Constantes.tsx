@@ -257,12 +257,6 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
       </div>
       <p className="muted small" style={{ margin: '.2rem 0 .3rem' }}>{intro ?? 'Frecuencia cardíaca, tensión arterial, glucosa y saturación. Toca un momento para rellenarlo.'}</p>
       {conTest && <TestDePie modo="banner" inicio={tp.inicio ?? null} sentadaMin={tp.sentada?.min ?? null} hoy={date === todayStr()} reiniciar={(h) => set({ test_pie: { ...tp, inicio: h, sentada: null } })} />}
-      {conTest && date === todayStr() && !tp.inicio && (
-        <div className="levantarme-ya">
-          <button type="button" className="btn" onClick={() => { programarPitidos(); set({ test_pie: { ...tp, inicio: ahoraHMS(), sentada: null } }) }}>🌅 Me acabo de levantar</button>
-          <p className="small muted" style={{ margin: '.3rem 0 0' }}>Tómate antes la tensión tumbada con el reloj y toca al ponerte de pie: suena en cada toma (1, 3, 5 y 10 minutos). Las tensiones del reloj se guardan después en su momento.</p>
-        </div>
-      )}
       {deRelojVer.length > 0 && (
         <div className="reloj-pendientes">
           <div className="medida-eje small"><b>⌚ Del reloj</b> <span className="muted">· comprueba el momento y guárdala con un toque</span></div>

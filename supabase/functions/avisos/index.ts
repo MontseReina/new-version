@@ -1505,7 +1505,7 @@ const GRUPOS_DISAUTONOMIA = [{
 	tipo: "varias",
 	neutra: true,
 	pagina: "disautonomia",
-	opciones: op("Nada hoy", "Dolor abdominal después de comer", "Saciedad precoz", "Vómitos después de comer", "Alivio tumbada boca arriba", "Alivio tumbada boca abajo", "Alivio tumbada sobre el lado izquierdo", "Dolor pélvico que empeora de pie", "Sangre en la orina", "Rubor o enrojecimiento", "Sofocos", "Picor", "Habones (ronchas)", "Dermografismo (marcas al rascar)", "Congestión nasal", "Subluxación o luxación", "Dolor articular", "Hematomas sin golpe", "Piernas o manos moradas de pie", "Manos y pies fríos")
+	opciones: op("Nada hoy", "Dolor abdominal después de comer", "Saciedad precoz", "Vómitos después de comer", "Disfagia", "Alivio tumbada boca arriba", "Alivio tumbada boca abajo", "Alivio tumbada sobre el lado izquierdo", "Dolor pélvico que empeora de pie", "Sangre en la orina", "Rubor o enrojecimiento", "Sofocos", "Picor", "Habones (ronchas)", "Dermografismo (marcas al rascar)", "Congestión nasal", "Subluxación o luxación", "Dolor articular", "Hematomas sin golpe", "Piernas o manos moradas de pie", "Manos y pies fríos")
 }];
 [
 	op("Ok", "Dolor de estómago", "Náuseas", "Hinchazón", "Gases"),
@@ -1525,7 +1525,7 @@ const AVISOS = [
 	{
 		id: "pie",
 		nombre: "Test de pie",
-		detalle: "A los 5 y a los 10 minutos de tocar «Me acabo de levantar» o de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.",
+		detalle: "A los 5 y a los 10 minutos de anotar la toma de «Al levantarme» en Disautonomía → Constantes. Llega también en las horas de silencio.",
 		porDefecto: true
 	},
 	{
