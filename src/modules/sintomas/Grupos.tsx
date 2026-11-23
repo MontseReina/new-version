@@ -19,49 +19,57 @@ const resumenEpisodio = (x: Detalle) => [
 
 /** Grupos de síntomas del día, para marcar con un toque. Lo usan Disautonomía y Ciclo menstrual:
  *  los dos escriben en el mismo registro diario ('sintomas'), cada uno con sus grupos. */
-export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grupos: Grupo[]; d: SintDia; set: (patch: SintDia) => void; date: string; acciones?: string[]; disabled?: boolean }) {
-  const marcar = (g: Grupo, id: string) => set({ sel: { ...(d.sel ?? {}), [g.id]: alternar(g, d.sel?.[g.id] ?? [], id) } })
+export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grupos: Grupo[]; d: SintDia; set: (patch: SintDia | ((actual: SintDia) => SintDia)) => void; date: string; acciones?: string[]; disabled?: boolean }) {
+  const marcar = (g: Grupo, id: string) => set((dd) => ({ sel: { ...(dd.sel ?? {}), [g.id]: alternar(g, dd.sel?.[g.id] ?? [], id) } }))
   const nuevoEpisodio = (): Detalle => (date === todayStr() ? { hora: ahora() } : {})
-  /** Episodios de una opción marcada (al menos uno). */
-  const episodios = (g: Grupo, id: string) => {
-    const xs = episodiosOpcion(d.det?.[g.id]?.[id])
+  /** Episodios de una opción marcada (al menos uno), leídos del día que se pasa. */
+  const episodiosDe = (dd: SintDia, g: Grupo, id: string) => {
+    const xs = episodiosOpcion(dd.det?.[g.id]?.[id])
     return xs.length ? xs : [{}]
   }
-  const ponerEpisodios = (g: Grupo, id: string, xs: Detalle[]) =>
-    set({ det: { ...(d.det ?? {}), [g.id]: { ...(d.det?.[g.id] ?? {}), [id]: xs } } })
-  const detalle = (g: Grupo, id: string, i: number, patch: Detalle) =>
-    ponerEpisodios(g, id, episodios(g, id).map((x, k) => (k === i ? { ...x, ...patch } : x)))
+  const episodios = (g: Grupo, id: string) => episodiosDe(d, g, id)
+  /** Cambia un episodio. Siempre sobre el valor más reciente, para no perder lo escrito justo antes. */
+  const detalle = (g: Grupo, id: string, i: number, patch: Detalle) => set((dd) => ({
+    det: { ...(dd.det ?? {}), [g.id]: { ...(dd.det?.[g.id] ?? {}), [id]: episodiosDe(dd, g, id).map((x, k) => (k === i ? { ...x, ...patch } : x)) } },
+  }))
   /** Grupo en el que se está eligiendo el tipo de un episodio nuevo. */
   const [eligiendo, setEligiendo] = useState<string | null>(null)
+  /** Episodio pendiente de confirmar que se quita («grupo|tipo|índice»). */
+  const [quitando, setQuitando] = useState<string | null>(null)
   /** Todos los episodios del día de un grupo, de cualquier tipo, ordenados por hora (sin hora, al final). */
   const episodiosDia = (g: Grupo) => (g.opciones ?? [])
     .filter((o) => (d.sel?.[g.id] ?? []).includes(o.id))
     .flatMap((o) => episodios(g, o.id).map((x, i) => ({ o, i, x })))
     .sort((a, b) => (a.x.hora || '99:99').localeCompare(b.x.hora || '99:99'))
-  /** Crea un episodio del tipo elegido. */
+  /** Crea un episodio del tipo elegido. Los que ya había se conservan y se pliegan, para que el nuevo se vea claro. */
   const nuevo = (g: Grupo, id: string) => {
-    const marcadas = d.sel?.[g.id] ?? []
-    const xs = marcadas.includes(id) ? [...episodios(g, id), nuevoEpisodio()] : [nuevoEpisodio()]
-    set({
-      sel: { ...(d.sel ?? {}), [g.id]: marcadas.includes(id) ? marcadas : [...marcadas, id] },
-      det: { ...(d.det ?? {}), [g.id]: { ...(d.det?.[g.id] ?? {}), [id]: xs } },
+    set((dd) => {
+      const marcadas = dd.sel?.[g.id] ?? []
+      const dg: Record<string, Detalle[]> = {}
+      for (const t of marcadas) dg[t] = episodiosDe(dd, g, t).map((x) => ({ ...x, guardado: true }))
+      dg[id] = [...(marcadas.includes(id) ? dg[id] : []), nuevoEpisodio()]
+      return {
+        sel: { ...(dd.sel ?? {}), [g.id]: marcadas.includes(id) ? marcadas : [...marcadas, id] },
+        det: { ...(dd.det ?? {}), [g.id]: { ...(dd.det?.[g.id] ?? {}), ...dg } },
+      }
     })
     setEligiendo(null)
   }
-  /** Quita un episodio; si era el único de su tipo, el tipo deja de estar marcado ese día. */
-  const quitar = (g: Grupo, id: string, i: number, extra?: { id: string; x: Detalle }) => {
-    const marcadas = d.sel?.[g.id] ?? []
-    const dg = { ...(d.det?.[g.id] ?? {}) }
+  /** Quita un episodio; si era el único de su tipo, el tipo deja de estar marcado ese día.
+   *  Con «extra», el episodio pasa a guardarse bajo otro tipo (al cambiar su primer tipo). */
+  const quitar = (g: Grupo, id: string, i: number, extra?: { id: string; x: Detalle }) => set((dd) => {
+    const marcadas = dd.sel?.[g.id] ?? []
+    const dg = { ...(dd.det?.[g.id] ?? {}) }
     let sel = marcadas
-    const resto = episodios(g, id).filter((_, k) => k !== i)
+    const resto = episodiosDe(dd, g, id).filter((_, k) => k !== i)
     if (resto.length) dg[id] = resto
     else { delete dg[id]; sel = sel.filter((y) => y !== id) }
     if (extra) {
-      dg[extra.id] = sel.includes(extra.id) ? [...episodios(g, extra.id), extra.x] : [extra.x]
+      dg[extra.id] = sel.includes(extra.id) ? [...episodiosDe(dd, g, extra.id), extra.x] : [extra.x]
       if (!sel.includes(extra.id)) sel = [...sel, extra.id]
     }
-    set({ sel: { ...(d.sel ?? {}), [g.id]: sel }, det: { ...(d.det ?? {}), [g.id]: dg } })
-  }
+    return { sel: { ...(dd.sel ?? {}), [g.id]: sel }, det: { ...(dd.det ?? {}), [g.id]: dg } }
+  })
   /** Marca o desmarca un tipo en un episodio (puede tener varios, siempre al menos uno).
    *  Se guarda bajo su primer tipo; si se desmarca ese, pasa con todo lo escrito al siguiente. */
   const tocarTipo = (g: Grupo, de: string, i: number, t: string) => {
@@ -113,7 +121,13 @@ export function Grupos({ grupos, d, set, date, acciones = [], disabled }: { grup
             <div className="depo" key={`${o.id}-${i}`}>
               <div className="row between">
                 <strong className="small">Episodio {n + 1}</strong>
-                <button type="button" className="linkbtn" onClick={() => quitar(g, o.id, i)}>Quitar</button>
+                {quitando === `${g.id}|${o.id}|${i}` ? (
+                  <span className="row small" style={{ gap: '.5rem' }}>
+                    <span>¿Quitar este episodio?</span>
+                    <button type="button" className="linkbtn" onClick={() => { quitar(g, o.id, i); setQuitando(null) }}>Sí, quitar</button>
+                    <button type="button" className="linkbtn" onClick={() => setQuitando(null)}>No</button>
+                  </span>
+                ) : <button type="button" className="linkbtn" onClick={() => setQuitando(`${g.id}|${o.id}|${i}`)}>Quitar</button>}
               </div>
               <div className="field epi-tipo">
                 <span>Tipo <span className="muted small">(puedes marcar varios)</span></span>

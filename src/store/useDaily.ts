@@ -48,9 +48,12 @@ export function useDaily<T extends Obj>(module: string, day: string) {
     }
   }, [module, day])
 
-  const set = useCallback((patch: Partial<T>) => {
+  /** Acepta un cambio o una función que lo calcula sobre el valor más reciente
+   *  (así dos cambios seguidos, antes de volver a pintar, no se pisan). */
+  const set = useCallback((patch: Partial<T> | ((actual: T) => Partial<T>)) => {
     const r = ref.current
-    r.value = { ...r.value, ...patch } as T
+    const p = typeof patch === 'function' ? patch(r.value) : patch
+    r.value = { ...r.value, ...p } as T
     r.dirty = true
     setValue(r.value)
     setState('guardando')
