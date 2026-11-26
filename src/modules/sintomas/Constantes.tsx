@@ -193,34 +193,55 @@ export function Constantes({ d, set, date, relojDia = null, momentos, esporadica
   const sugerida = new Map<string, (typeof huecos)[number]>()
   {
     const libres = [...huecos]
+    // Minuto de pie para una tensión del test (0.28.1): van en orden, una toma posterior nunca coge un minuto anterior,
+    // y se dejan minutos para las tomas que aún quedan del rato. Dentro de eso, el minuto más cercano a lo que llevaba de pie.
+    // (Antes se elegía solo por cercanía y, como el reloj guarda la hora al terminar de medir, la de 5′ salía como 10′ y al revés.)
+    const elegirMinuto = (k: Momento, ult: number, quedan: number, mPie: number | null) => {
+      const cands = libres.map((h, n) => ({ h, n })).filter(({ h }) => h.k === k && (h.sub ?? 0) > ult)
+        .sort((a, b) => (a.h.sub ?? 0) - (b.h.sub ?? 0))
+      if (!cands.length) return -1
+      const max = cands.length - Math.min(Math.max(quedan, 1), cands.length)
+      const posibles = cands.slice(0, max + 1)
+      if (mPie == null) return posibles[0].n
+      return [...posibles].sort((a, b) => Math.abs((a.h.sub ?? 0) - mPie) - Math.abs((b.h.sub ?? 0) - mPie))[0].n
+    }
     // Hora de «Al levantarme» (la ya guardada o la sugerida) para elegir «Poslevantarme» 5′ o 10′ según los minutos pasados.
     const lev = xs.find((x) => x.momento === 'levantarme' && x.hora)?.hora
     let tLev: number | null = lev ? minDe(lev) : null
-    for (const t of [...deReloj].sort((p, q) => p.hora.localeCompare(q.hora))) {
+    let ultPie = 0
+    const ordenadas = [...deReloj].sort((p, q) => p.hora.localeCompare(q.hora))
+    ordenadas.forEach((t, j) => {
       const tm = minDe(t.hora)
       const franja = FRANJAS.find(([fin]) => tm < fin)?.[1] ?? []
       let n = libres.findIndex((h) => franja.includes(h.k))
-      if (n >= 0 && libres[n].k === 'poslevantarme' && tLev != null && tm - tLev >= 8) {
-        const diez = libres.findIndex((h) => h.k === 'poslevantarme' && h.sub === 10)
-        if (diez >= 0) n = diez
+      if (n >= 0 && libres[n].k === 'poslevantarme') {
+        // Tensiones que quedan en el rato del test (hasta 30 min después de «Al levantarme»), contando esta.
+        const quedan = ordenadas.slice(j).filter((o) => minDe(o.hora) < 10 * 60 && (tLev == null || minDe(o.hora) - tLev <= 30)).length
+        n = elegirMinuto('poslevantarme', ultPie, quedan, tLev != null ? tm - tLev : null)
       }
       if (n >= 0) {
         if (libres[n].k === 'levantarme') tLev = tm
+        if (libres[n].k === 'poslevantarme') ultPie = libres[n].sub ?? 0
         sugerida.set(t.hora, libres[n]); libres.splice(n, 1)
       }
-    }
+    })
     // Test de la tarde: en su rato, la tensión de antes de ponerse de pie va a «Tarde · tumbada» y las de después,
     // al minuto de pie libre más cercano.
     const iniT = d.test_pie_tarde?.inicio
     if (S.campo === 'test_pie_tarde' && iniT) {
       const i0 = minDe(iniT)
-      for (const t of [...deReloj].sort((p, q) => p.hora.localeCompare(q.hora))) {
-        if (!enRato(iniT, t) || sugerida.has(t.hora)) continue
+      const delRato = [...deReloj].sort((p, q) => p.hora.localeCompare(q.hora)).filter((t) => enRato(iniT, t) && !sugerida.has(t.hora))
+      let ultT = 0
+      delRato.forEach((t, j) => {
         const m = minDe(t.hora) - i0
-        const cands = libres.map((h, k) => ({ h, k })).filter(({ h }) => (m <= 0 ? h.k === 'tarde_tumbada' : h.k === 'tarde_de_pie'))
-          .sort((a, b) => Math.abs((a.h.sub ?? 0) - m) - Math.abs((b.h.sub ?? 0) - m))
-        if (cands.length) { sugerida.set(t.hora, cands[0].h); libres.splice(cands[0].k, 1) }
-      }
+        const n = m <= 0
+          ? libres.findIndex((h) => h.k === 'tarde_tumbada')
+          : elegirMinuto('tarde_de_pie', ultT, delRato.slice(j).filter((o) => minDe(o.hora) - i0 > 0).length, m)
+        if (n >= 0) {
+          if (libres[n].k === 'tarde_de_pie') ultT = libres[n].sub ?? 0
+          sugerida.set(t.hora, libres[n]); libres.splice(n, 1)
+        }
+      })
     }
   }
   // Sin esporádicas (hoja POTS), solo las tensiones del reloj que encajan en una de sus fijas.
